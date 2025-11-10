@@ -1,6 +1,6 @@
 import TradingViewWidget from "@/components/TradingViewWidget"
 import { Button } from "@/components/ui/button"
-import { HEATMAP_WIDGET_CONFIG, MARKET_DATA_WIDGET_CONFIG, MARKET_OVERVIEW_WIDGET_CONFIG, TOP_STORIES_WIDGET_CONFIG } from "@/lib/constants"
+import { HEATMAP_WIDGET_CONFIG, MARKET_DATA_WIDGET_CONFIG, MARKET_OVERVIEW_WIDGET_CONFIG, TOP_STORIES_WIDGET_CONFIG, TICKER_TAPE_WIDGET_CONFIG } from "@/lib/constants"
 
 const Home = () => {
     const scriptUrl = "https://s3.tradingview.com/external-embedding/embed-widget-"
@@ -39,6 +39,15 @@ const Home = () => {
                         scriptUrl={`${scriptUrl}market-quotes.js`}
                         config={MARKET_DATA_WIDGET_CONFIG}
                         height={600}
+                    />
+                </div>
+            </section>
+            <section className="w-full mt-0">
+                <div className="w-full">
+                    <TradingViewWidget 
+                        scriptUrl={`${scriptUrl}ticker-tape.js`}
+                        config={TICKER_TAPE_WIDGET_CONFIG}
+                        height={60}
                     />
                 </div>
             </section>

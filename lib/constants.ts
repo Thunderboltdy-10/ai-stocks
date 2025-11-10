@@ -125,6 +125,28 @@ export const TOP_STORIES_WIDGET_CONFIG = {
     height: '600',
 };
 
+export const TICKER_TAPE_WIDGET_CONFIG = {
+    symbols: [
+        { proName: 'NASDAQ:MSFT', title: 'Microsoft' },
+        { proName: 'NASDAQ:AAPL', title: 'Apple' },
+        { proName: 'NASDAQ:NVDA', title: 'Nvidia' },
+        { proName: 'TADAWUL:2222', title: 'Saudi Aramco' },
+        { proName: 'NASDAQ:GOOGL', title: 'Alphabet (Google)' },
+        { proName: 'NASDAQ:AMZN', title: 'Amazon' },
+        { proName: 'NASDAQ:META', title: 'Meta Platforms' },
+        { proName: 'NYSE:BRK.B', title: 'Berkshire Hathaway' },
+        { proName: 'NYSE:TSM', title: 'TSMC' },
+        { proName: 'NYSE:LLY', title: 'Eli Lilly' },
+    ],
+    colorTheme: 'dark',
+    locale: 'en',
+    isTransparent: false,
+    showSymbolLogo: true,
+    displayMode: 'adaptive',
+    width: '100%',
+    largeChartUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/stocks`,
+};
+
 export const MARKET_DATA_WIDGET_CONFIG = {
     title: 'Stocks',
     width: '100%',
@@ -169,7 +191,6 @@ export const MARKET_DATA_WIDGET_CONFIG = {
         },
     ],
 };
-
 export const SYMBOL_INFO_WIDGET_CONFIG = (symbol: string) => ({
     symbol: symbol.toUpperCase(),
     colorTheme: 'dark',
