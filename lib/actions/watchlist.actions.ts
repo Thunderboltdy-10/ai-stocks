@@ -9,7 +9,7 @@ export const getWatchlistSymbolsByEmail = async (email: string): Promise<string[
         const db = mongoose.connection.db
         if (!db) throw new Error("Database not connected")
 
-        const user = await db.collection("users").findOne({ email })
+        const user = await db.collection("user").findOne({ email })
         if (!user) return []
 
         const userId = user.id || (user._id ? user._id.toString() : null)
