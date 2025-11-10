@@ -12,15 +12,15 @@ import { useRouter } from "next/navigation"
 import { Button } from "./ui/button"
 import { LogOut } from "lucide-react"
 import NavItems from "./NavItems"
+import { signOut } from "@/lib/actions/auth.actions"
 
-const UserDropdown = () => {
+const UserDropdown = ({user} : {user: User}) => {
     const router = useRouter()
 
     const handleSignOut = async () => {
+        await signOut()
         router.push("/sign-in")
     }
-
-    const user = {name: "John", email: "LbE0u@example.com"}
 
     return (
         <DropdownMenu>
@@ -39,7 +39,7 @@ const UserDropdown = () => {
                     </div>
                 </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="text-gray-400">
+            <DropdownMenuContent className="text-gray-400 bg-gray-800">
                 <DropdownMenuLabel>
                     <div className="flex relative items-center gap-3 py-2">
                         <Avatar className="h-10 w-10">
