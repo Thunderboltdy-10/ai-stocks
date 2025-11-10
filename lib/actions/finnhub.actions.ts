@@ -1,0 +1,95 @@
+"use server"
+
+import { getDateRange, validateArticle, formatArticle } from "@/lib/utils"
+
+const FINNHUB_BASE_URL = "https://finnhub.io/api/v1"
+const NEXT_PUBLIC_FINNHUB_API_KEY = process.env.NEXT_PUBLIC_FINNHUB_API_KEY ||  ""
+
+export const fetchJSON = async (url: string, revalidateSeconds?: number) => {
+    const opts: RequestInit & { next?: { revalidate?: number } } = {}
+
+    if (typeof revalidateSeconds === "number") {
+        opts.cache = "force-cache"
+        opts.next = { revalidate: revalidateSeconds }
+    } else {
+        opts.cache = "no-store"
+    }
+
+    const res = await fetch(url, opts)
+    if (!res.ok) {
+        const text = await res.text().catch(() => "")
+        throw new Error(`Fetch failed: ${res.status} ${res.statusText} ${text}`)
+    }
+
+    return res.json()
+}
+
+export const getNews = async (symbols?: string[]) => {
+    try {
+        const { from, to } = getDateRange(5)
+
+        if (symbols && symbols.length > 0) {
+            const cleaned = Array.from(new Set(symbols.map(s => (s || "").toUpperCase().trim()).filter(Boolean)))
+            if (cleaned.length === 0) return []
+
+            const maxArticles = 6
+            const collected: MarketNewsArticle[] = []
+            const seen = new Set<string>()
+
+            let rounds = 0
+            while (collected.length < maxArticles && rounds < 6) {
+                for (const symbol of cleaned) {
+                    if (collected.length >= maxArticles) break
+                    const url = `${FINNHUB_BASE_URL}/company-news?symbol=${encodeURIComponent(symbol)}&from=${from}&to=${to}&token=${NEXT_PUBLIC_FINNHUB_API_KEY}`
+                    let data: RawNewsArticle[] = []
+                    try {
+                        data = await fetchJSON(url, 60 * 30) // cache for 30 minutes
+                    } catch (err) {
+                        // log and continue to next symbol
+                        console.error(`Error fetching company news for ${symbol}`, err)
+                        continue
+                    }
+
+                    if (!Array.isArray(data) || data.length === 0) continue
+
+                    const valid = data.find(a => validateArticle(a) && !seen.has(a.url || a.headline || String(a.id)))
+                    if (valid) {
+                        const formatted = formatArticle(valid as RawNewsArticle, true, symbol, collected.length) as MarketNewsArticle
+                        const key = formatted.url || formatted.headline || String(formatted.id)
+                        if (!seen.has(key)) {
+                            seen.add(key)
+                            collected.push(formatted)
+                        }
+                    }
+                }
+                rounds++
+            }
+
+            return collected.sort((a, b) => (b.datetime || 0) - (a.datetime || 0)).slice(0, 6)
+        }
+
+        // No symbols provided - fetch general market news
+        const generalUrl = `${FINNHUB_BASE_URL}/news?category=general&token=${NEXT_PUBLIC_FINNHUB_API_KEY}`
+        const generalData = await fetchJSON(generalUrl, 60 * 30)
+        if (!Array.isArray(generalData)) return []
+
+        const seenKeys = new Set<string>()
+    const collectedGeneral: MarketNewsArticle[] = []
+
+        for (let i = 0; i < generalData.length && collectedGeneral.length < 6; i++) {
+            const article = generalData[i]
+            if (!validateArticle(article)) continue
+            const key = (article.id ? String(article.id) : article.url) || article.headline
+            if (!key || seenKeys.has(key)) continue
+            seenKeys.add(key)
+            collectedGeneral.push(formatArticle(article, false, undefined, collectedGeneral.length))
+        }
+
+        return collectedGeneral.slice(0, 6)
+    } catch (error) {
+        console.error("Error in getNews", error)
+        throw new Error("Failed to fetch news")
+    }
+}
+
+export default getNews
