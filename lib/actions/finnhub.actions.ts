@@ -1,6 +1,8 @@
 "use server"
 
+import { cache } from "react"
 import { getDateRange, validateArticle, formatArticle } from "@/lib/utils"
+import { POPULAR_STOCK_SYMBOLS } from "@/lib/constants"
 
 const FINNHUB_BASE_URL = "https://finnhub.io/api/v1"
 const NEXT_PUBLIC_FINNHUB_API_KEY = process.env.NEXT_PUBLIC_FINNHUB_API_KEY ||  ""
@@ -74,7 +76,7 @@ export const getNews = async (symbols?: string[]) => {
         if (!Array.isArray(generalData)) return []
 
         const seenKeys = new Set<string>()
-    const collectedGeneral: MarketNewsArticle[] = []
+        const collectedGeneral: MarketNewsArticle[] = []
 
         for (let i = 0; i < generalData.length && collectedGeneral.length < 6; i++) {
             const article = generalData[i]
@@ -92,4 +94,75 @@ export const getNews = async (symbols?: string[]) => {
     }
 }
 
-export default getNews
+type FinnHubSearchResult = {
+    symbol: string
+    description?: string
+    displaySymbol?: string
+    type?: string
+    exchange?: string
+}
+
+type FinnHubSearchResponse = {
+    count?: number
+    result?: FinnHubSearchResult[]
+}
+
+type StockWithWatchlistStatus = {
+    symbol: string
+    name: string
+    exchange: string
+    type: string
+    isInWatchlist: boolean
+}
+
+export const searchStocks = cache(async (query?: string): Promise<StockWithWatchlistStatus[]> => {
+    try {
+        let results: FinnHubSearchResult[] = []
+
+        if (!query || query.trim().length === 0) {
+            const symbols = POPULAR_STOCK_SYMBOLS.slice(0, 10)
+            const profiles = await Promise.all(
+                symbols.map((s) => {
+                    const url = `${FINNHUB_BASE_URL}/stock/profile2?symbol=${encodeURIComponent(s)}&token=${NEXT_PUBLIC_FINNHUB_API_KEY}`
+                    return fetchJSON(url, 60 * 60).catch(() => null)
+                })
+            )
+
+            results = profiles.map((p, idx) => ({
+                symbol: symbols[idx],
+                description: p?.name || "",
+                displaySymbol: symbols[idx],
+                type: "Common Stock",
+                exchange: p?.exchange || "US",
+            }))
+        } else {
+            const q = query.trim()
+            const url = `${FINNHUB_BASE_URL}/search?q=${encodeURIComponent(q)}&token=${NEXT_PUBLIC_FINNHUB_API_KEY}`
+            const res = (await fetchJSON(url, 60 * 30)) as FinnHubSearchResponse | FinnHubSearchResult[]
+            if (Array.isArray(res)) {
+                results = res as FinnHubSearchResult[]
+            } else if ((res as FinnHubSearchResponse).result && Array.isArray((res as FinnHubSearchResponse).result)) {
+                results = (res as FinnHubSearchResponse).result as FinnHubSearchResult[]
+            } else {
+                results = []
+            }
+        }
+
+        const mapped = results
+            .map((r) => ({
+                symbol: (r.symbol || "").toUpperCase(),
+                name: r.description || "",
+                exchange: r.displaySymbol || r.exchange || "US",
+                type: r.type || "Stock",
+                isInWatchlist: false,
+            }))
+            .slice(0, 15)
+
+        return mapped
+    } catch (error) {
+        console.error("Error in stock search:", error)
+        return []
+    }
+})
+
+

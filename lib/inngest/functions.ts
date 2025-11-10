@@ -3,8 +3,8 @@ import { sendNewsSummaryEmail, sendWelcomeEmail } from "../nodemailer";
 import { inngest } from "./client";
 import { NEWS_SUMMARY_EMAIL_PROMPT, PERSONALIZED_WELCOME_EMAIL_PROMPT } from "./prompts";
 import { getWatchlistSymbolsByEmail } from "@/lib/actions/watchlist.actions"
-import { getNews } from "@/lib/actions/finnhub.actions"
 import { getFormattedTodayDate } from "../utils";
+import { getNews } from "../actions/finnhub.actions";
 
 export const sendSignUpEmail = inngest.createFunction(
     {id: "sign-up-email"},
