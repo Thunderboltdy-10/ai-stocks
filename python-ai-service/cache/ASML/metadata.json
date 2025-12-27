@@ -1,0 +1,22 @@
+{
+  "timestamp": "2025-12-22T20:53:28.605243",
+  "symbol": "ASML",
+  "raw_shape": [
+    7746,
+    7
+  ],
+  "engineered_shape": [
+    7746,
+    162
+  ],
+  "prepared_shape": [
+    7744,
+    165
+  ],
+  "feature_count": 157,
+  "expected_feature_count": 157,
+  "raw_hash": "b3b4a42ba535c6aafb804327844749bb",
+  "engineered_hash": "073b5a4289dbb237c3a2594b3e9f0158",
+  "prepared_hash": "9350c8cf96a8d645bbe423047adfb9d9",
+  "version": "3.1"
+}

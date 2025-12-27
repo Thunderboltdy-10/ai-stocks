@@ -1,0 +1,11 @@
+symbol,fusion_mode,sharpe,cum_return_pct,max_drawdown_pct,notes
+AAPL,regressor_only,1.607,2.53,-4.59,Pure LSTM regressor
+AAPL,lstm_heavy,1.688,--,--,70% LSTM + 30% GBM
+AAPL,balanced,1.807,--,--,50% LSTM + 50% GBM
+AAPL,gbm_heavy,2.009,--,--,30% LSTM + 70% GBM
+AAPL,gbm_only,4.465,0.98,-0.39,Pure GBM
+HOOD,regressor_only,2.516,-0.09,-6.04,Pure LSTM (best for HOOD)
+HOOD,gbm_only,-0.897,-0.09,-7.18,GBM underperforms - LSTM collapsed
+HOOD,lstm_heavy,-0.897,-0.09,-7.18,Falls back to GBM
+HOOD,balanced,-0.897,-0.09,-7.18,Falls back to GBM
+HOOD,gbm_heavy,-0.897,-0.09,-7.18,Falls back to GBM

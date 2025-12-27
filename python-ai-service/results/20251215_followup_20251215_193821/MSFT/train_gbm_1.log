@@ -1,0 +1,25 @@
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1765823948.720884  260098 cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+2025-12-15 19:39:12,173 - __main__ - INFO - Using seed: 42
+2025-12-15 19:39:12,174 - __main__ - INFO - Preparing GBM data for MSFT...
+2025-12-15 19:39:12,175 - data.cache_manager - INFO - DataCacheManager initialized: cache
+2025-12-15 19:39:12,175 - data.cache_manager - INFO - ⚠️  Cache expired for MSFT (age: 11 days, 20:39:25.659060)
+2025-12-15 19:39:12,175 - data.cache_manager - INFO - 📊 Fetching fresh data for MSFT...
+2025-12-15 19:39:12,175 - data.cache_manager - INFO -   1/3 Fetching OHLCV data...
+2025-12-15 19:39:12,175 - data.data_fetcher - INFO - Fetching data for MSFT (period=max)
+2025-12-15 19:39:12,194 - yfinance - ERROR - $MSFT: possibly delisted; no price data found  (1d 1927-01-09 -> 2025-12-15)
+Traceback (most recent call last):
+  File "/home/thunderboltdy/ai-stocks/python-ai-service/training/train_gbm_baseline.py", line 979, in <module>
+    main()
+  File "/home/thunderboltdy/ai-stocks/python-ai-service/training/train_gbm_baseline.py", line 950, in main
+    results = train_gbm_models(
+  File "/home/thunderboltdy/ai-stocks/python-ai-service/training/train_gbm_baseline.py", line 817, in train_gbm_models
+    df, feature_cols, data_metadata = prepare_gbm_data(
+  File "/home/thunderboltdy/ai-stocks/python-ai-service/training/train_gbm_baseline.py", line 336, in prepare_gbm_data
+    raw_df, engineered_df, prepared_df, cached_feature_cols = cache_manager.get_or_fetch_data(
+  File "/home/thunderboltdy/ai-stocks/python-ai-service/data/cache_manager.py", line 265, in get_or_fetch_data
+    raw_df = fetch_stock_data(symbol, period='max')
+  File "/home/thunderboltdy/ai-stocks/python-ai-service/data/data_fetcher.py", line 41, in fetch_stock_data
+    raise ValueError(f"No data retrieved for {symbol}")
+ValueError: No data retrieved for MSFT

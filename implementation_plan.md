@@ -1,457 +1,573 @@
-# Implementation Plan
-
-This document tracks planned future work and enhancements for the AI-Stocks project.
-
----
-
-## Current Status Summary
-
-**Last Updated**: 2025-12-22 (Post Multi-Agent Session)
-**Overall Progress**: 70% Complete (P0 work nearing completion)
-
-### Production Ready Components
-- **LightGBM models**: IC=0.67, 67% directional accuracy - DEPLOYED
-- **Feature engineering pipeline**: 157 features - VALIDATED
-- **Model persistence and loading**: New organized structure - FIXED
-- **Custom loss functions and metrics**: Registry system - FUNCTIONAL
-- **API endpoints**: 3/4 passing (model loading FIXED)
-
-### In Progress
-- **Single-task regressor training**: Background task, expected to fix variance collapse
-- **Binary classifier retraining**: Needed after classifier serialization verification
-
-### Recently Fixed (This Session)
-1. ✅ Loss function design flaw (sign diversity penalty)
-2. ✅ Model loading architecture mismatch (custom_objects)
-3. ✅ GBM validation and deprecation decision
-4. ✅ F4 validation suite completion (custom loss registration)
-5. ✅ API integration testing and diagnosis
-
-### Known Issues (Remaining)
-1. Binary classifiers need retrain (FocalLossWithAlpha serialization)
-2. Single-task regressor training in progress (awaiting validation)
-3. yfinance data fetching occasionally fails (test only, not production)
-4. XGBoost models deprecated (not removing, but LightGBM preferred)
-
----
-
-## Immediate Priorities (Next 1-2 Weeks)
-
-### P0: Critical Blockers (1-3 Days)
-
-1. **✅ FIXED: Loss Function Design Flaw**
-   - Root cause: Sign diversity penalty was 80x too weak
-   - Fix applied: Changed from variance to positive fraction formula
-   - File: `python-ai-service/models/lstm_transformer_paper.py` lines 287-294
-   - Status: VERIFIED in code
-   - Impact: Fixes variance collapse in multi-task mode
-
-2. **✅ FIXED: Model Loading Architecture Mismatch**
-   - Root cause: `.keras` models loaded without custom_objects parameter
-   - Fix applied: Added `get_custom_objects()` to all load_model calls
-   - File: `python-ai-service/service/prediction_service.py` lines 358-362, 798
-   - Status: TESTED - custom objects properly passed
-   - Impact: API prediction endpoint now has correct architecture
-
-3. **⏳ IN PROGRESS: Complete Single-Task Regressor Training**
-   - Status: Background task running
-   - Expected completion: Within 6-12 hours
-   - Configuration: `--no-multitask --use-anti-collapse-loss --variance-regularization 1.0`
-   - Validation criteria: R² > 0.0, variance > 0.01, directional accuracy > 52%
-   - Next steps: Run F4 validation, compare to GBM, deploy if metrics pass
-
-4. **⏳ TODO: Fix Binary Classifier Serialization**
-   - Issue: FocalLossWithAlpha not properly serialized in .keras files
-   - Affected symbols: AAPL, ASML, IWM, KO
-   - Solution: Retrain with proper custom object registration (fix deployed in this session)
-   - Estimated time: 2-3 hours (4 symbols × 30 min each)
-   - Blocking: Binary classifier fusion mode (non-critical, can deploy with LSTM+GBM only)
-
-### P1: Production Deployment (1-2 Weeks)
-
-5. **✅ VALIDATED: LightGBM Models Ready**
-   - **Status**: PRODUCTION-READY
-   - **Metrics**: IC=0.67, Directional Accuracy=67.1%, Variance=0.00566
-   - **Symbols**: AAPL, ASML, IWM, KO (all passing F4 validation)
-   - **Recommendation**: Deploy immediately, monitor for 1 week
-   - **Tasks**:
-     - Verify API endpoints return correct predictions
-     - Monitor variance and IC in production
-     - No further training needed
-
-6. **✅ FIXED: Model Loading and API Integration**
-   - **Status**: CUSTOM OBJECTS FIX DEPLOYED
-   - **Impact**: Prediction endpoint now loads models correctly
-   - **Tasks**:
-     - Restart Python API service (if running)
-     - Test /api/predict endpoint with live symbol
-     - Verify ensemble predictions work
-
-7. **⏳ TODO: Set FINNHUB_API_KEY (Optional)**
-   - **Priority**: Low (sentiment features sparse)
-   - **Action**: Register at https://finnhub.io/register
-   - **Configuration**: Add to `.env` file
-   - **Impact**: Enables sentiment features (currently zeros)
-   - **Decision**: Can defer until premium tier needed
-
----
-
-## Short-Term Enhancements (Next 1-2 Months)
-
-### Model Improvements
-
-8. **Train Single-Task Regressor for All Symbols**
-   - **Dependency**: Wait for single-task AAPL training to complete
-   - **Symbols**: GOOGL, META, NVDA, SPY, TSLA (+ others as needed)
-   - **Model types per symbol**:
-     - Regressor (single-task mode - FIXED architecture)
-     - LightGBM (primary GBM model)
-     - Binary classifiers (after serialization fix)
-   - **Estimated time**: 7 symbols × 1.5 hours = ~10.5 hours
-   - **Success criteria**: R² > 0.0, variance > 0.01, Sharpe > 0.8
-   - **Priority**: P1 (unblocks ensemble predictions across assets)
-
-9. **Deprecate XGBoost Models Completely**
-   - **Decision**: Already made (IC=0.35, 97% bias vs LightGBM's IC=0.67, 71% bias)
-   - **Action**: Remove from training pipeline
-   - **Impact**: Simplify code, reduce training time
-   - **Status**: Deferred until LightGBM fully deployed
-
-10. **Implement Quantile Regression**
-    - **Purpose**: Uncertainty estimation (Q10/Q50/Q90)
-    - **Benefit**: Better risk management and position sizing
-    - **Status**: Model architecture exists, needs training with fixed loss
-    - **Priority**: P2 (nice-to-have for advanced users)
-    - **Estimated time**: 3-4 hours for AAPL + validation
-
-11. **Hyperparameter Optimization**
-    - **Current Status**: Default parameters work well (IC=0.67 for LightGBM)
-    - **Future**: Symbol-specific tuning
-    - **Method**: Optuna or grid search
-    - **Target symbols**: Those with IC < 0.60 after retraining
-    - **Priority**: P2 (only if needed after deployment)
-
-### Infrastructure
-
-12. **Automated Testing Pipeline**
-    - **Status**: F4 validation suite complete
-    - **Tasks**:
-      - Integrate F4 tests with CI/CD
-      - Automated weekly retraining triggers
-      - Performance regression detection
-      - Email alerts on failures
-
-13. **Model Versioning System**
-    - **Status**: ModelPaths handles both legacy and new structures
-    - **Tasks**:
-      - Add version tracking to metadata
-      - A/B testing framework for model comparisons
-      - Rollback capability
-      - Version comparison dashboard
-
-14. **Monitoring Dashboard**
-    - **Status**: Inngest cron job configured
-    - **Tasks**:
-      - Real-time prediction quality metrics
-      - Model performance trends
-      - Variance collapse detection alerts
-      - System health status UI
-
----
-
-## Medium-Term Roadmap (Next 3-6 Months)
-
-### Advanced Features
-
-13. **Multi-Horizon Forecasting**
-    - Current: 1-day predictions only
-    - Future: 5-day, 10-day, 20-day forecasts
-    - Use case: Longer-term portfolio planning
-    - Architecture: Sequence-to-sequence models
-
-14. **Portfolio Optimization**
-    - Input: Predictions for multiple symbols
-    - Output: Optimal portfolio weights
-    - Constraints: Risk limits, sector exposure
-    - Method: Mean-variance optimization or Kelly criterion
-
-15. **Alternative Data Sources**
-    - Social media sentiment (Twitter, Reddit)
-    - Options flow data
-    - Insider trading filings
-    - Economic indicators (Fed data)
-
-16. **Explainability Features**
-    - SHAP values for feature importance
-    - Attention weight visualization
-    - Prediction confidence intervals
-    - Trade rationale generation
-
-### Performance Optimization
-
-17. **GPU Inference Optimization**
-    - Batch inference for multiple symbols
-    - Model quantization (FP16, INT8)
-    - ONNX Runtime integration
-    - Target: <50ms per prediction
-
-18. **Feature Engineering Caching**
-    - Cache computed features by symbol and date
-    - Incremental updates (only compute new days)
-    - Distributed cache (Redis)
-    - Expected speedup: 10x for repeated requests
-
-19. **Model Ensembling Improvements**
-    - More fusion modes (stacking, boosting)
-    - Dynamic weight adjustment based on market regime
-    - Meta-learner for optimal fusion
-    - Expected improvement: +0.1-0.2 Sharpe
-
----
-
-## Long-Term Vision (6-12 Months)
-
-### Research & Development
-
-20. **Deep Reinforcement Learning**
-    - Learn optimal trading policy directly
-    - Reward: Sharpe ratio or total return
-    - Environment: Historical + simulated markets
-    - Algorithm: PPO or SAC
-
-21. **Transformer-Only Architecture**
-    - Remove LSTM, use pure attention
-    - Pre-train on all stocks (foundation model)
-    - Fine-tune per symbol
-    - Inspiration: GPT for time series
-
-22. **Multi-Asset Support**
-    - Expand beyond US stocks
-    - Crypto, forex, commodities, bonds
-    - Cross-asset correlation features
-    - Unified prediction framework
-
-### Platform Enhancements
-
-23. **Mobile Application**
-    - iOS and Android apps
-    - Push notifications for signals
-    - Watchlist sync
-    - Live portfolio tracking
-
-24. **API Marketplace**
-    - Expose predictions via paid API
-    - Rate limiting and authentication
-    - Usage analytics
-    - Developer documentation
-
-25. **Social Features**
-    - Share predictions and backtests
-    - Community voting on model quality
-    - Leaderboards for best strategies
-    - Discussion forums
-
----
-
-## Research Questions & Experiments
-
-### To Investigate
-
-26. **Why does multi-task learning cause collapse?**
-    - Theory: Competing gradients destabilize magnitude head
-    - Experiment: Train with different loss weights
-    - Alternative: Separate training then ensemble
-
-27. **Can we predict volatility accurately?**
-    - Current: Volatility output largely ignored
-    - Experiment: Train dedicated volatility model
-    - Use case: Dynamic position sizing
-
-28. **Is sentiment data worth the cost?**
-    - Current: Sparse news coverage, minimal impact
-    - Experiment: Compare Sharpe with/without sentiment
-    - Decision: Keep free tier or upgrade to premium
-
-29. **What's the optimal sequence length?**
-    - Current: 90 days (default)
-    - Experiment: Grid search 30, 60, 90, 120, 180 days
-    - Hypothesis: Shorter might be better for 1-day predictions
-
-30. **Should we deprecate XGBoost entirely?**
-    - Current: XGBoost underperforms LightGBM
-    - Evidence: IC 0.35 vs 0.67, 97% bias vs 71%
-    - Decision pending: One more hyperparameter iteration or remove
-
----
-
-## Documentation Needs
-
-31. **User Guide**
-    - Getting started tutorial
-    - API usage examples
-    - Backtesting workflow
-    - Interpretation of results
-
-32. **Developer Guide**
-    - Architecture deep-dive
-    - Adding new features
-    - Training new models
-    - Debugging common issues
-
-33. **Operations Runbook**
-    - Deployment procedures
-    - Monitoring and alerts
-    - Incident response
-    - Backup and recovery
-
----
-
-## Technical Debt
-
-### Code Quality
-
-34. **Refactor prediction_service.py**
-    - Current: 800+ lines, complex logic
-    - Goal: Split into smaller modules
-    - Benefit: Easier testing and maintenance
-
-35. **Type Hints Throughout Codebase**
-    - Current: Partial type coverage
-    - Goal: 100% type hints in Python
-    - Benefit: Better IDE support, catch bugs earlier
-
-36. **Consolidate Model Directory Structures**
-    - Current: Support both legacy flat and new organized
-    - Goal: Migrate all models to new structure
-    - Benefit: Simpler code, consistent paths
-
-37. **Remove Deprecated Code**
-    - Identify unused functions and files
-    - Remove multi-task architecture (if single-task succeeds)
-    - Clean up old training scripts
-
-### Testing
-
-38. **Increase Test Coverage**
-    - Current: Manual F4 validation
-    - Goal: Automated unit tests for all modules
-    - Target: 80%+ code coverage
-
-39. **Integration Test Suite**
-    - End-to-end API tests
-    - Model loading tests
-    - Backtest validation tests
-    - Data pipeline tests
-
-40. **Performance Benchmarks**
-    - Track inference latency
-    - Monitor memory usage
-    - Measure throughput
-    - Regression detection
-
----
-
-## Maintenance Tasks
-
-### Regular (Weekly)
-
-- Monitor model performance
-- Review training logs
-- Check for variance collapse
-- Update market data
-
-### Monthly
-
-- Retrain models with latest data
-- Review and update hyperparameters
-- Analyze failed predictions
-- Update documentation
-
-### Quarterly
-
-- Full system audit
-- Security review
-- Dependency updates
-- Capacity planning
-
----
-
-## Known Issues / Technical Debt
-
-### Critical (Blocking Production)
-None - all critical issues fixed or in progress
-
-### High Priority
-1. **Single-task regressor training**: Awaiting completion (in progress)
-2. **Binary classifier serialization**: FocalLossWithAlpha needs proper registration (2-3 hour fix)
-
-### Medium Priority
-3. **yfinance data fetching**: Occasional date-related errors in validation tests (workaround: use mock data)
-4. **XGBoost deprecation**: Performance inferior to LightGBM (IC=0.35 vs 0.67), recommend removal after LightGBM stable
-
-### Low Priority
-5. **Mixed precision training**: Some losses unstable with float16, can use float32 alternative
-6. **Sentiment features**: Currently sparse (0.08% coverage), requires premium Finnhub API key
-7. **Monitoring cron jobs**: Require sudo access (non-critical, defer until deployment)
-
----
-
-## Success Metrics (Current Achievement vs Target)
-
-### Model Performance
-| Metric | Target | Current (LightGBM) | Status |
-|--------|--------|-------------------|--------|
-| Sharpe ratio | > 1.5 | 0.8-1.2 | On track |
-| Directional accuracy | > 58% | 67.1% (AAPL) | ✅ EXCEEDED |
-| Information coefficient | > 0.7 | 0.6713 (AAPL) | ✅ EXCEEDED |
-| Max drawdown | < 15% | 15-25% | Close |
-| Prediction variance | > 0.005 | 0.00566 (AAPL) | ✅ PASSED |
-| Positive bias | 45-55% | 70.7% (AAPL) | Acceptable |
-
-### System Reliability
-| Metric | Target | Current | Status |
-|--------|--------|---------|--------|
-| API uptime | > 99.9% | N/A (not deployed) | Pending |
-| Prediction latency | < 100ms | ~50ms (cached) | ✅ Ready |
-| Variance collapse incidents | Zero | Fixed (80x penalty) | ✅ Fixed |
-| F4 validation tests | All passing | 3/4 passing (data fetch issue) | ✅ Ready |
-
-### Development Progress
-| Component | Status | Completion |
-|-----------|--------|-----------|
-| LightGBM models | Production-ready | 100% |
-| LSTM regressor | In progress (single-task) | 95% |
-| Binary classifiers | Needs retrain | 80% |
-| Feature engineering | Validated | 100% |
-| API integration | Fixed (custom_objects) | 95% |
-| F4 validation suite | Complete | 100% |
-
----
-
-**Note**: This is a living document. Priorities may shift based on results, user feedback, and new research developments.
-
-**Last Update**: 2025-12-22 (Post Multi-Agent Session)
-**Last Review**: 2025-12-22
-**Next Review**: 2026-01-22 (monthly)
-
----
-
-### Latest Session Summary (2025-12-22)
-
-This session consolidated multi-agent parallel execution work from 6 independent agents:
-
-**Key Accomplishments**:
-1. Fixed loss function design flaw (sign diversity penalty ~80x too weak)
-2. Fixed model loading architecture mismatch (custom_objects not passed)
-3. Validated GBM models (LightGBM production-ready with IC=0.67)
-4. Completed F4 validation suite (all custom objects registered)
-5. Fixed API integration issues (prediction endpoint verified)
-6. Initiated single-task regressor training (fixes variance collapse)
-
-**Critical Path to Production**:
-1. Complete single-task regressor training (6-12 hours)
-2. Validate regressor metrics (R² > 0.0, variance > 0.01)
-3. Deploy ensemble (LSTM + LightGBM + classifiers)
-4. Monitor for 1 week before full production release
-
-**Next Immediate Action**: Monitor single-task training progress and validate results when complete.
+Nuclear Redesign: Python AI Service for Stock Prediction
+
+ Executive Summary
+
+ Complete redesign of the python-ai-service to create a
+ business-standard, scientifically validated AI prediction system.
+ This addresses critical data leakage, implements proper
+ Walk-Forward validation, builds a true stacking ensemble with
+ XGBoost meta-learner, and adds xLSTM-TS as a new model
+ architecture.
+
+ ---
+ Part 1: Critical Issues to Fix
+
+ 1.1 DATA LEAKAGE IN GBM (P0 - CRITICAL)
+
+ File: python-ai-service/training/train_gbm_baseline.py
+
+ The Bug (Lines 691-775):
+ # Line 691-694: 80/20 split
+ split_idx = int(len(X) * 0.8)
+ X_train, X_val = X_scaled[:split_idx], X_scaled[split_idx:]
+
+ # Line 704-708: XGBoost uses validation for early stopping
+ model.fit(X_train, y_train,
+     eval_set=[(X_train, y_train), (X_val, y_val)],  # ← LEAKAGE
+     verbose=False)
+
+ # Line 732-737: LightGBM Phase 1 uses validation for iteration
+ selection
+ model_cv.fit(X_train, y_train,
+     eval_set=[(X_train, y_train), (X_val, y_val)],  # ← LEAKAGE
+     callbacks=cv_callbacks)
+
+ # Line 771-775: Metrics on FULL dataset (including validation!)
+ y_pred_full = model.predict(X_scaled)  # ← LEAKAGE: includes val
+ data
+ ic = np.corrcoef(y.flatten(), y_pred_full.flatten())[0, 1]  # ←
+ INFLATED
+
+ Impact: Validation data influences model selection, then metrics
+ computed on same data = inflated results.
+
+ 1.2 FORWARD_SIM IS DEAD CODE (P1)
+
+ File: python-ai-service/inference_and_backtest.py
+
+ - --forward-sim and --forward-days CLI flags exist (lines
+ 7135-7138)
+ - Parameters passed to main() (lines 4372-4373)
+ - Never used in function body - no implementation exists
+
+ 1.3 LOOK-AHEAD BIAS IN BACKTEST (P0)
+
+ Current Flow:
+ - Features from day T predict day T+1
+ - But backtest applies position to day T's return (should be T+1)
+ - Creates systematic positive bias
+
+ ---
+ Part 2: Architecture Decisions
+
+ 2.1 Models to KEEP (Elite Tier)
+
+ | Model              | File                                       |
+  Rationale                                               |
+ |--------------------|--------------------------------------------|
+ ---------------------------------------------------------|
+ | LSTM+Transformer   | models/lstm_transformer_paper.py           |
+  Primary model, well-implemented with directional losses |
+ | XGBoost            | training/train_gbm_baseline.py             |
+  Robust, fast, needs leakage fix                         |
+ | LightGBM           | training/train_gbm_baseline.py             |
+  Best IC (0.652), needs leakage fix                      |
+ | Binary Classifiers | training/train_binary_classifiers_final.py |
+  Direction signals, properly implemented                 |
+
+ 2.2 Models to ADD
+
+ | Model                | Priority | Rationale
+
+        |
+ |----------------------|----------|--------------------------------
+ -------------------------------------------------------------------
+ -------|
+ | xLSTM-TS             | P1       | Specifically tested on S&P 500,
+  outperforms TCN/N-BEATS for stock prediction, includes wavelet
+ denoising |
+ | XGBoost Meta-Learner | P0       | Replace naive fusion with
+ trained stacking
+             |
+
+ 2.3 Models to DEPRECATE
+
+ | Model                       | Rationale
+                                           |
+ |-----------------------------|------------------------------------
+ ------------------------------------------|
+ | PatchTST                    | Implemented but not integrated -
+ absorb architecture into xLSTM-TS or remove |
+ | TFT                         | PyTorch-only creates complexity -
+ defer                                      |
+ | Argument-based fusion modes | Replace with trained stacking
+ (weighted, balanced, gbm_heavy, etc.)          |
+
+ 2.4 Models to CONSIDER LATER (Phase 2)
+
+ | Model | Rationale
+       |
+ |-------|----------------------------------------------------------
+ ------|
+ | TiDE  | 10x faster, MLP-based - good for speed-critical inference
+       |
+ | TCN   | Parallelizable, stable - good backup if xLSTM-TS
+ underperforms |
+
+ ---
+ Part 3: Walk-Forward Validation Framework
+
+ 3.1 Configuration (User Selection: Anchored/Expanding)
+
+ WalkForwardConfig = {
+     'mode': 'anchored',           # Anchored (expanding) window
+     'n_iterations': 5,            # 5 walk-forward folds
+     'train_pct': 0.60,            # Minimum 60% training
+     'validation_pct': 0.15,       # 15% validation
+     'test_pct': 0.25,             # 25% out-of-sample
+     'gap_days': 1,                # Gap between train/val
+     'purge_days': 60,             # Purge overlapping sequences
+ }
+
+ 3.2 Walk-Forward Efficiency (WFE) Metric
+
+ WFE = (Test Sharpe / Validation Sharpe) * 100
+
+ Interpretation:
+ - WFE > 60%: Good - strategy is likely robust
+ - WFE 40-60%: Acceptable - some overfitting
+ - WFE < 40%: Poor - significant overfitting
+
+ 3.3 Data Split Visualization
+
+ Iteration 1: [TRAIN TRAIN TRAIN TRAIN|GAP|VAL VAL|TEST TEST TEST]
+ Iteration 2: [TRAIN TRAIN TRAIN TRAIN TRAIN|GAP|VAL VAL|TEST TEST]
+ Iteration 3: [TRAIN TRAIN TRAIN TRAIN TRAIN TRAIN|GAP|VAL VAL|TEST]
+              ^--- anchored at start, expands ---^
+
+ 3.4 Production Model (User Selection: Full Retrain)
+
+ After WFE validation proves robustness (WFE > 50%):
+ 1. Retrain ALL models on 100% of available data
+ 2. No held-out set for production model
+ 3. Maximizes information for live predictions
+
+ ---
+ Part 4: Stacking Ensemble Architecture
+
+ 4.1 Architecture Overview
+
+                     ┌─────────────────┐
+                     │   Raw OHLCV     │
+                     └────────┬────────┘
+                              │
+                     ┌────────▼────────┐
+                     │Feature Engineer │
+                     │   (157 features)│
+                     └────────┬────────┘
+                              │
+     ┌────────────────────────┼────────────────────────┐
+     │                        │                        │
+     ▼                        ▼                        ▼
+ ┌─────────────┐      ┌─────────────┐      ┌─────────────┐
+ │LSTM+Trans   │      │  xLSTM-TS   │      │  GBM        │
+ │(existing)   │      │  (NEW)      │      │(XGB+LGB)    │
+ └──────┬──────┘      └──────┬──────┘      └──────┬──────┘
+        │                    │                    │
+        │ pred_lstm          │ pred_xlstm         │ pred_gbm
+        │                    │                    │
+        └────────────────────┼────────────────────┘
+                             │
+                    ┌────────▼────────┐
+                    │  REGIME DETECTOR │
+                    │(vol, trend, sent)│
+                    └────────┬────────┘
+                             │
+                    ┌────────▼────────┐
+                    │  XGBoost        │
+                    │  META-LEARNER   │
+                    │                 │
+                    │ Inputs:         │
+                    │ - Base preds    │
+                    │ - Regime feats  │
+                    │ - Disagreement  │
+                    │ - Recent errors │
+                    └────────┬────────┘
+                             │
+                    ┌────────▼────────┐
+                    │ FINAL PREDICTION│
+                    └─────────────────┘
+
+ 4.2 Meta-Learner Features
+
+ META_FEATURES = [
+     # Base model predictions
+     'pred_lstm', 'pred_xlstm', 'pred_xgb', 'pred_lgb',
+
+     # Regime indicators
+     'vol_regime_high', 'vol_regime_normal', 'vol_regime_low',
+     'trend_bullish', 'trend_bearish',
+     'sentiment_positive', 'sentiment_negative',
+
+     # Model agreement/disagreement
+     'prediction_std',      # std of all predictions
+     'sign_agreement',      # 1 if all same sign, 0 otherwise
+     'max_min_spread',      # max(preds) - min(preds)
+
+     # Recent model quality (trailing 20-day)
+     'lstm_recent_mae',
+     'xlstm_recent_mae',
+     'gbm_recent_mae',
+ ]
+
+ 4.3 Two-Stage Training Process
+
+ Stage 1: Generate OOF Predictions
+ For each base model:
+     Run Walk-Forward CV → Collect out-of-fold predictions
+
+ Stage 2: Train Meta-Learner
+ Stack OOF predictions + regime features
+ Train XGBoost meta-learner on stacked features
+
+ Stage 3: Production Models
+ Retrain all base models on 100% data
+ Retrain meta-learner on 100% data
+ Deploy ensemble
+
+ ---
+ Part 5: Implementation Plan
+
+ Phase 1: Critical Bug Fixes (P0)
+
+ Step 1.1: Fix GBM Data Leakage
+
+ File: python-ai-service/training/train_gbm_baseline.py
+
+ Changes:
+ 1. Add proper 3-way split: Train (60%) / Val (20%) / Test (20%)
+ 2. Use validation ONLY for early stopping, never for final training
+ 3. Compute final metrics ONLY on held-out test set
+ 4. Add WFE calculation
+
+ def split_data_walkforward(X, y, train_pct=0.60, val_pct=0.20):
+     """Split data with clear boundaries and NO LEAKAGE."""
+     n = len(X)
+     train_end = int(n * train_pct)
+     val_end = train_end + int(n * val_pct)
+
+     return {
+         'train': (X[:train_end], y[:train_end]),
+         'val': (X[train_end:val_end], y[train_end:val_end]),
+         'test': (X[val_end:], y[val_end:]),  # NEVER TOUCHED
+     }
+
+ Step 1.2: Fix Backtest Alignment
+
+ File: python-ai-service/evaluation/advanced_backtester.py
+
+ Changes:
+ 1. Shift predictions by 1 day: position from day T applied to day
+ T+1
+ 2. Add logging of prediction date vs execution date
+ 3. Add sanity check
+
+ # Position from T applied to T+1's return
+ positions_lagged = np.zeros(len(positions))
+ positions_lagged[1:] = positions[:-1]  # Lag by 1
+ positions_lagged[0] = 0  # No position on first day
+
+ Phase 2: Walk-Forward Framework (P0)
+
+ Step 2.1: Create Walk-Forward Module
+
+ New File: python-ai-service/validation/walk_forward.py
+
+ class WalkForwardValidator:
+     """
+     Anchored (expanding) walk-forward validation.
+
+     Key features:
+     - Proper purging for sequence models
+     - WFE metric calculation
+     - No data leakage guarantee
+     """
+
+     def generate_splits(self, n_samples) -> List[WalkForwardSplit]:
+         """Generate train/val/test splits with no overlap."""
+         ...
+
+     def validate(self, model_factory, X, y) -> WalkForwardResults:
+         """Run full walk-forward validation."""
+         ...
+
+ Step 2.2: Create WFE Metrics Module
+
+ New File: python-ai-service/validation/wfe_metrics.py
+
+ def calculate_wfe(val_sharpe: float, test_sharpe: float) -> float:
+     """Walk Forward Efficiency."""
+     if val_sharpe <= 0:
+         return 0.0
+     return (test_sharpe / val_sharpe) * 100
+
+ Phase 3: Stacking Ensemble (P0)
+
+ Step 3.1: Stacking Trainer
+
+ New File: python-ai-service/training/train_stacking_ensemble.py
+
+ class StackingEnsembleTrainer:
+     """
+     Two-stage stacking with XGBoost meta-learner.
+
+     Stage 1: Generate OOF predictions via walk-forward CV
+     Stage 2: Train XGBoost meta-learner on OOF + regime features
+     Stage 3: Train production models on all data
+     """
+
+ Step 3.2: Stacking Predictor
+
+ New File: python-ai-service/inference/stacking_predictor.py
+
+ class StackingPredictor:
+     """
+     Production inference with stacking ensemble.
+     Replaces argument-based fusion modes.
+     """
+
+     def predict(self, features) -> PredictionResult:
+         # Get base model predictions
+         # Compute regime features
+         # Run through meta-learner
+         # Return final prediction with confidence
+
+ Phase 4: xLSTM-TS Model (P1)
+
+ Step 4.1: Implement xLSTM-TS Architecture
+
+ New File: python-ai-service/models/xlstm_ts.py
+
+ Key features:
+ - Exponential gating for better normalization
+ - Revised memory structure (scalar + matrix variants)
+ - Wavelet denoising integration
+ - Residual block backbone
+
+ class xLSTMBlock(keras.layers.Layer):
+     """
+     Extended LSTM block with:
+     - Exponential gating
+     - Matrix memory variant (mLSTM)
+     - Scalar memory variant (sLSTM)
+     """
+
+ class xLSTM_TS(keras.Model):
+     """
+     xLSTM optimized for time series.
+     Based on Beck et al. (2024) with wavelet denoising.
+     """
+
+ Step 4.2: Training Script
+
+ New File: python-ai-service/training/train_xlstm_ts.py
+
+ def train_xlstm_ts(symbol, config):
+     """
+     Train xLSTM-TS model with:
+     - Wavelet denoising preprocessing
+     - AntiCollapseDirectionalLoss
+     - Walk-forward validation
+     """
+
+ Phase 5: Forward Simulation (P1)
+
+ Step 5.1: Implement True Forward Simulation
+
+ New File: python-ai-service/evaluation/forward_simulator.py
+
+ class ForwardSimulator:
+     """
+     True forward-looking simulation with NO look-ahead.
+
+     At each step T:
+     1. Access ONLY data up to T-1
+     2. Engineer features from historical data
+     3. Make prediction for T
+     4. Execute at T's open
+     5. Record result at T's close
+     """
+
+     def simulate(self, model, data, start_date, end_date):
+         """Step-by-step simulation without future access."""
+         for T in date_range(start_date, end_date):
+             historical_data = data.loc[:T - 1]  # Only past
+             features = engineer_features(historical_data)
+             prediction = model.predict(features[-seq_len:])
+             # Execute and record...
+
+ Phase 6: Production Pipeline (P1)
+
+ Step 6.1: End-to-End Pipeline
+
+ New File: python-ai-service/pipeline/production_pipeline.py
+
+ class ProductionPipeline:
+     """
+     Complete pipeline separating:
+     1. VALIDATION: Walk-forward CV to prove robustness
+     2. PRODUCTION: Train on ALL data, deploy for inference
+     """
+
+     def run_validation(self, symbol) -> ValidationReport:
+         """Run walk-forward validation, return WFE metrics."""
+
+     def train_production(self, symbol) -> ProductionModel:
+         """After validation passes, train on 100% data."""
+
+     def predict(self, symbol, latest_data) -> Prediction:
+         """Generate live prediction using production model."""
+
+ Phase 7: Cleanup & Deprecation (P2)
+
+ Step 7.1: Remove Dead Code
+
+ - Remove forward_sim and forward_days parameters from
+ inference_and_backtest.py
+ - Remove unused fusion mode functions from hybrid_predictor.py
+
+ Step 7.2: Archive Deprecated Files
+
+ - Move inference/horizon_weighting.py to deprecated/
+ - Move training/rolling_cv.py to deprecated/ (replaced by
+ walk_forward.py)
+
+ ---
+ Part 6: Files Summary
+
+ Files to CREATE
+
+ | File                                | Purpose
+        | Priority |
+ |-------------------------------------|----------------------------
+ -------|----------|
+ | validation/walk_forward.py          | Walk-forward validation
+ framework | P0       |
+ | validation/wfe_metrics.py           | WFE and validation metrics
+        | P0       |
+ | training/train_stacking_ensemble.py | Stacking ensemble trainer
+        | P0       |
+ | inference/stacking_predictor.py     | Production stacking
+ inference     | P0       |
+ | models/xlstm_ts.py                  | xLSTM-TS model architecture
+        | P1       |
+ | training/train_xlstm_ts.py          | xLSTM-TS training script
+        | P1       |
+ | evaluation/forward_simulator.py     | True forward simulation
+        | P1       |
+ | pipeline/production_pipeline.py     | End-to-end production
+ pipeline    | P1       |
+ | tests/test_walk_forward.py          | Walk-forward unit tests
+        | P0       |
+ | tests/test_stacking_integration.py  | Integration tests
+        | P1       |
+ | tests/test_no_leakage.py            | Data leakage verification
+ tests   | P0       |
+
+ Files to MODIFY
+
+ | File                                 | Changes
+                   | Priority |
+ |--------------------------------------|---------------------------
+ ------------------|----------|
+ | training/train_gbm_baseline.py       | Fix data leakage, add WFE
+                   | P0       |
+ | evaluation/advanced_backtester.py    | Fix 1-day lag alignment
+                   | P0       |
+ | training/train_1d_regressor_final.py | Integrate walk-forward
+                   | P1       |
+ | inference_and_backtest.py            | Remove dead forward_sim,
+ integrate stacking | P1       |
+ | inference/hybrid_predictor.py        | Replace fusion modes with
+ stacking          | P1       |
+
+ Files to DEPRECATE/ARCHIVE
+
+ | File                                         | Reason
+             |
+ |----------------------------------------------|-------------------
+ ------------|
+ | training/rolling_cv.py                       | Superseded by
+ walk_forward.py |
+ | inference/horizon_weighting.py               | Replaced by
+ meta-learner      |
+ | Fusion mode functions in hybrid_predictor.py | Replaced by
+ stacking          |
+
+ ---
+ Part 7: Testing & Validation Strategy
+
+ 7.1 No-Leakage Tests (P0)
+
+ def test_gbm_no_leakage():
+     """Verify GBM training has no data leakage."""
+     # Train model
+     model, metrics = trainer.train(X, y)
+
+     # Verify metrics computed ONLY on held-out test
+     assert metrics['test_samples'] < len(X) * 0.25
+     assert 'validation_used_for_training' not in metrics
+
+ def test_walk_forward_no_overlap():
+     """Ensure train/val/test splits have no overlap."""
+     splits = validator.generate_splits(n_samples=1000)
+
+     for split in splits:
+         assert split.train[1] < split.val[0]  # No train/val
+ overlap
+         assert split.val[1] < split.test[0]   # No val/test overlap
+
+ 7.2 WFE Threshold Tests (P0)
+
+ def test_walk_forward_efficiency():
+     """Ensure models pass WFE threshold."""
+     report = pipeline.run_validation('AAPL')
+
+     assert report.aggregate_wfe > 40, f"WFE too low:
+ {report.aggregate_wfe}%"
+
+ 7.3 Variance Collapse Tests (Existing - Enhance)
+
+ def test_variance_collapse_all_models():
+     """Ensure no model exhibits variance collapse."""
+     for model_type in ['lstm', 'xlstm', 'xgboost', 'lightgbm',
+ 'stacking']:
+         predictions = model.predict(X_test)
+
+         assert np.std(predictions) > 0.005  # Variance check
+         assert (predictions > 0).mean() > 0.30  # Not all positive
+         assert (predictions < 0).mean() > 0.30  # Not all negative
+
+ ---
+ Part 8: Success Criteria
+
+ 1. No Data Leakage: All metrics computed on truly held-out data
+ 2. WFE > 50%: Walk-forward efficiency proves robustness
+ 3. Stacking Outperforms Naive: Meta-learner beats simple averaging
+ 4. xLSTM-TS Integration: New model adds value to ensemble
+ 5. Forward Sim Works: True step-by-step simulation without
+ look-ahead
+ 6. All Tests Pass: Including leakage, WFE, variance collapse tests
+
+ ---
+ Research Sources
+
+ - https://research.google/pubs/long-horizon-forecasting-with-tide-t
+ ime-series-dense-encoder/
+ - https://github.com/gonzalopezgil/xlstm-ts
+ - https://arxiv.org/pdf/2407.10240
+ -
+ https://blog.quantinsti.com/walk-forward-optimization-introduction/
+ - https://www.mdpi.com/2227-7072/13/4/201
+ - https://www.sciencedirect.com/science/article/abs/pii/S0378437119
+ 313093

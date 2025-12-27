@@ -1,0 +1,1845 @@
+{
+  "directed": true,
+  "multigraph": false,
+  "graph": {},
+  "nodes": [
+    {
+      "category": "ORPHAN",
+      "filename": "gbm_diagnostics.py",
+      "size_mb": 0.0217,
+      "in_degree": 0.0,
+      "out_degree": 0.008547008547008548,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "analysis/gbm_diagnostics.py"
+    },
+    {
+      "category": "TEST",
+      "filename": "analyze_backtest_pickle.py",
+      "size_mb": 0.0153,
+      "in_degree": 0.0,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "analyze_backtest_pickle.py"
+    },
+    {
+      "category": "ROOT_CLUTTER",
+      "filename": "analyze_feature_variance.py",
+      "size_mb": 0.0018,
+      "in_degree": 0.0,
+      "out_degree": 0.017094017094017096,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "analyze_feature_variance.py"
+    },
+    {
+      "category": "ROOT_CLUTTER",
+      "filename": "app.py",
+      "size_mb": 0.0058,
+      "in_degree": 0.0,
+      "out_degree": 0.042735042735042736,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "app.py"
+    },
+    {
+      "category": "ORPHAN",
+      "filename": "__init__.py",
+      "size_mb": 0.0,
+      "in_degree": 0.0,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "audit_tools/audit_core/__init__.py"
+    },
+    {
+      "category": "ORPHAN",
+      "filename": "categorizer.py",
+      "size_mb": 0.0106,
+      "in_degree": 0.0,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "audit_tools/audit_core/categorizer.py"
+    },
+    {
+      "category": "ORPHAN",
+      "filename": "dependency_graph.py",
+      "size_mb": 0.0129,
+      "in_degree": 0.0,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "audit_tools/audit_core/dependency_graph.py"
+    },
+    {
+      "category": "ORPHAN",
+      "filename": "file_discovery.py",
+      "size_mb": 0.0066,
+      "in_degree": 0.0,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "audit_tools/audit_core/file_discovery.py"
+    },
+    {
+      "category": "ORPHAN",
+      "filename": "import_analyzer.py",
+      "size_mb": 0.0081,
+      "in_degree": 0.0,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "audit_tools/audit_core/import_analyzer.py"
+    },
+    {
+      "category": "ORPHAN",
+      "filename": "model_analyzer.py",
+      "size_mb": 0.012,
+      "in_degree": 0.0,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "audit_tools/audit_core/model_analyzer.py"
+    },
+    {
+      "category": "ORPHAN",
+      "filename": "report_generator.py",
+      "size_mb": 0.0167,
+      "in_degree": 0.0,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "audit_tools/audit_core/report_generator.py"
+    },
+    {
+      "category": "TEST",
+      "filename": "__init__.py",
+      "size_mb": 0.0,
+      "in_degree": 0.0,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "audit_tools/audit_tests/__init__.py"
+    },
+    {
+      "category": "ORPHAN",
+      "filename": "run_audit.py",
+      "size_mb": 0.0101,
+      "in_degree": 0.0,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "audit_tools/run_audit.py"
+    },
+    {
+      "category": "ROOT_CLUTTER",
+      "filename": "autonomous_loop.py",
+      "size_mb": 0.0043,
+      "in_degree": 0.0,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "autonomous_loop.py"
+    },
+    {
+      "category": "ROOT_CLUTTER",
+      "filename": "check_gbm_health.py",
+      "size_mb": 0.0009,
+      "in_degree": 0.0,
+      "out_degree": 0.008547008547008548,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "check_gbm_health.py"
+    },
+    {
+      "category": "UNKNOWN",
+      "filename": "augmentation.py",
+      "size_mb": 0.0211,
+      "in_degree": 0.017094017094017096,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "data/augmentation.py"
+    },
+    {
+      "category": "UNKNOWN",
+      "filename": "cache_manager.py",
+      "size_mb": 0.0213,
+      "in_degree": 0.17948717948717952,
+      "out_degree": 0.03418803418803419,
+      "betweenness": 0.004454022988505747,
+      "pagerank": 0,
+      "id": "data/cache_manager.py"
+    },
+    {
+      "category": "CORE_DATA_PIPELINE",
+      "filename": "data_fetcher.py",
+      "size_mb": 0.0058,
+      "in_degree": 0.18803418803418806,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "data/data_fetcher.py"
+    },
+    {
+      "category": "DEPRECATED",
+      "filename": "feature_engineer.py",
+      "size_mb": 0.092,
+      "in_degree": 0.27350427350427353,
+      "out_degree": 0.03418803418803419,
+      "betweenness": 0.014073091659298554,
+      "pagerank": 0,
+      "id": "data/feature_engineer.py"
+    },
+    {
+      "category": "UNKNOWN",
+      "filename": "news_fetcher.py",
+      "size_mb": 0.021,
+      "in_degree": 0.025641025641025644,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "data/news_fetcher.py"
+    },
+    {
+      "category": "ORPHAN",
+      "filename": "regime_tests.py",
+      "size_mb": 0.0011,
+      "in_degree": 0.0,
+      "out_degree": 0.008547008547008548,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "data/regime_tests.py"
+    },
+    {
+      "category": "UNKNOWN",
+      "filename": "sentiment_analyzer.py",
+      "size_mb": 0.0185,
+      "in_degree": 0.008547008547008548,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "data/sentiment_analyzer.py"
+    },
+    {
+      "category": "UNKNOWN",
+      "filename": "sentiment_features.py",
+      "size_mb": 0.0495,
+      "in_degree": 0.008547008547008548,
+      "out_degree": 0.025641025641025644,
+      "betweenness": 0.0030946065428824046,
+      "pagerank": 0,
+      "id": "data/sentiment_features.py"
+    },
+    {
+      "category": "UNKNOWN",
+      "filename": "support_resistance_features.py",
+      "size_mb": 0.0059,
+      "in_degree": 0.008547008547008548,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "data/support_resistance_features.py"
+    },
+    {
+      "category": "UNKNOWN",
+      "filename": "target_balancing.py",
+      "size_mb": 0.0199,
+      "in_degree": 0.017094017094017096,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "data/target_balancing.py"
+    },
+    {
+      "category": "UNKNOWN",
+      "filename": "target_engineering.py",
+      "size_mb": 0.0104,
+      "in_degree": 0.10256410256410257,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "data/target_engineering.py"
+    },
+    {
+      "category": "UNKNOWN",
+      "filename": "tft_dataset_builder.py",
+      "size_mb": 0.0292,
+      "in_degree": 0.008547008547008548,
+      "out_degree": 0.008547008547008548,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "data/tft_dataset_builder.py"
+    },
+    {
+      "category": "UNKNOWN",
+      "filename": "volatility_features.py",
+      "size_mb": 0.0095,
+      "in_degree": 0.017094017094017096,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "data/volatility_features.py"
+    },
+    {
+      "category": "ORPHAN",
+      "filename": "vpi_tests.py",
+      "size_mb": 0.0013,
+      "in_degree": 0.0,
+      "out_degree": 0.008547008547008548,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "data/vpi_tests.py"
+    },
+    {
+      "category": "ROOT_CLUTTER",
+      "filename": "debug_gpu.py",
+      "size_mb": 0.0009,
+      "in_degree": 0.0,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "debug_gpu.py"
+    },
+    {
+      "category": "ROOT_CLUTTER",
+      "filename": "diagnose_regressor.py",
+      "size_mb": 0.0122,
+      "in_degree": 0.0,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "diagnose_regressor.py"
+    },
+    {
+      "category": "UNKNOWN",
+      "filename": "advanced_backtester.py",
+      "size_mb": 0.0186,
+      "in_degree": 0.025641025641025644,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "evaluation/advanced_backtester.py"
+    },
+    {
+      "category": "TEST",
+      "filename": "backtest_dashboard.py",
+      "size_mb": 0.0172,
+      "in_degree": 0.008547008547008548,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "evaluation/backtest_dashboard.py"
+    },
+    {
+      "category": "TEST",
+      "filename": "backtest_visualization.py",
+      "size_mb": 0.0268,
+      "in_degree": 0.0,
+      "out_degree": 0.025641025641025644,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "evaluation/backtest_visualization.py"
+    },
+    {
+      "category": "UNKNOWN",
+      "filename": "model_diagnostics.py",
+      "size_mb": 0.0106,
+      "in_degree": 0.008547008547008548,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "evaluation/model_diagnostics.py"
+    },
+    {
+      "category": "UNKNOWN",
+      "filename": "position_heatmap.py",
+      "size_mb": 0.0226,
+      "in_degree": 0.008547008547008548,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "evaluation/position_heatmap.py"
+    },
+    {
+      "category": "ORPHAN",
+      "filename": "quantile_evaluation.py",
+      "size_mb": 0.0016,
+      "in_degree": 0.0,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "evaluation/quantile_evaluation.py"
+    },
+    {
+      "category": "ORPHAN",
+      "filename": "__init__.py",
+      "size_mb": 0.0,
+      "in_degree": 0.0,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "inference/__init__.py"
+    },
+    {
+      "category": "UNKNOWN",
+      "filename": "confidence_scorer.py",
+      "size_mb": 0.0109,
+      "in_degree": 0.008547008547008548,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "inference/confidence_scorer.py"
+    },
+    {
+      "category": "UNKNOWN",
+      "filename": "horizon_weighting.py",
+      "size_mb": 0.0045,
+      "in_degree": 0.008547008547008548,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "inference/horizon_weighting.py"
+    },
+    {
+      "category": "UNKNOWN",
+      "filename": "hybrid_predictor.py",
+      "size_mb": 0.0324,
+      "in_degree": 0.008547008547008548,
+      "out_degree": 0.05982905982905984,
+      "betweenness": 0.001326259946949602,
+      "pagerank": 0,
+      "id": "inference/hybrid_predictor.py"
+    },
+    {
+      "category": "UNKNOWN",
+      "filename": "load_gbm_models.py",
+      "size_mb": 0.0136,
+      "in_degree": 0.03418803418803419,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "inference/load_gbm_models.py"
+    },
+    {
+      "category": "UNKNOWN",
+      "filename": "model_validator.py",
+      "size_mb": 0.0217,
+      "in_degree": 0.008547008547008548,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "inference/model_validator.py"
+    },
+    {
+      "category": "CORE_INFERENCE",
+      "filename": "predict_ensemble.py",
+      "size_mb": 0.0053,
+      "in_degree": 0.017094017094017096,
+      "out_degree": 0.017094017094017096,
+      "betweenness": 0.0006999705275567345,
+      "pagerank": 0,
+      "id": "inference/predict_ensemble.py"
+    },
+    {
+      "category": "CORE_INFERENCE",
+      "filename": "predict_multiday.py",
+      "size_mb": 0.0093,
+      "in_degree": 0.0,
+      "out_degree": 0.017094017094017096,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "inference/predict_multiday.py"
+    },
+    {
+      "category": "CORE_INFERENCE",
+      "filename": "predict_tft.py",
+      "size_mb": 0.0577,
+      "in_degree": 0.017094017094017096,
+      "out_degree": 0.025641025641025644,
+      "betweenness": 0.0007368110816386678,
+      "pagerank": 0,
+      "id": "inference/predict_tft.py"
+    },
+    {
+      "category": "ORPHAN",
+      "filename": "quantile_ensemble_inference.py",
+      "size_mb": 0.0111,
+      "in_degree": 0.0,
+      "out_degree": 0.008547008547008548,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "inference/quantile_ensemble_inference.py"
+    },
+    {
+      "category": "ORPHAN",
+      "filename": "rl_position_sizer.py",
+      "size_mb": 0.025,
+      "in_degree": 0.0,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "inference/rl_position_sizer.py"
+    },
+    {
+      "category": "ORPHAN",
+      "filename": "stacking_inference.py",
+      "size_mb": 0.0163,
+      "in_degree": 0.0,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "inference/stacking_inference.py"
+    },
+    {
+      "category": "CORE_INFERENCE",
+      "filename": "inference_and_backtest.py",
+      "size_mb": 0.3384,
+      "in_degree": 0.0,
+      "out_degree": 0.12820512820512822,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "inference_and_backtest.py"
+    },
+    {
+      "category": "ROOT_CLUTTER",
+      "filename": "model_validation_suite.py",
+      "size_mb": 0.0907,
+      "in_degree": 0.0,
+      "out_degree": 0.05128205128205129,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "model_validation_suite.py"
+    },
+    {
+      "category": "ORPHAN",
+      "filename": "__init__.py",
+      "size_mb": 0.0001,
+      "in_degree": 0.0,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "models/__init__.py"
+    },
+    {
+      "category": "UNKNOWN",
+      "filename": "lstm_transformer_paper.py",
+      "size_mb": 0.0258,
+      "in_degree": 0.05982905982905984,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "models/lstm_transformer_paper.py"
+    },
+    {
+      "category": "UNKNOWN",
+      "filename": "patchtst.py",
+      "size_mb": 0.0269,
+      "in_degree": 0.03418803418803419,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "models/patchtst.py"
+    },
+    {
+      "category": "UNKNOWN",
+      "filename": "quantile_regressor.py",
+      "size_mb": 0.0193,
+      "in_degree": 0.017094017094017096,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "models/quantile_regressor.py"
+    },
+    {
+      "category": "ROOT_CLUTTER",
+      "filename": "orchestrate_training.py",
+      "size_mb": 0.0059,
+      "in_degree": 0.0,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "orchestrate_training.py"
+    },
+    {
+      "category": "ROOT_CLUTTER",
+      "filename": "run_complete_pipeline.py",
+      "size_mb": 0.0158,
+      "in_degree": 0.0,
+      "out_degree": 0.025641025641025644,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "run_complete_pipeline.py"
+    },
+    {
+      "category": "UTILITY",
+      "filename": "auto_experiment_runner.py",
+      "size_mb": 0.0278,
+      "in_degree": 0.0,
+      "out_degree": 0.025641025641025644,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "scripts/auto_experiment_runner.py"
+    },
+    {
+      "category": "TEST",
+      "filename": "backtest_gbm_only.py",
+      "size_mb": 0.0229,
+      "in_degree": 0.0,
+      "out_degree": 0.025641025641025644,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "scripts/backtest_gbm_only.py"
+    },
+    {
+      "category": "CORE_TRAINING",
+      "filename": "batch_train_models.py",
+      "size_mb": 0.0054,
+      "in_degree": 0.0,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "scripts/batch_train_models.py"
+    },
+    {
+      "category": "UTILITY",
+      "filename": "check_numpy.py",
+      "size_mb": 0.0003,
+      "in_degree": 0.0,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "scripts/check_numpy.py"
+    },
+    {
+      "category": "UTILITY",
+      "filename": "diag_imports.py",
+      "size_mb": 0.0009,
+      "in_degree": 0.0,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "scripts/diag_imports.py"
+    },
+    {
+      "category": "UTILITY",
+      "filename": "diag_symbol.py",
+      "size_mb": 0.0127,
+      "in_degree": 0.0,
+      "out_degree": 0.03418803418803419,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "scripts/diag_symbol.py"
+    },
+    {
+      "category": "UTILITY",
+      "filename": "diagnose_position_sizing.py",
+      "size_mb": 0.0138,
+      "in_degree": 0.0,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "scripts/diagnose_position_sizing.py"
+    },
+    {
+      "category": "UTILITY",
+      "filename": "evaluate.py",
+      "size_mb": 0.0,
+      "in_degree": 0.0,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "scripts/evaluate.py"
+    },
+    {
+      "category": "UTILITY",
+      "filename": "generate_final_report.py",
+      "size_mb": 0.0038,
+      "in_degree": 0.0,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "scripts/generate_final_report.py"
+    },
+    {
+      "category": "UTILITY",
+      "filename": "optimize_hyperparams.py",
+      "size_mb": 0.0282,
+      "in_degree": 0.0,
+      "out_degree": 0.03418803418803419,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "scripts/optimize_hyperparams.py"
+    },
+    {
+      "category": "UTILITY",
+      "filename": "refresh_cache_for_147.py",
+      "size_mb": 0.0028,
+      "in_degree": 0.0,
+      "out_degree": 0.017094017094017096,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "scripts/refresh_cache_for_147.py"
+    },
+    {
+      "category": "UTILITY",
+      "filename": "run_comprehensive_backtests.py",
+      "size_mb": 0.0052,
+      "in_degree": 0.0,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "scripts/run_comprehensive_backtests.py"
+    },
+    {
+      "category": "UTILITY",
+      "filename": "run_feature_selection.py",
+      "size_mb": 0.0155,
+      "in_degree": 0.0,
+      "out_degree": 0.03418803418803419,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "scripts/run_feature_selection.py"
+    },
+    {
+      "category": "UTILITY",
+      "filename": "statistical_comparison.py",
+      "size_mb": 0.0206,
+      "in_degree": 0.0,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "scripts/statistical_comparison.py"
+    },
+    {
+      "category": "TEST",
+      "filename": "test_cache_system.py",
+      "size_mb": 0.0074,
+      "in_degree": 0.0,
+      "out_degree": 0.017094017094017096,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "scripts/test_cache_system.py"
+    },
+    {
+      "category": "TEST",
+      "filename": "test_fetch_vix.py",
+      "size_mb": 0.0006,
+      "in_degree": 0.0,
+      "out_degree": 0.008547008547008548,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "scripts/test_fetch_vix.py"
+    },
+    {
+      "category": "TEST",
+      "filename": "test_v31_migration.py",
+      "size_mb": 0.0066,
+      "in_degree": 0.0,
+      "out_degree": 0.042735042735042736,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "scripts/test_v31_migration.py"
+    },
+    {
+      "category": "UTILITY",
+      "filename": "tft_checkpoint_inspect.py",
+      "size_mb": 0.0196,
+      "in_degree": 0.0,
+      "out_degree": 0.008547008547008548,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "scripts/tft_checkpoint_inspect.py"
+    },
+    {
+      "category": "UTILITY",
+      "filename": "validate_feature_consistency.py",
+      "size_mb": 0.0146,
+      "in_degree": 0.0,
+      "out_degree": 0.017094017094017096,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "scripts/validate_feature_consistency.py"
+    },
+    {
+      "category": "UTILITY",
+      "filename": "validate_pipeline.py",
+      "size_mb": 0.0213,
+      "in_degree": 0.008547008547008548,
+      "out_degree": 0.03418803418803419,
+      "betweenness": 0.00014736221632773356,
+      "pagerank": 0,
+      "id": "scripts/validate_pipeline.py"
+    },
+    {
+      "category": "UNKNOWN",
+      "filename": "model_registry.py",
+      "size_mb": 0.0058,
+      "in_degree": 0.008547008547008548,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "service/model_registry.py"
+    },
+    {
+      "category": "UNKNOWN",
+      "filename": "prediction_service.py",
+      "size_mb": 0.047,
+      "in_degree": 0.008547008547008548,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "service/prediction_service.py"
+    },
+    {
+      "category": "TEST",
+      "filename": "test_bear_market_msft.py",
+      "size_mb": 0.0012,
+      "in_degree": 0.0,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "test_bear_market_msft.py"
+    },
+    {
+      "category": "TEST",
+      "filename": "test_compute_hybrid.py",
+      "size_mb": 0.0,
+      "in_degree": 0.0,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "test_compute_hybrid.py"
+    },
+    {
+      "category": "TEST",
+      "filename": "test_diverse_universe.py",
+      "size_mb": 0.0041,
+      "in_degree": 0.0,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "test_diverse_universe.py"
+    },
+    {
+      "category": "TEST",
+      "filename": "test_feature_count.py",
+      "size_mb": 0.0011,
+      "in_degree": 0.0,
+      "out_degree": 0.008547008547008548,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "test_feature_count.py"
+    },
+    {
+      "category": "TEST",
+      "filename": "test_phase4_features.py",
+      "size_mb": 0.0021,
+      "in_degree": 0.0,
+      "out_degree": 0.017094017094017096,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "test_phase4_features.py"
+    },
+    {
+      "category": "TEST",
+      "filename": "test_augmentation.py",
+      "size_mb": 0.0152,
+      "in_degree": 0.0,
+      "out_degree": 0.008547008547008548,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "tests/test_augmentation.py"
+    },
+    {
+      "category": "TEST",
+      "filename": "test_data_integrity.py",
+      "size_mb": 0.0155,
+      "in_degree": 0.0,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "tests/test_data_integrity.py"
+    },
+    {
+      "category": "TEST",
+      "filename": "test_feature_selection.py",
+      "size_mb": 0.0297,
+      "in_degree": 0.0,
+      "out_degree": 0.008547008547008548,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "tests/test_feature_selection.py"
+    },
+    {
+      "category": "TEST",
+      "filename": "test_model_diagnostics.py",
+      "size_mb": 0.0128,
+      "in_degree": 0.0,
+      "out_degree": 0.008547008547008548,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "tests/test_model_diagnostics.py"
+    },
+    {
+      "category": "TEST",
+      "filename": "test_target_balancing.py",
+      "size_mb": 0.0177,
+      "in_degree": 0.0,
+      "out_degree": 0.008547008547008548,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "tests/test_target_balancing.py"
+    },
+    {
+      "category": "TEST",
+      "filename": "test_target_distribution.py",
+      "size_mb": 0.0118,
+      "in_degree": 0.0,
+      "out_degree": 0.008547008547008548,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "tests/test_target_distribution.py"
+    },
+    {
+      "category": "ROOT_CLUTTER",
+      "filename": "tft_loader.py",
+      "size_mb": 0.0111,
+      "in_degree": 0.0,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "tft_loader.py"
+    },
+    {
+      "category": "CORE_DATA_PIPELINE",
+      "filename": "feature_selection.py",
+      "size_mb": 0.0339,
+      "in_degree": 0.025641025641025644,
+      "out_degree": 0.025641025641025644,
+      "betweenness": 0.0005894488653109342,
+      "pagerank": 0,
+      "id": "training/feature_selection.py"
+    },
+    {
+      "category": "EXPERIMENTAL",
+      "filename": "generate_oof_predictions.py",
+      "size_mb": 0.0208,
+      "in_degree": 0.0,
+      "out_degree": 0.03418803418803419,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "training/generate_oof_predictions.py"
+    },
+    {
+      "category": "ORPHAN",
+      "filename": "optimize_thresholds.py",
+      "size_mb": 0.0139,
+      "in_degree": 0.0,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "training/optimize_thresholds.py"
+    },
+    {
+      "category": "UNKNOWN",
+      "filename": "rolling_cv.py",
+      "size_mb": 0.0171,
+      "in_degree": 0.008547008547008548,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "training/rolling_cv.py"
+    },
+    {
+      "category": "CORE_TRAINING",
+      "filename": "train_1d_regressor_final.py",
+      "size_mb": 0.1226,
+      "in_degree": 0.025641025641025644,
+      "out_degree": 0.08547008547008547,
+      "betweenness": 0.002501473622163277,
+      "pagerank": 0,
+      "id": "training/train_1d_regressor_final.py"
+    },
+    {
+      "category": "CORE_TRAINING",
+      "filename": "train_binary_classifiers_final.py",
+      "size_mb": 0.068,
+      "in_degree": 0.017094017094017096,
+      "out_degree": 0.05982905982905984,
+      "betweenness": 0.0007331270262304744,
+      "pagerank": 0,
+      "id": "training/train_binary_classifiers_final.py"
+    },
+    {
+      "category": "CORE_TRAINING",
+      "filename": "train_gbm_baseline.py",
+      "size_mb": 0.0386,
+      "in_degree": 0.0,
+      "out_degree": 0.03418803418803419,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "training/train_gbm_baseline.py"
+    },
+    {
+      "category": "CORE_TRAINING",
+      "filename": "train_meta_learner.py",
+      "size_mb": 0.0142,
+      "in_degree": 0.0,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "training/train_meta_learner.py"
+    },
+    {
+      "category": "CORE_TRAINING",
+      "filename": "train_multiple_symbols.py",
+      "size_mb": 0.0086,
+      "in_degree": 0.0,
+      "out_degree": 0.017094017094017096,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "training/train_multiple_symbols.py"
+    },
+    {
+      "category": "CORE_TRAINING",
+      "filename": "train_quantile_regressor.py",
+      "size_mb": 0.0169,
+      "in_degree": 0.008547008547008548,
+      "out_degree": 0.05128205128205129,
+      "betweenness": 0.0002910403772472738,
+      "pagerank": 0,
+      "id": "training/train_quantile_regressor.py"
+    },
+    {
+      "category": "CORE_TRAINING",
+      "filename": "train_smart_regressor.py",
+      "size_mb": 0.0061,
+      "in_degree": 0.0,
+      "out_degree": 0.03418803418803419,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "training/train_smart_regressor.py"
+    },
+    {
+      "category": "CORE_TRAINING",
+      "filename": "train_tft.py",
+      "size_mb": 0.0619,
+      "in_degree": 0.017094017094017096,
+      "out_degree": 0.042735042735042736,
+      "betweenness": 0.0003831417624521073,
+      "pagerank": 0,
+      "id": "training/train_tft.py"
+    },
+    {
+      "category": "CORE_TRAINING",
+      "filename": "train_with_tft.py",
+      "size_mb": 0.0108,
+      "in_degree": 0.008547008547008548,
+      "out_degree": 0.042735042735042736,
+      "betweenness": 0.0008841732979664014,
+      "pagerank": 0,
+      "id": "training/train_with_tft.py"
+    },
+    {
+      "category": "ORPHAN",
+      "filename": "tune_hyperparameters.py",
+      "size_mb": 0.0256,
+      "in_degree": 0.0,
+      "out_degree": 0.025641025641025644,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "training/tune_hyperparameters.py"
+    },
+    {
+      "category": "UTILITY",
+      "filename": "__init__.py",
+      "size_mb": 0.0005,
+      "in_degree": 0.0,
+      "out_degree": 0.017094017094017096,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "utils/__init__.py"
+    },
+    {
+      "category": "UTILITY",
+      "filename": "balanced_generator.py",
+      "size_mb": 0.0062,
+      "in_degree": 0.0,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "utils/balanced_generator.py"
+    },
+    {
+      "category": "UTILITY",
+      "filename": "diagnostics.py",
+      "size_mb": 0.0108,
+      "in_degree": 0.0,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "utils/diagnostics.py"
+    },
+    {
+      "category": "UTILITY",
+      "filename": "ensemble_calibration.py",
+      "size_mb": 0.0201,
+      "in_degree": 0.0,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "utils/ensemble_calibration.py"
+    },
+    {
+      "category": "UTILITY",
+      "filename": "feature_selection.py",
+      "size_mb": 0.0135,
+      "in_degree": 0.0,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "utils/feature_selection.py"
+    },
+    {
+      "category": "UTILITY",
+      "filename": "losses.py",
+      "size_mb": 0.0155,
+      "in_degree": 0.03418803418803419,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "utils/losses.py"
+    },
+    {
+      "category": "UTILITY",
+      "filename": "model_io.py",
+      "size_mb": 0.0073,
+      "in_degree": 0.008547008547008548,
+      "out_degree": 0.008547008547008548,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "utils/model_io.py"
+    },
+    {
+      "category": "UTILITY",
+      "filename": "model_paths.py",
+      "size_mb": 0.0203,
+      "in_degree": 0.08547008547008547,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "utils/model_paths.py"
+    },
+    {
+      "category": "CORE_TRAINING",
+      "filename": "training_logger.py",
+      "size_mb": 0.0053,
+      "in_degree": 0.017094017094017096,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "utils/training_logger.py"
+    },
+    {
+      "category": "UTILITY",
+      "filename": "ts_augment.py",
+      "size_mb": 0.0089,
+      "in_degree": 0.0,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "utils/ts_augment.py"
+    },
+    {
+      "category": "ROOT_CLUTTER",
+      "filename": "verify_alignment_implementation.py",
+      "size_mb": 0.008,
+      "in_degree": 0.0,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "verify_alignment_implementation.py"
+    },
+    {
+      "category": "ROOT_CLUTTER",
+      "filename": "verify_error_handling.py",
+      "size_mb": 0.0056,
+      "in_degree": 0.0,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "verify_error_handling.py"
+    },
+    {
+      "category": "ROOT_CLUTTER",
+      "filename": "verify_validation_updates.py",
+      "size_mb": 0.0069,
+      "in_degree": 0.0,
+      "out_degree": 0.0,
+      "betweenness": 0.0,
+      "pagerank": 0,
+      "id": "verify_validation_updates.py"
+    }
+  ],
+  "edges": [
+    {
+      "source": "analysis/gbm_diagnostics.py",
+      "target": "data/cache_manager.py"
+    },
+    {
+      "source": "analyze_feature_variance.py",
+      "target": "data/data_fetcher.py"
+    },
+    {
+      "source": "analyze_feature_variance.py",
+      "target": "data/feature_engineer.py"
+    },
+    {
+      "source": "app.py",
+      "target": "service/model_registry.py"
+    },
+    {
+      "source": "app.py",
+      "target": "service/prediction_service.py"
+    },
+    {
+      "source": "app.py",
+      "target": "data/data_fetcher.py"
+    },
+    {
+      "source": "app.py",
+      "target": "data/cache_manager.py"
+    },
+    {
+      "source": "app.py",
+      "target": "utils/losses.py"
+    },
+    {
+      "source": "check_gbm_health.py",
+      "target": "inference/load_gbm_models.py"
+    },
+    {
+      "source": "data/cache_manager.py",
+      "target": "data/data_fetcher.py"
+    },
+    {
+      "source": "data/cache_manager.py",
+      "target": "data/feature_engineer.py"
+    },
+    {
+      "source": "data/cache_manager.py",
+      "target": "data/target_engineering.py"
+    },
+    {
+      "source": "data/cache_manager.py",
+      "target": "data/news_fetcher.py"
+    },
+    {
+      "source": "data/feature_engineer.py",
+      "target": "data/support_resistance_features.py"
+    },
+    {
+      "source": "data/feature_engineer.py",
+      "target": "data/volatility_features.py"
+    },
+    {
+      "source": "data/feature_engineer.py",
+      "target": "data/sentiment_features.py"
+    },
+    {
+      "source": "data/feature_engineer.py",
+      "target": "data/news_fetcher.py"
+    },
+    {
+      "source": "data/regime_tests.py",
+      "target": "data/feature_engineer.py"
+    },
+    {
+      "source": "data/sentiment_features.py",
+      "target": "data/news_fetcher.py"
+    },
+    {
+      "source": "data/sentiment_features.py",
+      "target": "data/feature_engineer.py"
+    },
+    {
+      "source": "data/sentiment_features.py",
+      "target": "data/sentiment_analyzer.py"
+    },
+    {
+      "source": "data/tft_dataset_builder.py",
+      "target": "data/feature_engineer.py"
+    },
+    {
+      "source": "data/vpi_tests.py",
+      "target": "data/feature_engineer.py"
+    },
+    {
+      "source": "evaluation/backtest_visualization.py",
+      "target": "data/cache_manager.py"
+    },
+    {
+      "source": "evaluation/backtest_visualization.py",
+      "target": "data/feature_engineer.py"
+    },
+    {
+      "source": "evaluation/backtest_visualization.py",
+      "target": "inference/predict_ensemble.py"
+    },
+    {
+      "source": "inference/hybrid_predictor.py",
+      "target": "data/data_fetcher.py"
+    },
+    {
+      "source": "inference/hybrid_predictor.py",
+      "target": "data/feature_engineer.py"
+    },
+    {
+      "source": "inference/hybrid_predictor.py",
+      "target": "inference/horizon_weighting.py"
+    },
+    {
+      "source": "inference/hybrid_predictor.py",
+      "target": "utils/losses.py"
+    },
+    {
+      "source": "inference/hybrid_predictor.py",
+      "target": "utils/model_paths.py"
+    },
+    {
+      "source": "inference/hybrid_predictor.py",
+      "target": "inference/load_gbm_models.py"
+    },
+    {
+      "source": "inference/hybrid_predictor.py",
+      "target": "data/cache_manager.py"
+    },
+    {
+      "source": "inference/predict_ensemble.py",
+      "target": "inference/hybrid_predictor.py"
+    },
+    {
+      "source": "inference/predict_ensemble.py",
+      "target": "utils/model_paths.py"
+    },
+    {
+      "source": "inference/predict_multiday.py",
+      "target": "data/cache_manager.py"
+    },
+    {
+      "source": "inference/predict_multiday.py",
+      "target": "data/feature_engineer.py"
+    },
+    {
+      "source": "inference/predict_tft.py",
+      "target": "utils/model_paths.py"
+    },
+    {
+      "source": "inference/predict_tft.py",
+      "target": "data/cache_manager.py"
+    },
+    {
+      "source": "inference/predict_tft.py",
+      "target": "data/feature_engineer.py"
+    },
+    {
+      "source": "inference/quantile_ensemble_inference.py",
+      "target": "utils/model_paths.py"
+    },
+    {
+      "source": "inference_and_backtest.py",
+      "target": "data/data_fetcher.py"
+    },
+    {
+      "source": "inference_and_backtest.py",
+      "target": "data/feature_engineer.py"
+    },
+    {
+      "source": "inference_and_backtest.py",
+      "target": "data/target_engineering.py"
+    },
+    {
+      "source": "inference_and_backtest.py",
+      "target": "data/cache_manager.py"
+    },
+    {
+      "source": "inference_and_backtest.py",
+      "target": "models/lstm_transformer_paper.py"
+    },
+    {
+      "source": "inference_and_backtest.py",
+      "target": "models/patchtst.py"
+    },
+    {
+      "source": "inference_and_backtest.py",
+      "target": "evaluation/advanced_backtester.py"
+    },
+    {
+      "source": "inference_and_backtest.py",
+      "target": "inference/confidence_scorer.py"
+    },
+    {
+      "source": "inference_and_backtest.py",
+      "target": "utils/model_paths.py"
+    },
+    {
+      "source": "inference_and_backtest.py",
+      "target": "inference/predict_tft.py"
+    },
+    {
+      "source": "inference_and_backtest.py",
+      "target": "inference/load_gbm_models.py"
+    },
+    {
+      "source": "inference_and_backtest.py",
+      "target": "inference/model_validator.py"
+    },
+    {
+      "source": "inference_and_backtest.py",
+      "target": "models/quantile_regressor.py"
+    },
+    {
+      "source": "inference_and_backtest.py",
+      "target": "evaluation/position_heatmap.py"
+    },
+    {
+      "source": "inference_and_backtest.py",
+      "target": "evaluation/backtest_dashboard.py"
+    },
+    {
+      "source": "model_validation_suite.py",
+      "target": "data/data_fetcher.py"
+    },
+    {
+      "source": "model_validation_suite.py",
+      "target": "data/feature_engineer.py"
+    },
+    {
+      "source": "model_validation_suite.py",
+      "target": "data/target_engineering.py"
+    },
+    {
+      "source": "model_validation_suite.py",
+      "target": "models/lstm_transformer_paper.py"
+    },
+    {
+      "source": "model_validation_suite.py",
+      "target": "evaluation/advanced_backtester.py"
+    },
+    {
+      "source": "model_validation_suite.py",
+      "target": "data/cache_manager.py"
+    },
+    {
+      "source": "run_complete_pipeline.py",
+      "target": "data/data_fetcher.py"
+    },
+    {
+      "source": "run_complete_pipeline.py",
+      "target": "data/feature_engineer.py"
+    },
+    {
+      "source": "run_complete_pipeline.py",
+      "target": "scripts/validate_pipeline.py"
+    },
+    {
+      "source": "scripts/auto_experiment_runner.py",
+      "target": "data/cache_manager.py"
+    },
+    {
+      "source": "scripts/auto_experiment_runner.py",
+      "target": "data/feature_engineer.py"
+    },
+    {
+      "source": "scripts/auto_experiment_runner.py",
+      "target": "data/data_fetcher.py"
+    },
+    {
+      "source": "scripts/backtest_gbm_only.py",
+      "target": "data/data_fetcher.py"
+    },
+    {
+      "source": "scripts/backtest_gbm_only.py",
+      "target": "data/feature_engineer.py"
+    },
+    {
+      "source": "scripts/backtest_gbm_only.py",
+      "target": "inference/load_gbm_models.py"
+    },
+    {
+      "source": "scripts/diag_symbol.py",
+      "target": "data/feature_engineer.py"
+    },
+    {
+      "source": "scripts/diag_symbol.py",
+      "target": "data/cache_manager.py"
+    },
+    {
+      "source": "scripts/diag_symbol.py",
+      "target": "data/target_engineering.py"
+    },
+    {
+      "source": "scripts/diag_symbol.py",
+      "target": "evaluation/advanced_backtester.py"
+    },
+    {
+      "source": "scripts/optimize_hyperparams.py",
+      "target": "data/data_fetcher.py"
+    },
+    {
+      "source": "scripts/optimize_hyperparams.py",
+      "target": "data/feature_engineer.py"
+    },
+    {
+      "source": "scripts/optimize_hyperparams.py",
+      "target": "models/patchtst.py"
+    },
+    {
+      "source": "scripts/optimize_hyperparams.py",
+      "target": "models/lstm_transformer_paper.py"
+    },
+    {
+      "source": "scripts/refresh_cache_for_147.py",
+      "target": "data/cache_manager.py"
+    },
+    {
+      "source": "scripts/refresh_cache_for_147.py",
+      "target": "data/feature_engineer.py"
+    },
+    {
+      "source": "scripts/run_feature_selection.py",
+      "target": "data/data_fetcher.py"
+    },
+    {
+      "source": "scripts/run_feature_selection.py",
+      "target": "data/feature_engineer.py"
+    },
+    {
+      "source": "scripts/run_feature_selection.py",
+      "target": "data/target_engineering.py"
+    },
+    {
+      "source": "scripts/run_feature_selection.py",
+      "target": "training/feature_selection.py"
+    },
+    {
+      "source": "scripts/test_cache_system.py",
+      "target": "data/cache_manager.py"
+    },
+    {
+      "source": "scripts/test_cache_system.py",
+      "target": "training/train_with_tft.py"
+    },
+    {
+      "source": "scripts/test_fetch_vix.py",
+      "target": "data/volatility_features.py"
+    },
+    {
+      "source": "scripts/test_v31_migration.py",
+      "target": "data/data_fetcher.py"
+    },
+    {
+      "source": "scripts/test_v31_migration.py",
+      "target": "data/feature_engineer.py"
+    },
+    {
+      "source": "scripts/test_v31_migration.py",
+      "target": "inference/predict_ensemble.py"
+    },
+    {
+      "source": "scripts/test_v31_migration.py",
+      "target": "data/cache_manager.py"
+    },
+    {
+      "source": "scripts/test_v31_migration.py",
+      "target": "training/train_tft.py"
+    },
+    {
+      "source": "scripts/tft_checkpoint_inspect.py",
+      "target": "inference/predict_tft.py"
+    },
+    {
+      "source": "scripts/validate_feature_consistency.py",
+      "target": "data/feature_engineer.py"
+    },
+    {
+      "source": "scripts/validate_feature_consistency.py",
+      "target": "data/cache_manager.py"
+    },
+    {
+      "source": "scripts/validate_pipeline.py",
+      "target": "data/data_fetcher.py"
+    },
+    {
+      "source": "scripts/validate_pipeline.py",
+      "target": "data/feature_engineer.py"
+    },
+    {
+      "source": "scripts/validate_pipeline.py",
+      "target": "models/patchtst.py"
+    },
+    {
+      "source": "scripts/validate_pipeline.py",
+      "target": "models/lstm_transformer_paper.py"
+    },
+    {
+      "source": "test_feature_count.py",
+      "target": "data/feature_engineer.py"
+    },
+    {
+      "source": "test_phase4_features.py",
+      "target": "data/data_fetcher.py"
+    },
+    {
+      "source": "test_phase4_features.py",
+      "target": "data/feature_engineer.py"
+    },
+    {
+      "source": "tests/test_augmentation.py",
+      "target": "data/augmentation.py"
+    },
+    {
+      "source": "tests/test_feature_selection.py",
+      "target": "training/feature_selection.py"
+    },
+    {
+      "source": "tests/test_model_diagnostics.py",
+      "target": "evaluation/model_diagnostics.py"
+    },
+    {
+      "source": "tests/test_target_balancing.py",
+      "target": "data/target_balancing.py"
+    },
+    {
+      "source": "tests/test_target_distribution.py",
+      "target": "training/train_1d_regressor_final.py"
+    },
+    {
+      "source": "training/feature_selection.py",
+      "target": "data/data_fetcher.py"
+    },
+    {
+      "source": "training/feature_selection.py",
+      "target": "data/feature_engineer.py"
+    },
+    {
+      "source": "training/feature_selection.py",
+      "target": "data/target_engineering.py"
+    },
+    {
+      "source": "training/generate_oof_predictions.py",
+      "target": "data/data_fetcher.py"
+    },
+    {
+      "source": "training/generate_oof_predictions.py",
+      "target": "data/feature_engineer.py"
+    },
+    {
+      "source": "training/generate_oof_predictions.py",
+      "target": "data/target_engineering.py"
+    },
+    {
+      "source": "training/generate_oof_predictions.py",
+      "target": "utils/model_paths.py"
+    },
+    {
+      "source": "training/train_1d_regressor_final.py",
+      "target": "data/data_fetcher.py"
+    },
+    {
+      "source": "training/train_1d_regressor_final.py",
+      "target": "data/feature_engineer.py"
+    },
+    {
+      "source": "training/train_1d_regressor_final.py",
+      "target": "data/target_engineering.py"
+    },
+    {
+      "source": "training/train_1d_regressor_final.py",
+      "target": "data/target_balancing.py"
+    },
+    {
+      "source": "training/train_1d_regressor_final.py",
+      "target": "models/lstm_transformer_paper.py"
+    },
+    {
+      "source": "training/train_1d_regressor_final.py",
+      "target": "utils/model_paths.py"
+    },
+    {
+      "source": "training/train_1d_regressor_final.py",
+      "target": "utils/training_logger.py"
+    },
+    {
+      "source": "training/train_1d_regressor_final.py",
+      "target": "training/feature_selection.py"
+    },
+    {
+      "source": "training/train_1d_regressor_final.py",
+      "target": "data/cache_manager.py"
+    },
+    {
+      "source": "training/train_1d_regressor_final.py",
+      "target": "data/augmentation.py"
+    },
+    {
+      "source": "training/train_binary_classifiers_final.py",
+      "target": "data/data_fetcher.py"
+    },
+    {
+      "source": "training/train_binary_classifiers_final.py",
+      "target": "data/feature_engineer.py"
+    },
+    {
+      "source": "training/train_binary_classifiers_final.py",
+      "target": "data/target_engineering.py"
+    },
+    {
+      "source": "training/train_binary_classifiers_final.py",
+      "target": "models/lstm_transformer_paper.py"
+    },
+    {
+      "source": "training/train_binary_classifiers_final.py",
+      "target": "utils/model_paths.py"
+    },
+    {
+      "source": "training/train_binary_classifiers_final.py",
+      "target": "utils/training_logger.py"
+    },
+    {
+      "source": "training/train_binary_classifiers_final.py",
+      "target": "data/cache_manager.py"
+    },
+    {
+      "source": "training/train_gbm_baseline.py",
+      "target": "data/data_fetcher.py"
+    },
+    {
+      "source": "training/train_gbm_baseline.py",
+      "target": "data/feature_engineer.py"
+    },
+    {
+      "source": "training/train_gbm_baseline.py",
+      "target": "data/target_engineering.py"
+    },
+    {
+      "source": "training/train_gbm_baseline.py",
+      "target": "data/cache_manager.py"
+    },
+    {
+      "source": "training/train_multiple_symbols.py",
+      "target": "training/train_1d_regressor_final.py"
+    },
+    {
+      "source": "training/train_multiple_symbols.py",
+      "target": "training/train_binary_classifiers_final.py"
+    },
+    {
+      "source": "training/train_quantile_regressor.py",
+      "target": "data/data_fetcher.py"
+    },
+    {
+      "source": "training/train_quantile_regressor.py",
+      "target": "data/feature_engineer.py"
+    },
+    {
+      "source": "training/train_quantile_regressor.py",
+      "target": "data/target_engineering.py"
+    },
+    {
+      "source": "training/train_quantile_regressor.py",
+      "target": "utils/model_paths.py"
+    },
+    {
+      "source": "training/train_quantile_regressor.py",
+      "target": "models/quantile_regressor.py"
+    },
+    {
+      "source": "training/train_quantile_regressor.py",
+      "target": "data/cache_manager.py"
+    },
+    {
+      "source": "training/train_smart_regressor.py",
+      "target": "data/cache_manager.py"
+    },
+    {
+      "source": "training/train_smart_regressor.py",
+      "target": "data/target_engineering.py"
+    },
+    {
+      "source": "training/train_smart_regressor.py",
+      "target": "models/lstm_transformer_paper.py"
+    },
+    {
+      "source": "training/train_smart_regressor.py",
+      "target": "models/patchtst.py"
+    },
+    {
+      "source": "training/train_tft.py",
+      "target": "data/data_fetcher.py"
+    },
+    {
+      "source": "training/train_tft.py",
+      "target": "data/feature_engineer.py"
+    },
+    {
+      "source": "training/train_tft.py",
+      "target": "data/tft_dataset_builder.py"
+    },
+    {
+      "source": "training/train_tft.py",
+      "target": "utils/model_paths.py"
+    },
+    {
+      "source": "training/train_tft.py",
+      "target": "data/cache_manager.py"
+    },
+    {
+      "source": "training/train_with_tft.py",
+      "target": "data/cache_manager.py"
+    },
+    {
+      "source": "training/train_with_tft.py",
+      "target": "training/train_1d_regressor_final.py"
+    },
+    {
+      "source": "training/train_with_tft.py",
+      "target": "training/train_binary_classifiers_final.py"
+    },
+    {
+      "source": "training/train_with_tft.py",
+      "target": "training/train_quantile_regressor.py"
+    },
+    {
+      "source": "training/train_with_tft.py",
+      "target": "training/train_tft.py"
+    },
+    {
+      "source": "training/tune_hyperparameters.py",
+      "target": "training/rolling_cv.py"
+    },
+    {
+      "source": "training/tune_hyperparameters.py",
+      "target": "data/data_fetcher.py"
+    },
+    {
+      "source": "training/tune_hyperparameters.py",
+      "target": "data/feature_engineer.py"
+    },
+    {
+      "source": "utils/__init__.py",
+      "target": "utils/losses.py"
+    },
+    {
+      "source": "utils/__init__.py",
+      "target": "utils/model_io.py"
+    },
+    {
+      "source": "utils/model_io.py",
+      "target": "utils/losses.py"
+    }
+  ]
+}

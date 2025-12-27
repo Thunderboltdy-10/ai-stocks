@@ -1,0 +1,133 @@
+================================================================================
+F4 VALIDATION TESTS - EXECUTION INSTRUCTIONS
+================================================================================
+
+READY TO RUN!
+
+All files have been created. You just need to execute the tests.
+
+QUICK START (COPY AND PASTE):
+──────────────────────────────────────────────────────────────────────────────
+
+cd /home/thunderboltdy/ai-stocks/python-ai-service
+./run_f4_validation_tests.sh && python parse_f4_validation_results.py
+
+
+STEP-BY-STEP INSTRUCTIONS:
+──────────────────────────────────────────────────────────────────────────────
+
+1. Navigate to the directory:
+   cd /home/thunderboltdy/ai-stocks/python-ai-service
+
+2. Run all tests (15-30 minutes):
+   ./run_f4_validation_tests.sh
+
+3. Parse results (<10 seconds):
+   python parse_f4_validation_results.py
+
+4. View report:
+   cat f4_validation_results/VALIDATION_TEST_REPORT.md
+
+
+WHAT WILL HAPPEN:
+──────────────────────────────────────────────────────────────────────────────
+
+The test script will:
+  ✓ Activate the conda environment
+  ✓ Create results directory
+  ✓ Test 5 regressor models (AAPL, ASML, IWM, KO, MSFT)
+  ✓ Test 4 classifier model pairs (AAPL, ASML, IWM, KO)
+  ✓ Save logs to f4_validation_results/
+
+The parser will:
+  ✓ Read all 9 log files
+  ✓ Extract metrics (Sharpe, accuracy, etc.)
+  ✓ Detect issues (variance collapse, calibration)
+  ✓ Generate JSON report (VALIDATION_TEST_RESULTS.json)
+  ✓ Generate Markdown report (VALIDATION_TEST_REPORT.md)
+
+
+EXPECTED OUTPUT:
+──────────────────────────────────────────────────────────────────────────────
+
+You will see output like:
+
+=========================================
+Starting F4 Validation Tests
+=========================================
+
+=== Running Regressor Tests ===
+Testing regressor for AAPL...
+  ✓ AAPL regressor test completed
+Testing regressor for ASML...
+  ✓ ASML regressor test completed
+...
+
+=== Running Classifier Tests ===
+Testing classifiers for AAPL...
+  ✓ AAPL classifier test completed
+...
+
+=========================================
+All Tests Completed
+=========================================
+
+
+MONITOR PROGRESS:
+──────────────────────────────────────────────────────────────────────────────
+
+While tests are running, you can check progress in another terminal:
+
+# Watch test output
+tail -f f4_validation_results/test_regressor_AAPL.log
+
+# Count completed tests
+ls f4_validation_results/*.log | wc -l
+
+
+DOCUMENTATION:
+──────────────────────────────────────────────────────────────────────────────
+
+Quick Reference:
+  F4_VALIDATION_QUICK_START.md
+
+Full Summary:
+  F4_VALIDATION_SUMMARY.md
+
+Detailed Docs:
+  f4_validation_results/README.md
+  f4_validation_results/WORKFLOW.md
+  f4_validation_results/SETUP_COMPLETE.md
+
+
+TROUBLESHOOTING:
+──────────────────────────────────────────────────────────────────────────────
+
+If tests fail to run:
+  1. Check conda environment:
+     conda activate ai-stocks
+
+  2. Verify script is executable:
+     chmod +x run_f4_validation_tests.sh
+
+  3. Check test files exist:
+     ls tests/test_*_standalone.py
+
+If models not found:
+  1. Check models directory:
+     ls -R models/
+
+  2. Train models if needed:
+     TEST_SYMBOL=AAPL python training/train_regressor.py
+
+
+READY? JUST RUN THIS:
+──────────────────────────────────────────────────────────────────────────────
+
+cd /home/thunderboltdy/ai-stocks/python-ai-service
+./run_f4_validation_tests.sh && python parse_f4_validation_results.py
+
+
+================================================================================
+Good luck! 🚀
+================================================================================

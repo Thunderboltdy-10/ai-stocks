@@ -1,0 +1,303 @@
+UNUSED FILES - Not Imported by Any Active Script
+============================================================
+
+analysis/gbm_diagnostics.py
+  Type: POTENTIAL_DEAD_CODE
+  Category: ORPHAN
+
+analyze_backtest_pickle.py
+  Type: ISOLATED
+  Category: TEST
+
+analyze_feature_variance.py
+  Type: POTENTIAL_DEAD_CODE
+  Category: ROOT_CLUTTER
+
+app.py
+  Type: POTENTIAL_DEAD_CODE
+  Category: ROOT_CLUTTER
+
+audit_tools/audit_core/__init__.py
+  Type: ISOLATED
+  Category: ORPHAN
+
+audit_tools/audit_core/categorizer.py
+  Type: ISOLATED
+  Category: ORPHAN
+
+audit_tools/audit_core/dependency_graph.py
+  Type: ISOLATED
+  Category: ORPHAN
+
+audit_tools/audit_core/file_discovery.py
+  Type: ISOLATED
+  Category: ORPHAN
+
+audit_tools/audit_core/import_analyzer.py
+  Type: ISOLATED
+  Category: ORPHAN
+
+audit_tools/audit_core/model_analyzer.py
+  Type: ISOLATED
+  Category: ORPHAN
+
+audit_tools/audit_core/report_generator.py
+  Type: ISOLATED
+  Category: ORPHAN
+
+audit_tools/audit_tests/__init__.py
+  Type: ISOLATED
+  Category: TEST
+
+audit_tools/run_audit.py
+  Type: ISOLATED
+  Category: ORPHAN
+
+autonomous_loop.py
+  Type: ISOLATED
+  Category: ROOT_CLUTTER
+
+check_gbm_health.py
+  Type: POTENTIAL_DEAD_CODE
+  Category: ROOT_CLUTTER
+
+data/regime_tests.py
+  Type: POTENTIAL_DEAD_CODE
+  Category: ORPHAN
+
+data/vpi_tests.py
+  Type: POTENTIAL_DEAD_CODE
+  Category: ORPHAN
+
+debug_gpu.py
+  Type: ISOLATED
+  Category: ROOT_CLUTTER
+
+diagnose_regressor.py
+  Type: ISOLATED
+  Category: ROOT_CLUTTER
+
+evaluation/backtest_visualization.py
+  Type: POTENTIAL_DEAD_CODE
+  Category: TEST
+
+evaluation/quantile_evaluation.py
+  Type: ISOLATED
+  Category: ORPHAN
+
+inference/__init__.py
+  Type: ISOLATED
+  Category: ORPHAN
+
+inference/predict_multiday.py
+  Type: POTENTIAL_DEAD_CODE
+  Category: CORE_INFERENCE
+
+inference/quantile_ensemble_inference.py
+  Type: POTENTIAL_DEAD_CODE
+  Category: ORPHAN
+
+inference/rl_position_sizer.py
+  Type: ISOLATED
+  Category: ORPHAN
+
+inference/stacking_inference.py
+  Type: ISOLATED
+  Category: ORPHAN
+
+inference_and_backtest.py
+  Type: POTENTIAL_DEAD_CODE
+  Category: CORE_INFERENCE
+
+model_validation_suite.py
+  Type: POTENTIAL_DEAD_CODE
+  Category: ROOT_CLUTTER
+
+models/__init__.py
+  Type: ISOLATED
+  Category: ORPHAN
+
+orchestrate_training.py
+  Type: ISOLATED
+  Category: ROOT_CLUTTER
+
+run_complete_pipeline.py
+  Type: POTENTIAL_DEAD_CODE
+  Category: ROOT_CLUTTER
+
+scripts/auto_experiment_runner.py
+  Type: POTENTIAL_DEAD_CODE
+  Category: UTILITY
+
+scripts/backtest_gbm_only.py
+  Type: POTENTIAL_DEAD_CODE
+  Category: TEST
+
+scripts/batch_train_models.py
+  Type: ISOLATED
+  Category: CORE_TRAINING
+
+scripts/check_numpy.py
+  Type: ISOLATED
+  Category: UTILITY
+
+scripts/diag_imports.py
+  Type: ISOLATED
+  Category: UTILITY
+
+scripts/diag_symbol.py
+  Type: POTENTIAL_DEAD_CODE
+  Category: UTILITY
+
+scripts/diagnose_position_sizing.py
+  Type: ISOLATED
+  Category: UTILITY
+
+scripts/evaluate.py
+  Type: ISOLATED
+  Category: UTILITY
+
+scripts/generate_final_report.py
+  Type: ISOLATED
+  Category: UTILITY
+
+scripts/optimize_hyperparams.py
+  Type: POTENTIAL_DEAD_CODE
+  Category: UTILITY
+
+scripts/refresh_cache_for_147.py
+  Type: POTENTIAL_DEAD_CODE
+  Category: UTILITY
+
+scripts/run_comprehensive_backtests.py
+  Type: ISOLATED
+  Category: UTILITY
+
+scripts/run_feature_selection.py
+  Type: POTENTIAL_DEAD_CODE
+  Category: UTILITY
+
+scripts/statistical_comparison.py
+  Type: ISOLATED
+  Category: UTILITY
+
+scripts/test_cache_system.py
+  Type: POTENTIAL_DEAD_CODE
+  Category: TEST
+
+scripts/test_fetch_vix.py
+  Type: POTENTIAL_DEAD_CODE
+  Category: TEST
+
+scripts/test_v31_migration.py
+  Type: POTENTIAL_DEAD_CODE
+  Category: TEST
+
+scripts/tft_checkpoint_inspect.py
+  Type: POTENTIAL_DEAD_CODE
+  Category: UTILITY
+
+scripts/validate_feature_consistency.py
+  Type: POTENTIAL_DEAD_CODE
+  Category: UTILITY
+
+test_bear_market_msft.py
+  Type: ISOLATED
+  Category: TEST
+
+test_compute_hybrid.py
+  Type: ISOLATED
+  Category: TEST
+
+test_diverse_universe.py
+  Type: ISOLATED
+  Category: TEST
+
+test_feature_count.py
+  Type: POTENTIAL_DEAD_CODE
+  Category: TEST
+
+test_phase4_features.py
+  Type: POTENTIAL_DEAD_CODE
+  Category: TEST
+
+tests/test_augmentation.py
+  Type: POTENTIAL_DEAD_CODE
+  Category: TEST
+
+tests/test_data_integrity.py
+  Type: ISOLATED
+  Category: TEST
+
+tests/test_feature_selection.py
+  Type: POTENTIAL_DEAD_CODE
+  Category: TEST
+
+tests/test_model_diagnostics.py
+  Type: POTENTIAL_DEAD_CODE
+  Category: TEST
+
+tests/test_target_balancing.py
+  Type: POTENTIAL_DEAD_CODE
+  Category: TEST
+
+tests/test_target_distribution.py
+  Type: POTENTIAL_DEAD_CODE
+  Category: TEST
+
+tft_loader.py
+  Type: ISOLATED
+  Category: ROOT_CLUTTER
+
+training/generate_oof_predictions.py
+  Type: POTENTIAL_DEAD_CODE
+  Category: EXPERIMENTAL
+
+training/optimize_thresholds.py
+  Type: ISOLATED
+  Category: ORPHAN
+
+training/train_meta_learner.py
+  Type: ISOLATED
+  Category: CORE_TRAINING
+
+training/tune_hyperparameters.py
+  Type: POTENTIAL_DEAD_CODE
+  Category: ORPHAN
+
+utils/__init__.py
+  Type: POTENTIAL_DEAD_CODE
+  Category: UTILITY
+
+utils/balanced_generator.py
+  Type: ISOLATED
+  Category: UTILITY
+
+utils/diagnostics.py
+  Type: ISOLATED
+  Category: UTILITY
+
+utils/ensemble_calibration.py
+  Type: ISOLATED
+  Category: UTILITY
+
+utils/feature_selection.py
+  Type: ISOLATED
+  Category: UTILITY
+
+utils/ts_augment.py
+  Type: ISOLATED
+  Category: UTILITY
+
+verify_alignment_implementation.py
+  Type: ISOLATED
+  Category: ROOT_CLUTTER
+
+verify_error_handling.py
+  Type: ISOLATED
+  Category: ROOT_CLUTTER
+
+verify_validation_updates.py
+  Type: ISOLATED
+  Category: ROOT_CLUTTER
+

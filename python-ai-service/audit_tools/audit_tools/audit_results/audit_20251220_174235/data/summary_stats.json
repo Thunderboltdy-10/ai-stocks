@@ -1,0 +1,53 @@
+{
+  "audit_date": "2025-12-20T17:42:35.269677",
+  "project_root": "..",
+  "total_files": 1468,
+  "total_size_mb": 623.78,
+  "total_python_files": 118,
+  "total_imports": 1634,
+  "total_models": 206,
+  "total_model_size_mb": 310.16,
+  "file_type_breakdown": {
+    "OTHER": 460,
+    "DATA_CSV": 206,
+    "MODEL_PICKLE": 183,
+    "CONFIG_JSON": 158,
+    "PYTHON_SOURCE": 118,
+    "CONFIG_YAML": 111,
+    "LOG_FILE": 95,
+    "MODEL_KERAS": 61,
+    "MODEL_JOBLIB": 40,
+    "DOC_TEXT": 24,
+    "DOC_MARKDOWN": 8,
+    "SCRIPT_SHELL": 4
+  },
+  "category_breakdown": {
+    "TEST": 497,
+    "ARTIFACT": 406,
+    "CORE_TRAINING": 192,
+    "CONFIG": 159,
+    "UNKNOWN": 148,
+    "UTILITY": 26,
+    "ORPHAN": 19,
+    "ROOT_CLUTTER": 13,
+    "CORE_INFERENCE": 4,
+    "CORE_DATA_PIPELINE": 2,
+    "DEPRECATED": 1,
+    "EXPERIMENTAL": 1
+  },
+  "category_percentages": {
+    "TEST": 33.86,
+    "ARTIFACT": 27.66,
+    "CORE_TRAINING": 13.08,
+    "CONFIG": 10.83,
+    "UNKNOWN": 10.08,
+    "UTILITY": 1.77,
+    "ORPHAN": 1.29,
+    "ROOT_CLUTTER": 0.89,
+    "CORE_INFERENCE": 0.27,
+    "CORE_DATA_PIPELINE": 0.14,
+    "DEPRECATED": 0.07,
+    "EXPERIMENTAL": 0.07
+  },
+  "low_confidence_count": 148
+}

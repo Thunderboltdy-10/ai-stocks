@@ -1,0 +1,101 @@
+{
+  "timestamp": "2025-12-16T23:47:46.216710",
+  "symbols": {
+    "AAPL": {
+      "backtest": {
+        "num_trades": 0
+      },
+      "model_health": {},
+      "signal_stats": {
+        "buy_count": 11,
+        "sell_count": 7,
+        "hold_count": 42,
+        "total_days": 60,
+        "buy_pct": 0.18333333333333332,
+        "sell_pct": 0.11666666666666667
+      },
+      "issues": []
+    },
+    "MSFT": {
+      "backtest": {
+        "num_trades": 0
+      },
+      "model_health": {},
+      "signal_stats": {
+        "buy_count": 0,
+        "sell_count": 0,
+        "hold_count": 60,
+        "total_days": 60,
+        "buy_pct": 0.0,
+        "sell_pct": 0.0
+      },
+      "issues": [
+        {
+          "severity": "CRITICAL",
+          "issue": "ZERO_BUY_SELL_SIGNALS",
+          "description": "All signals are HOLD (0)",
+          "impact": "No trading activity"
+        }
+      ]
+    },
+    "NVDA": {
+      "backtest": {
+        "num_trades": 0
+      },
+      "model_health": {},
+      "signal_stats": {
+        "buy_count": 0,
+        "sell_count": 1,
+        "hold_count": 59,
+        "total_days": 60,
+        "buy_pct": 0.0,
+        "sell_pct": 0.016666666666666666
+      },
+      "issues": [
+        {
+          "severity": "HIGH",
+          "issue": "VERY_FEW_SIGNALS",
+          "description": "Only 1 trading signals",
+          "impact": "Very low trading activity"
+        }
+      ]
+    },
+    "TSLA": {
+      "backtest": {
+        "num_trades": 0
+      },
+      "model_health": {},
+      "signal_stats": {
+        "buy_count": 11,
+        "sell_count": 21,
+        "hold_count": 28,
+        "total_days": 60,
+        "buy_pct": 0.18333333333333332,
+        "sell_pct": 0.35
+      },
+      "issues": []
+    },
+    "SPY": {
+      "backtest": {
+        "num_trades": 0
+      },
+      "model_health": {},
+      "signal_stats": {
+        "buy_count": 0,
+        "sell_count": 0,
+        "hold_count": 60,
+        "total_days": 60,
+        "buy_pct": 0.0,
+        "sell_pct": 0.0
+      },
+      "issues": [
+        {
+          "severity": "CRITICAL",
+          "issue": "ZERO_BUY_SELL_SIGNALS",
+          "description": "All signals are HOLD (0)",
+          "impact": "No trading activity"
+        }
+      ]
+    }
+  }
+}

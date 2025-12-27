@@ -1,0 +1,30 @@
+{
+  "symbol": "IWM",
+  "n_total": 6428,
+  "n_positive": 3407,
+  "n_negative": 3002,
+  "n_zero": 19,
+  "pct_positive": 0.53,
+  "pct_negative": 0.467,
+  "pct_zero": 0.003,
+  "mean_positive": 0.010508,
+  "mean_negative": -0.011262,
+  "std_positive": 0.009889,
+  "std_negative": 0.011285,
+  "mean": 0.00031,
+  "std": 0.015132,
+  "percentiles": {
+    "p10": -0.016746,
+    "p25": -0.007464,
+    "p50": 0.000995,
+    "p75": 0.008579,
+    "p90": 0.016651
+  },
+  "validation_thresholds": {
+    "min_positive_pct": 0.3,
+    "min_negative_pct": 0.3
+  },
+  "validated_at": "2025-12-19T20:29:37.671272",
+  "validation_passed": true,
+  "validation_issues": []
+}

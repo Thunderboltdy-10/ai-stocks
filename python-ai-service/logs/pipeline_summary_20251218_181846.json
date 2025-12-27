@@ -1,0 +1,34 @@
+{
+  "AAPL": {
+    "symbol": "AAPL",
+    "timestamp": "2025-12-18T18:18:46.340325",
+    "phases": {
+      "data_preparation": {
+        "success": true,
+        "message": "OK"
+      },
+      "train_regressor": {
+        "success": false,
+        "message": "Regressor training failed: Training failed with code 1"
+      },
+      "train_classifiers": {
+        "success": false,
+        "message": "Classifiers training failed: Training failed with code 1"
+      },
+      "train_quantile": {
+        "success": false,
+        "message": "Quantile training failed: Training failed with code 2"
+      },
+      "validation": {
+        "success": false,
+        "message": "Validation failed: 'loss'",
+        "metrics": {}
+      },
+      "backtesting": {
+        "success": false,
+        "message": "Backtest failed: cannot import name 'backtest_symbol' from 'inference_and_backtest' (/home/thunderboltdy/ai-stocks/python-ai-service/inference_and_backtest.py)",
+        "metrics": {}
+      }
+    }
+  }
+}

@@ -1,0 +1,467 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Dict, Iterable, Optional, List
+
+import numpy as np
+
+try:
+    import matplotlib.pyplot as plt
+    from matplotlib.ticker import FuncFormatter
+except ImportError:  # pragma: no cover - optional dependency
+    plt = None
+    FuncFormatter = None
+
+
+@dataclass
+class BacktestResults:
+    dates: np.ndarray
+    prices: np.ndarray
+    equity_curve: np.ndarray
+    daily_returns: np.ndarray
+    positions: np.ndarray
+    metrics: Dict[str, float]
+    trade_log: List[Dict[str, object]]
+    buy_hold_equity: np.ndarray
+    # P1.2: Track transaction costs
+    total_costs: float = 0.0
+    cost_breakdown: Optional[Dict[str, float]] = None
+    # Phase 5: Margin and shorting costs
+    margin_usage: Optional[np.ndarray] = None
+    total_borrow_costs: float = 0.0
+
+
+class AdvancedBacktester:
+    """Confidence-aware backtester with optional plotting utilities.
+    
+    P1.2: Now includes transaction costs (commission + slippage) for realistic backtesting.
+    
+    Args:
+        initial_capital: Starting capital (default $10,000)
+        risk_free_rate: Annual risk-free rate for Sharpe calculation
+        commission_pct: Commission per trade as fraction (default 0.001 = 0.1% = 10bps)
+        slippage_pct: Slippage per trade as fraction (default 0.0005 = 0.05% = 5bps)
+        min_commission: Minimum commission per trade in dollars (default $1)
+        margin_requirement: Cash required as margin for $1 of position (default 0.5 = 2x leverage)
+        borrow_rate: Annual interest rate charged for shorting (default 0.02 = 2%)
+    """
+
+    def __init__(
+        self,
+        initial_capital: float = 10_000.0,
+        risk_free_rate: float = 0.0,
+        # P1.2: Transaction cost parameters
+        commission_pct: float = 0.001,   # 0.1% per trade (10 bps)
+        slippage_pct: float = 0.0005,    # 0.05% slippage (5 bps)
+        min_commission: float = 1.0,      # $1 minimum per trade
+        # Phase 5: Margin and shorting costs
+        margin_requirement: float = 0.5, # 50% margin (2.0x leverage)
+        borrow_rate: float = 0.02,       # 2% annual borrow rate for shorts
+    ):
+        self.initial_capital = initial_capital
+        self.risk_free_rate = risk_free_rate
+        # P1.2: Store transaction cost settings
+        self.commission_pct = commission_pct
+        self.slippage_pct = slippage_pct
+        self.min_commission = min_commission
+        
+        # Phase 5
+        self.margin_requirement = margin_requirement
+        self.borrow_rate = borrow_rate
+        self._results: Optional[BacktestResults] = None
+
+    def backtest_with_confidence(
+        self,
+        *,
+        dates: Iterable,
+        prices: np.ndarray,
+        returns: np.ndarray,
+        buy_signals: np.ndarray,
+        sell_signals: np.ndarray,
+        buy_confidence: np.ndarray,
+        sell_confidence: np.ndarray,
+        position_sizing: str = "confidence",
+        max_position_size: float = 1.0,
+        buy_min_confidence: float = 0.33,
+        sell_min_confidence: float = 0.5,
+    ) -> BacktestResults:
+        dates = np.asarray(dates)
+        prices = np.asarray(prices)
+        returns = np.asarray(returns)
+        buy_signals = np.asarray(buy_signals)
+        sell_signals = np.asarray(sell_signals)
+        buy_confidence = np.asarray(buy_confidence)
+        sell_confidence = np.asarray(sell_confidence)
+
+        n = len(returns)
+        positions = np.zeros(n)
+
+        for i in range(n):
+            long_signal = buy_signals[i] == 1 and buy_confidence[i] >= buy_min_confidence
+            short_signal = sell_signals[i] == 1 and sell_confidence[i] >= sell_min_confidence
+
+            position = 0.0
+            if position_sizing == "confidence":
+                if long_signal and not short_signal:
+                    position = float(np.clip(buy_confidence[i], 0.0, max_position_size))
+                elif short_signal and not long_signal:
+                    position = -float(np.clip(sell_confidence[i] * 0.5, 0.0, max_position_size))
+            else:
+                if long_signal and not short_signal:
+                    position = min(1.0, max_position_size)
+                elif short_signal and not long_signal:
+                    position = -min(1.0, max_position_size)
+
+            positions[i] = position
+
+        return self.backtest_with_positions(
+            dates=dates,
+            prices=prices,
+            returns=returns,
+            positions=positions,
+            max_long=max_position_size,
+            max_short=max_position_size,
+        )
+
+    def backtest_with_positions(
+        self,
+        *,
+        dates: Iterable,
+        prices: np.ndarray,
+        returns: np.ndarray,
+        positions: np.ndarray,
+        max_long: float = 1.0,
+        max_short: float = 1.0,
+    ) -> BacktestResults:
+        dates = np.asarray(dates)
+        prices = np.asarray(prices)
+        returns = np.asarray(returns)
+        positions = np.asarray(positions, dtype=float)
+
+        n = len(returns)
+        equity_curve = np.zeros(n + 1)
+        equity_curve[0] = self.initial_capital
+        daily_returns = np.zeros(n)
+        trade_log = []
+        
+        # P1.2: Track transaction costs
+        total_commission = 0.0
+        total_slippage = 0.0
+        total_borrow_costs = 0.0
+        trade_count = 0
+        
+        # Buy-and-hold benchmark (buy 100% at first bar and hold)
+        buy_hold_equity = np.zeros(n + 1)
+        buy_hold_equity[0] = self.initial_capital
+        # buy-hold daily returns are simply the asset returns passed in
+        buy_hold_daily_returns = np.asarray(returns, dtype=float)
+        for j in range(n):
+            buy_hold_equity[j + 1] = buy_hold_equity[j] * (1.0 + float(buy_hold_daily_returns[j]))
+
+        prev_position = 0.0
+        for i in range(n):
+            position = float(np.clip(positions[i], -max_short, max_long))
+            delta = position - prev_position
+            price = float(prices[i]) if prices.size > i else 0.0
+            equity_before = equity_curve[i]
+            
+            # P1.2: Initialize trade costs for this step
+            trade_commission = 0.0
+            trade_slippage = 0.0
+
+            if abs(delta) > 1e-9 and price != 0.0:
+                shares = abs(delta) * equity_before / price
+                trade_value = abs(delta) * equity_before
+                action = "BUY" if delta > 0 else "SELL"
+                
+                # P1.2: Calculate transaction costs
+                # Commission: max of percentage-based or minimum
+                trade_commission = max(trade_value * self.commission_pct, self.min_commission)
+                
+                # Slippage: proportional to trade value
+                trade_slippage = trade_value * self.slippage_pct
+                
+                # Total cost for this trade
+                trade_cost = trade_commission + trade_slippage
+                
+                # Update totals
+                total_commission += trade_commission
+                total_slippage += trade_slippage
+                trade_count += 1
+                
+                trade_log.append(
+                    {
+                        "index": i,
+                        "date": dates[i],
+                        "price": price,
+                        "action": action,
+                        "position": position,
+                        "position_delta": delta,
+                        "shares": shares,
+                        "equity_before": equity_before,
+                        # P1.2: Add cost breakdown to trade log
+                        "commission": trade_commission,
+                        "slippage": trade_slippage,
+                        "total_cost": trade_cost,
+                    }
+                )
+
+            # P1.2: Apply transaction costs to daily return
+            # Costs are deducted from equity before computing return
+            cost_drag = (trade_commission + trade_slippage) / equity_before if equity_before > 0 else 0
+            
+            # Phase 5: Borrowing costs for short positions
+            # borrow_rate is annual, convert to daily
+            borrow_cost_daily = 0.0
+            if position < 0:
+                borrow_cost_daily = (abs(position) * equity_before) * (self.borrow_rate / 252.0)
+                total_borrow_costs += borrow_cost_daily
+            
+            borrow_drag = borrow_cost_daily / equity_before if equity_before > 0 else 0
+            
+            daily_returns[i] = position * returns[i] - cost_drag - borrow_drag
+            equity_curve[i + 1] = equity_before * (1.0 + daily_returns[i])
+            prev_position = position
+        
+        # P1.2: Calculate total cost metrics
+        total_costs = total_commission + total_slippage + total_borrow_costs
+        cost_breakdown = {
+            "total_commission": total_commission,
+            "total_slippage": total_slippage,
+            "total_borrow_costs": total_borrow_costs,
+            "total_costs": total_costs,
+            "trade_count": trade_count,
+            "avg_cost_per_trade": total_costs / trade_count if trade_count > 0 else 0,
+            "cost_as_pct_of_initial": total_costs / self.initial_capital * 100,
+            "cost_as_pct_of_pnl": 0.0,  # Will be computed after metrics
+        }
+
+        metrics = self._compute_metrics(daily_returns)
+        
+        # P1.2: Update cost as percentage of PnL
+        pnl = equity_curve[-1] - self.initial_capital
+        if abs(pnl) > 0:
+            cost_breakdown["cost_as_pct_of_pnl"] = total_costs / abs(pnl) * 100
+        
+        # Benchmark metrics
+        buy_hold_metrics = self._compute_metrics(buy_hold_daily_returns)
+
+        # Comparison metrics
+        try:
+            alpha = float(metrics.get('cum_return', 0.0) - buy_hold_metrics.get('cum_return', 0.0))
+        except Exception:
+            alpha = 0.0
+
+        # Beta: covariance(strategy, benchmark) / var(benchmark)
+        try:
+            cov = np.cov(daily_returns, buy_hold_daily_returns)[0, 1]
+            var_b = np.var(buy_hold_daily_returns)
+            beta = float(cov / var_b) if var_b > 0 else 0.0
+        except Exception:
+            beta = 0.0
+
+        # Information ratio: alpha / tracking_error (annualized tracking error)
+        try:
+            diff = daily_returns - buy_hold_daily_returns
+            tracking_error = float(np.std(diff) * np.sqrt(252)) if diff.size > 0 else 0.0
+            information_ratio = float(alpha / tracking_error) if tracking_error > 0 else 0.0
+        except Exception:
+            tracking_error = 0.0
+            information_ratio = 0.0
+
+        # Win rate vs buy-hold on down days: fraction of asset-down days where strategy outperformed asset
+        try:
+            mask = buy_hold_daily_returns < 0
+            if np.any(mask):
+                wins = np.sum(daily_returns[mask] > buy_hold_daily_returns[mask])
+                win_rate_vs_bh_down = float(wins) / float(np.sum(mask))
+            else:
+                win_rate_vs_bh_down = 0.0
+        except Exception:
+            win_rate_vs_bh_down = 0.0
+
+        # Attach benchmark metrics into main metrics dict for convenience
+        metrics.update({
+            'buy_hold_cum_return': float(buy_hold_metrics.get('cum_return', 0.0)),
+            'buy_hold_sharpe': float(buy_hold_metrics.get('sharpe', 0.0)),
+            'alpha': alpha,
+            'beta': beta,
+            'information_ratio': information_ratio,
+            'tracking_error': tracking_error,
+            'win_rate_vs_buy_hold_down_days': win_rate_vs_bh_down,
+            # Phase 5: Borrowing costs
+            'total_borrow_costs': total_borrow_costs,
+            # P1.2: Add cost metrics to main metrics dict
+            'total_transaction_costs': total_costs,
+            'cost_drag_annualized': (total_costs / self.initial_capital) * (252 / n) * 100 if n > 0 else 0.0,
+        })
+        self._results = BacktestResults(
+            dates=dates,
+            prices=prices,
+            equity_curve=equity_curve,
+            daily_returns=daily_returns,
+            positions=np.clip(positions, -max_short, max_long),
+            metrics=metrics,
+            trade_log=trade_log,
+            buy_hold_equity=buy_hold_equity,
+            # P1.2: Include transaction cost tracking
+            total_costs=total_costs,
+            cost_breakdown=cost_breakdown,
+            # Phase 5
+            total_borrow_costs=total_borrow_costs,
+            margin_usage=np.abs(positions) * self.margin_requirement,
+        )
+        return self._results
+
+    def _compute_metrics(self, daily_returns: np.ndarray) -> Dict[str, float]:
+        if daily_returns.size == 0:
+            return {
+                "cum_return": 0.0,
+                "avg_daily": 0.0,
+                "std_daily": 0.0,
+                "sharpe": 0.0,
+                "max_drawdown": 0.0,
+            }
+        cum_return = float(np.prod(1.0 + daily_returns) - 1.0)
+        avg_daily = float(np.mean(daily_returns))
+        std_daily = float(np.std(daily_returns))
+        sharpe = (
+            (avg_daily - self.risk_free_rate / 252.0) / std_daily * np.sqrt(252)
+            if std_daily > 0
+            else 0.0
+        )
+        equity_temp = np.cumprod(1.0 + daily_returns)
+        peak = np.maximum.accumulate(equity_temp)
+        drawdown = (equity_temp - peak) / peak
+        max_drawdown = float(drawdown.min()) if drawdown.size else 0.0
+        return {
+            "cum_return": cum_return,
+            "avg_daily": avg_daily,
+            "std_daily": std_daily,
+            "sharpe": sharpe,
+            "max_drawdown": max_drawdown,
+        }
+
+    def print_metrics_table(self) -> None:
+        if self._results is None:
+            print("⚠️ No backtest results to display.")
+            return
+        metrics = self._results.metrics
+        print("\n--- Advanced Backtest Metrics ---")
+        for key, value in metrics.items():
+            if key in {"cum_return", "max_drawdown", "cost_drag_annualized"}:
+                print(f"{key:>15}: {value:.2%}")
+            elif key in {"total_transaction_costs", "total_borrow_costs"}:
+                print(f"{key:>15}: ${value:,.2f}")
+            else:
+                print(f"{key:>15}: {value:.6f}")
+        
+        if self._results and self._results.margin_usage is not None:
+            avg_margin = np.mean(self._results.margin_usage)
+            max_margin = np.max(self._results.margin_usage)
+            print(f"{'avg_margin':>15}: {avg_margin:.2%}")
+            print(f"{'max_margin':>15}: {max_margin:.2%}")
+
+    def print_trade_log(self, max_rows: int = 20) -> None:
+        if self._results is None or not self._results.trade_log:
+            print("⚠️ No trades executed.")
+            return
+        print("\n--- Trade Log (latest) ---")
+        recent = self._results.trade_log[-max_rows:]
+        for trade in recent:
+            date = trade["date"]
+            price = trade["price"]
+            shares = trade["shares"]
+            action = trade["action"]
+            print(
+                f"{date} | {action:4s} | price={price:8.2f} | shares={shares:8.2f} | position={trade['position']:+.2f}"
+            )
+
+    def plot_results(
+        self,
+        save_path: Optional[Path] = None,
+        *,
+        title: str = "Advanced Backtest Results",
+        price_label: str = "Price",
+        format_currency: bool = False,
+        enforce_equity_bounds: bool = False,
+    ) -> Optional[Path]:
+        if self._results is None:
+            print("⚠️ No results to plot.")
+            return None
+        if plt is None:
+            print("⚠️ matplotlib not available; skipping plot.")
+            return None
+
+        dates = self._results.dates
+        equity = self._results.equity_curve[1:]
+        buy_hold_equity = self._results.buy_hold_equity[1:]
+        prices = self._results.prices
+
+        fig, ax1 = plt.subplots(figsize=(12, 6))
+        ax1.plot(dates, equity, label="Equity (strategy)", color="tab:blue")
+        # Plot buy-and-hold benchmark
+        try:
+            ax1.plot(dates, buy_hold_equity, label="Buy & Hold", color="tab:green", linestyle="--", alpha=0.8)
+        except Exception:
+            pass
+        ax1.set_ylabel("Equity ($)", color="tab:blue")
+        if enforce_equity_bounds and equity.size:
+            eq_min = float(np.min(equity))
+            eq_max = float(np.max(equity))
+            padding = max((eq_max - eq_min) * 0.05, 1.0)
+            ax1.set_ylim(eq_min - padding, eq_max + padding)
+        if format_currency and FuncFormatter is not None:
+            ax1.yaxis.set_major_formatter(FuncFormatter(lambda y, _: f"${y:,.0f}"))
+        ax1.tick_params(axis="y", labelcolor="tab:blue")
+
+        ax2 = ax1.twinx()
+        ax2.plot(dates, prices, label=price_label, color="tab:orange", alpha=0.6)
+        ax2.set_ylabel(price_label, color="tab:orange")
+        ax2.tick_params(axis="y", labelcolor="tab:orange")
+
+        trade_log = list(self._results.trade_log)
+        if trade_log:
+            buy_dates = [trade["date"] for trade in trade_log if trade["action"] == "BUY"]
+            buy_prices = [trade["price"] for trade in trade_log if trade["action"] == "BUY"]
+            sell_dates = [trade["date"] for trade in trade_log if trade["action"] == "SELL"]
+            sell_prices = [trade["price"] for trade in trade_log if trade["action"] == "SELL"]
+            if buy_dates:
+                ax2.scatter(buy_dates, buy_prices, marker="^", color="green", label="Buy", zorder=5)
+            if sell_dates:
+                ax2.scatter(sell_dates, sell_prices, marker="v", color="red", label="Sell", zorder=5)
+            for trade in trade_log:
+                offset = 10 if trade["action"] == "BUY" else -14
+                ax2.annotate(
+                    f"{trade['shares']:.1f}",
+                    xy=(trade["date"], trade["price"]),
+                    xytext=(0, offset),
+                    textcoords="offset points",
+                    color="green" if trade["action"] == "BUY" else "red",
+                    fontsize=8,
+                    ha="center",
+                )
+
+        ax1.set_title(title)
+        # Annotate outperformance percentage
+        try:
+            strat_final = float(equity[-1]) if equity.size else 0.0
+            bh_final = float(buy_hold_equity[-1]) if buy_hold_equity.size else 1.0
+            outperf_pct = (strat_final - bh_final) / max(bh_final, 1e-9) * 100.0
+            ax1.annotate(f"Outperformance: {outperf_pct:+.2f}%", xy=(0.99, 0.95), xycoords="axes fraction",
+                         ha="right", va="top", fontsize=10, bbox=dict(boxstyle="round,pad=0.3", fc="yellow", alpha=0.2))
+        except Exception:
+            pass
+        fig.tight_layout()
+
+        if save_path is not None:
+            save_path = Path(save_path)
+            save_path.parent.mkdir(parents=True, exist_ok=True)
+            fig.savefig(save_path, dpi=160)
+            print(f"Saved advanced backtest plot to {save_path}")
+        else:
+            plt.show()
+
+        plt.close(fig)
+        return save_path

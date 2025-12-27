@@ -1,6 +1,7 @@
 "use server"
 
 import { cache } from "react"
+import { getWatchlistSymbolsByEmail } from "@/lib/actions/watchlist.actions"
 import { getDateRange, validateArticle, formatArticle } from "@/lib/utils"
 import { POPULAR_STOCK_SYMBOLS } from "@/lib/constants"
 
@@ -115,7 +116,8 @@ type StockWithWatchlistStatus = {
     isInWatchlist: boolean
 }
 
-export const searchStocks = cache(async (query?: string): Promise<StockWithWatchlistStatus[]> => {
+// cached base search that only depends on the external API response
+const searchStocksBase = cache(async (query?: string): Promise<StockWithWatchlistStatus[]> => {
     try {
         let results: FinnHubSearchResult[] = []
 
@@ -154,15 +156,37 @@ export const searchStocks = cache(async (query?: string): Promise<StockWithWatch
                 name: r.description || "",
                 exchange: r.displaySymbol || r.exchange || "US",
                 type: r.type || "Stock",
-                isInWatchlist: false,
+                isInWatchlist: false, // enrichment happens later per-user
             }))
             .slice(0, 15)
 
         return mapped
     } catch (error) {
-        console.error("Error in stock search:", error)
+        console.error("Error in stock search (base):", error)
         return []
     }
 })
+
+// non-cached wrapper that enriches the cached base results with per-user watchlist data
+export const searchStocks = async (query?: string, email?: string): Promise<StockWithWatchlistStatus[]> => {
+    try {
+        const base = await searchStocksBase(query)
+
+        if (!email || email.trim().length === 0) return base
+
+        const watchSet = new Set<string>()
+        try {
+            const watchSymbols = await getWatchlistSymbolsByEmail(email)
+            watchSymbols.forEach((s) => watchSet.add((s || "").toUpperCase()))
+        } catch (err) {
+            console.error("Error resolving watchlist for email", err)
+        }
+
+        return base.map((r) => ({ ...r, isInWatchlist: watchSet.has(r.symbol) }))
+    } catch (error) {
+        console.error("Error in searchStocks wrapper:", error)
+        return []
+    }
+}
 
 

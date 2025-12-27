@@ -178,6 +178,20 @@
         box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
     }
 
+    /* smaller yellow button variant used on the watchlist header */
+    .yellow-btn-sm {
+        height: 2.25rem;
+        min-width: 96px;
+        cursor: pointer;
+        background: linear-gradient(to bottom, #FDD458, #E8BA40);
+        color: #050505;
+        font-weight: 600;
+        font-size: 0.875rem;
+        border-radius: 0.375rem;
+        padding: 0 0.75rem;
+        box-shadow: 0 6px 10px -3px rgb(0 0 0 / 0.12);
+    }
+
     .yellow-btn:hover {
         background: linear-gradient(to bottom, #E8BA40, #FDD458);
     }
@@ -398,6 +412,48 @@
         border-color: #E8BA40;
         outline: none;
         ring: 0;
+    }
+
+    .progress-track {
+        position: relative;
+        width: 100%;
+        height: 4px;
+        border-radius: 9999px;
+        background-color: #1f1f1f;
+        overflow: hidden;
+    }
+
+    .progress-track::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        width: var(--progress-width, 0%);
+        background: linear-gradient(90deg, #FDD458, #E8BA40);
+        border-radius: inherit;
+        transition: width 150ms ease-out;
+    }
+
+    .progress-element {
+        width: 100%;
+        height: 4px;
+        border-radius: 9999px;
+        background-color: #1f1f1f;
+        appearance: none;
+    }
+
+    .progress-element::-webkit-progress-bar {
+        background-color: #1f1f1f;
+        border-radius: 9999px;
+    }
+
+    .progress-element::-webkit-progress-value {
+        background: linear-gradient(90deg, #FDD458, #E8BA40);
+        border-radius: 9999px;
+    }
+
+    .progress-element::-moz-progress-bar {
+        background: linear-gradient(90deg, #FDD458, #E8BA40);
+        border-radius: 9999px;
     }
 
     .country-select-trigger {
@@ -798,19 +854,79 @@
         overflow: hidden;
         width: 100%;
         background-color: #141414;
-        border: 1px solid #30333A;
+        border: 1px solid #242629; /* slightly darker outer border for clearer separation */
         border-radius: 0.5rem;
+    }
+
+    /* Make the table use actual table borders and vertical separators */
+    .watchlist-table table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        overflow: hidden;
+        background: transparent;
+    }
+
+    /* vertical separators (slightly darker) */
+    .watchlist-table th,
+    .watchlist-table td {
+        border-right: 1px solid #2b2d2f; /* darker separator */
+        border-bottom: 1px solid #30333A; /* horizontal separators */
+        padding: 0.75rem 0.75rem;
+        background-clip: padding-box;
+    }
+
+    /* remove right border on the last cell to keep rounded edges clean */
+    .watchlist-table tr > *:last-child {
+        border-right: 0;
+    }
+
+    /* rounded corners for header cells */
+    .watchlist-table thead tr th:first-child {
+        border-top-left-radius: 0.5rem;
+    }
+
+    .watchlist-table thead tr th:last-child {
+        border-top-right-radius: 0.5rem;
+    }
+
+    /* rounded corners for last row cells */
+    .watchlist-table tbody tr:last-child td:first-child {
+        border-bottom-left-radius: 0.5rem;
+    }
+
+    .watchlist-table tbody tr:last-child td:last-child {
+        border-bottom-right-radius: 0.5rem;
+    }
+
+    /* star / icon sizing */
+    .watchlist-icon-added,
+    .star-icon {
+        width: 1.25rem;
+        height: 1.25rem;
+        display: inline-block;
+        vertical-align: middle;
+    }
+
+    /* when a star is active, ensure it uses the yellow fill color */
+    .watchlist-icon-added {
+        color: #E8BA40;
+    }
+
+    .suggestions-title {
+        color: #CCDADC;
     }
 
     .table-header-row {
         color: #CCDADC;
         font-weight: 500;
-        background-color: #212328;
+        /* use a slightly lighter gray to highlight headers */
+        background-color: var(--color-gray-600);
         border-bottom: 1px solid #30333A;
     }
 
     .table-header-row:hover {
-        background-color: #212328;
+        background-color: var(--color-gray-700);
     }
 
     .table-header:first-child {
@@ -848,6 +964,21 @@
         background-color: transparent;
         cursor: pointer;
         transition: color 150ms;
+    }
+
+    /* Orange alert button used in the watchlist table */
+    .orange-btn {
+        background-color: var(--color-orange-500);
+        color: #050505;
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .orange-btn:hover {
+        filter: brightness(0.95);
     }
 
     .add-alert:hover {
@@ -1041,7 +1172,12 @@
 /* Market News Component Styles */
 .scrollbar-hide {
     -ms-overflow-style: none;
-    scrollbar-width: none;
+}
+
+@supports (scrollbar-width: none) {
+    .scrollbar-hide {
+        scrollbar-width: none;
+    }
 }
 
 .scrollbar-hide::-webkit-scrollbar {
@@ -1117,8 +1253,19 @@
 
 /* Custom scrollbar that shows on hover */
 .scrollbar-hide-default {
-    scrollbar-width: thin;
-    scrollbar-color: transparent transparent;
+    /* custom scrollbars handled via webkit pseudo selectors */
+}
+
+@supports (scrollbar-width: thin) {
+    .scrollbar-hide-default {
+        scrollbar-width: thin;
+    }
+}
+
+@supports (scrollbar-color: transparent transparent) {
+    .scrollbar-hide-default {
+        scrollbar-color: transparent transparent;
+    }
 }
 
 .scrollbar-hide-default::-webkit-scrollbar {
@@ -1135,8 +1282,10 @@
     transition: background-color 0.3s ease;
 }
 
-.scrollbar-hide-default:hover {
-    scrollbar-color: #30333A transparent;
+@supports (scrollbar-color: #30333A transparent) {
+    .scrollbar-hide-default:hover {
+        scrollbar-color: #30333A transparent;
+    }
 }
 
 .scrollbar-hide-default:hover::-webkit-scrollbar-thumb {
@@ -1145,4 +1294,22 @@
 
 .scrollbar-hide-default::-webkit-scrollbar-thumb:hover {
     background-color: #9095A1;
+}
+
+/* SVG gradients for chart trend line */
+.trend-gradient-svg {
+    position: absolute;
+    width: 0;
+    height: 0;
+}
+
+/* Chart container for lightweight-charts */
+.chart-container {
+    height: 500px;
+    width: 100%;
+}
+
+/* Chart wrapper height */
+.chart-wrapper {
+    height: 500px;
 }

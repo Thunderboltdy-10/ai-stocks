@@ -1,0 +1,97 @@
+{
+  "timestamp": "20251215_185847",
+  "start_time": "2025-12-15T19:15:56.159628",
+  "symbols": {
+    "AAPL": {
+      "symbol": "AAPL",
+      "backtests": {
+        "regressor_only": {
+          "success": true,
+          "metrics": {
+            "sharpe": 1.607,
+            "cum_return": 0.165009,
+            "max_drawdown": -4.59
+          }
+        },
+        "gbm_only": {
+          "success": true,
+          "metrics": {
+            "sharpe": 4.465,
+            "cum_return": 0.165009,
+            "max_drawdown": -0.39
+          }
+        },
+        "gbm_heavy": {
+          "success": true,
+          "metrics": {
+            "sharpe": 4.465,
+            "cum_return": 0.165009,
+            "max_drawdown": -0.39
+          }
+        },
+        "balanced": {
+          "success": true,
+          "metrics": {
+            "sharpe": 4.465,
+            "cum_return": 0.165009,
+            "max_drawdown": -0.39
+          }
+        },
+        "lstm_heavy": {
+          "success": true,
+          "metrics": {
+            "sharpe": 4.465,
+            "cum_return": 0.165009,
+            "max_drawdown": -0.39
+          }
+        }
+      }
+    },
+    "HOOD": {
+      "symbol": "HOOD",
+      "backtests": {
+        "regressor_only": {
+          "success": true,
+          "metrics": {
+            "sharpe": 2.516,
+            "cum_return": -0.091101,
+            "max_drawdown": -6.04
+          }
+        },
+        "gbm_only": {
+          "success": true,
+          "metrics": {
+            "sharpe": -0.897,
+            "cum_return": -0.091101,
+            "max_drawdown": -7.18
+          }
+        },
+        "gbm_heavy": {
+          "success": true,
+          "metrics": {
+            "sharpe": -0.897,
+            "cum_return": -0.091101,
+            "max_drawdown": -7.18
+          }
+        },
+        "balanced": {
+          "success": true,
+          "metrics": {
+            "sharpe": -0.897,
+            "cum_return": -0.091101,
+            "max_drawdown": -7.18
+          }
+        },
+        "lstm_heavy": {
+          "success": true,
+          "metrics": {
+            "sharpe": -0.897,
+            "cum_return": -0.091101,
+            "max_drawdown": -7.18
+          }
+        }
+      }
+    }
+  },
+  "end_time": "2025-12-15T19:17:30.983623"
+}

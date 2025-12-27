@@ -1,0 +1,15 @@
+{
+  "symbol": "AAPL",
+  "n_features": 157,
+  "sequence_length": 60,
+  "hidden_dim": 64,
+  "num_layers": 2,
+  "dropout": 0.2,
+  "learning_rate": 0.001,
+  "use_wavelet": true,
+  "use_anti_collapse_loss": true,
+  "batch_size": 512,
+  "epochs": 100,
+  "wf_epochs": 30,
+  "seed": 42
+}

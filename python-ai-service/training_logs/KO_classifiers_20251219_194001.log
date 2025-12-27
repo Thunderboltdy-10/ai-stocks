@@ -1,0 +1,11 @@
+2025-12-19 19:40:01 | INFO     | training.KO.classifiers | Training log initialized: /home/thunderboltdy/ai-stocks/python-ai-service/training_logs/KO_classifiers_20251219_194001.log
+2025-12-19 19:40:01 | DEBUG    | training.KO.classifiers | Symbol: KO, Model Type: classifiers
+2025-12-19 19:40:01 | DEBUG    | training.KO.classifiers | Python version: 3.10.19 (main, Oct 21 2025, 16:43:05) [GCC 11.2.0]
+2025-12-19 19:40:01 | INFO     | training.KO.classifiers | Starting binary classifiers training for KO
+2025-12-19 19:40:01 | INFO     | training.KO.classifiers | Arguments: epochs=50, batch_size=32, buy_percentile=60, sell_percentile=40
+2025-12-19 19:40:01 | INFO     | training.KO.classifiers | Training ensemble member 1/1
+2025-12-19 19:40:14 | INFO     | training.KO.classifiers | [OK] Training with 157 features (93 technical + 20 new + 34 sentiment)
+2025-12-19 19:40:14 | INFO     | training.KO.classifiers |   Input shape: (15280, 60, 157) = (samples=15280, seq_len=60, features=157)
+2025-12-19 19:53:19 | INFO     | training.KO.classifiers | [OK] Training with 157 features (93 technical + 20 new + 34 sentiment)
+2025-12-19 19:53:19 | INFO     | training.KO.classifiers |   Input shape: (15118, 60, 157) = (samples=15118, seq_len=60, features=157)
+2025-12-19 20:19:34 | INFO     | training.KO.classifiers | Binary classifiers training complete!

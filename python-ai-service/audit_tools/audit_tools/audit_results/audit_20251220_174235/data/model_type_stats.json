@@ -1,0 +1,33 @@
+{
+  "total_models": 206,
+  "total_size_mb": 310.16,
+  "by_type": {
+    "regressor": {
+      "count": 34,
+      "total_size_mb": 164.66000000000003,
+      "avg_age_days": 0.7941176470588235
+    },
+    "binary_classifier": {
+      "count": 36,
+      "total_size_mb": 40.24,
+      "avg_age_days": 0.75
+    },
+    "scaler": {
+      "count": 49,
+      "total_size_mb": 0.0,
+      "avg_age_days": 0.8367346938775511
+    },
+    "UNKNOWN": {
+      "count": 87,
+      "total_size_mb": 105.25999999999998,
+      "avg_age_days": 0.8160919540229885
+    }
+  },
+  "by_status": {
+    "ORPHANED": 136,
+    "TRAINING_ONLY": 70
+  },
+  "by_recommendation": {
+    "REVIEW": 206
+  }
+}

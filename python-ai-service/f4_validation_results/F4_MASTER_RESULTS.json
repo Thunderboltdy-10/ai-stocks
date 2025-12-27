@@ -1,0 +1,352 @@
+{
+  "metadata": {
+    "consolidation_date": "2025-12-21T02:03:11.840804",
+    "validation_framework": "F4 Model-by-Model Validation",
+    "total_symbols_tested": 10,
+    "models_available": {
+      "regressor": 5,
+      "classifiers": 4,
+      "gbm": 0,
+      "quantile": 0
+    }
+  },
+  "inventory": {
+    "metadata": {
+      "scan_date": "2025-12-20T21:44:04.910108",
+      "saved_models_dir": "/home/thunderboltdy/ai-stocks/python-ai-service/saved_models",
+      "total_symbols": 10
+    },
+    "inventory": {
+      "MSFT": {
+        "regressor": true,
+        "classifiers": false,
+        "gbm": false,
+        "quantile": false
+      },
+      "KO": {
+        "regressor": true,
+        "classifiers": true,
+        "gbm": false,
+        "quantile": false
+      },
+      "ASML": {
+        "regressor": true,
+        "classifiers": true,
+        "gbm": false,
+        "quantile": false
+      },
+      "AAPL": {
+        "regressor": true,
+        "classifiers": true,
+        "gbm": false,
+        "quantile": false
+      },
+      "SPY": {
+        "regressor": false,
+        "classifiers": false,
+        "gbm": false,
+        "quantile": false
+      },
+      "META": {
+        "regressor": false,
+        "classifiers": false,
+        "gbm": false,
+        "quantile": false
+      },
+      "TSLA": {
+        "regressor": false,
+        "classifiers": false,
+        "gbm": false,
+        "quantile": false
+      },
+      "GOOGL": {
+        "regressor": false,
+        "classifiers": false,
+        "gbm": false,
+        "quantile": false
+      },
+      "NVDA": {
+        "regressor": false,
+        "classifiers": false,
+        "gbm": false,
+        "quantile": false
+      },
+      "IWM": {
+        "regressor": true,
+        "classifiers": true,
+        "gbm": false,
+        "quantile": false
+      }
+    }
+  },
+  "symbol_results": {
+    "MSFT": {
+      "symbol": "MSFT",
+      "models_available": {
+        "regressor": true,
+        "classifiers": false,
+        "gbm": false,
+        "quantile": false
+      },
+      "regressor": {
+        "test_status": "METADATA_EXTRACTED",
+        "r2_score": -0.2162206542681555,
+        "smape": 133.65580422317407,
+        "mae": 0.01435333622595747,
+        "directional_accuracy": 0.5397784491440081,
+        "has_negative_r2": true
+      },
+      "classifiers": {},
+      "gbm": {},
+      "quantile": {}
+    },
+    "KO": {
+      "symbol": "KO",
+      "models_available": {
+        "regressor": true,
+        "classifiers": true,
+        "gbm": false,
+        "quantile": false
+      },
+      "regressor": {
+        "test_status": "METADATA_EXTRACTED",
+        "r2_score": -0.003110305624826948,
+        "smape": 176.62845022662844,
+        "mae": 0.007499016426294031,
+        "directional_accuracy": 0.49000624609618987,
+        "has_negative_r2": true
+      },
+      "classifiers": {},
+      "gbm": {},
+      "quantile": {}
+    },
+    "ASML": {
+      "symbol": "ASML",
+      "models_available": {
+        "regressor": true,
+        "classifiers": true,
+        "gbm": false,
+        "quantile": false
+      },
+      "regressor": {
+        "test_status": "METADATA_EXTRACTED",
+        "r2_score": -0.011595882775060407,
+        "smape": 166.01886426569232,
+        "mae": 0.019568509114498627,
+        "directional_accuracy": 0.5264532984977139,
+        "has_negative_r2": true
+      },
+      "classifiers": {},
+      "gbm": {},
+      "quantile": {}
+    },
+    "AAPL": {
+      "symbol": "AAPL",
+      "models_available": {
+        "regressor": true,
+        "classifiers": true,
+        "gbm": false,
+        "quantile": false
+      },
+      "regressor": {
+        "test_status": "METADATA_EXTRACTED",
+        "r2_score": -0.011332197397041499,
+        "smape": 168.53458694773298,
+        "mae": 0.012915261869535087,
+        "directional_accuracy": 0.5275310834813499,
+        "has_negative_r2": true
+      },
+      "classifiers": {},
+      "gbm": {},
+      "quantile": {}
+    },
+    "SPY": {
+      "symbol": "SPY",
+      "models_available": {
+        "regressor": false,
+        "classifiers": false,
+        "gbm": false,
+        "quantile": false
+      },
+      "regressor": {},
+      "classifiers": {},
+      "gbm": {},
+      "quantile": {}
+    },
+    "META": {
+      "symbol": "META",
+      "models_available": {
+        "regressor": false,
+        "classifiers": false,
+        "gbm": false,
+        "quantile": false
+      },
+      "regressor": {},
+      "classifiers": {},
+      "gbm": {},
+      "quantile": {}
+    },
+    "TSLA": {
+      "symbol": "TSLA",
+      "models_available": {
+        "regressor": false,
+        "classifiers": false,
+        "gbm": false,
+        "quantile": false
+      },
+      "regressor": {},
+      "classifiers": {},
+      "gbm": {},
+      "quantile": {}
+    },
+    "GOOGL": {
+      "symbol": "GOOGL",
+      "models_available": {
+        "regressor": false,
+        "classifiers": false,
+        "gbm": false,
+        "quantile": false
+      },
+      "regressor": {},
+      "classifiers": {},
+      "gbm": {},
+      "quantile": {}
+    },
+    "NVDA": {
+      "symbol": "NVDA",
+      "models_available": {
+        "regressor": false,
+        "classifiers": false,
+        "gbm": false,
+        "quantile": false
+      },
+      "regressor": {},
+      "classifiers": {},
+      "gbm": {},
+      "quantile": {}
+    },
+    "IWM": {
+      "symbol": "IWM",
+      "models_available": {
+        "regressor": true,
+        "classifiers": true,
+        "gbm": false,
+        "quantile": false
+      },
+      "regressor": {
+        "test_status": "METADATA_EXTRACTED",
+        "r2_score": 2.1777025563052277e-05,
+        "smape": 171.19020036918593,
+        "mae": 0.0110726318396961,
+        "directional_accuracy": 0.5212933753943217,
+        "has_negative_r2": false
+      },
+      "classifiers": {},
+      "gbm": {},
+      "quantile": {}
+    }
+  },
+  "aggregate_statistics": {
+    "regressor": {
+      "avg_r2": -0.048447452607904264,
+      "min_r2": -0.2162206542681555,
+      "max_r2": 2.1777025563052277e-05,
+      "symbols_with_negative_r2": [
+        "AAPL",
+        "ASML",
+        "KO",
+        "MSFT"
+      ],
+      "negative_r2_rate": 0.8
+    }
+  },
+  "critical_issues": [
+    {
+      "severity": "CRITICAL",
+      "category": "REGRESSOR_R2",
+      "description": "Average R\u00b2 is negative across all symbols",
+      "details": {
+        "avg_r2": -0.048447452607904264,
+        "affected_symbols": [
+          "AAPL",
+          "ASML",
+          "KO",
+          "MSFT"
+        ],
+        "worst_performer": "MSFT"
+      },
+      "status": "IDENTIFIED",
+      "fix_plan": "See f4_validation_results/R2_FIX_IMPLEMENTATION_PLAN.md"
+    },
+    {
+      "severity": "HIGH",
+      "category": "GBM_MISSING",
+      "description": "No GBM models found for any symbol",
+      "details": {
+        "expected": 10,
+        "found": 0,
+        "impact": "GBM fusion modes will fail or underperform"
+      },
+      "status": "IDENTIFIED",
+      "fix_plan": "Train GBM models for at least AAPL and MSFT"
+    },
+    {
+      "severity": "HIGH",
+      "category": "CLASSIFIER_CALIBRATION",
+      "description": "Classifier calibration quality unknown - awaiting test results",
+      "details": {
+        "expected_brier": "< 0.25",
+        "expected_ece": "< 0.10",
+        "status": "PENDING_TESTS"
+      },
+      "status": "INVESTIGATION_NEEDED",
+      "fix_plan": "See f4_validation_results/CALIBRATION_FIX_IMPLEMENTATION_PLAN.md"
+    }
+  ],
+  "recommendations": [
+    {
+      "priority": "P0_CRITICAL",
+      "action": "Fix negative R\u00b2 in regressor models",
+      "rationale": "Models performing worse than baseline (mean prediction)",
+      "implementation": "Add R\u00b2 metric to training, test different loss functions",
+      "expected_improvement": "R\u00b2 from -0.05 to +0.10 (0.15 gain)",
+      "effort": "LOW",
+      "files_affected": [
+        "training/train_1d_regressor_final.py"
+      ]
+    },
+    {
+      "priority": "P0_CRITICAL",
+      "action": "Train GBM models for all symbols",
+      "rationale": "GBM fusion mode cannot work without GBM models",
+      "implementation": "Run train_gbm_baseline.py for each symbol",
+      "expected_improvement": "Enable GBM fusion modes, potential Sharpe improvement",
+      "effort": "MEDIUM",
+      "files_affected": [
+        "training/train_gbm_baseline.py"
+      ]
+    },
+    {
+      "priority": "P1_HIGH",
+      "action": "Validate and fix classifier calibration",
+      "rationale": "Poor calibration leads to suboptimal position sizing",
+      "implementation": "Run classifier tests, implement adaptive focal loss gamma",
+      "expected_improvement": "Brier score from 0.58 to <0.25",
+      "effort": "MEDIUM",
+      "files_affected": [
+        "training/train_binary_classifiers_final.py"
+      ]
+    },
+    {
+      "priority": "P2_MEDIUM",
+      "action": "Add missing performance metrics",
+      "rationale": "Win rate, profit factor, Sortino, Calmar needed for evaluation",
+      "implementation": "Update advanced_backtester.py _compute_metrics()",
+      "expected_improvement": "Better performance assessment",
+      "effort": "LOW",
+      "files_affected": [
+        "evaluation/advanced_backtester.py"
+      ]
+    }
+  ]
+}

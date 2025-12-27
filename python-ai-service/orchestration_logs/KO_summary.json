@@ -1,0 +1,17 @@
+{
+    "symbol": "KO",
+    "timestamp": "2025-12-19T17:05:46.267018",
+    "regressor": {
+        "status": "success",
+        "metrics": {}
+    },
+    "classifiers": {
+        "status": "success",
+        "metrics": {}
+    },
+    "gbm": {
+        "status": "success",
+        "metrics": {}
+    },
+    "duration_seconds": 11643.387523889542
+}

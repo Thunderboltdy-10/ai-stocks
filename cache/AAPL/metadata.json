@@ -1,0 +1,22 @@
+{
+  "timestamp": "2025-12-14T17:30:55.686056",
+  "symbol": "AAPL",
+  "raw_shape": [
+    11343,
+    7
+  ],
+  "engineered_shape": [
+    11343,
+    152
+  ],
+  "prepared_shape": [
+    11341,
+    155
+  ],
+  "feature_count": 147,
+  "expected_feature_count": 147,
+  "raw_hash": "0da513e2a04e8305e8dbb1925b3419bf",
+  "engineered_hash": "ffc91889138934966856758d1370329d",
+  "prepared_hash": "bd849e71ce78bf558d55e71119c47a36",
+  "version": "3.1"
+}

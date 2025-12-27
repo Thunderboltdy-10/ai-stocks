@@ -1,0 +1,17 @@
+{
+    "symbol": "ASML",
+    "timestamp": "2025-12-19T15:44:40.588230",
+    "regressor": {
+        "status": "success",
+        "metrics": {}
+    },
+    "classifiers": {
+        "status": "success",
+        "metrics": {}
+    },
+    "gbm": {
+        "status": "success",
+        "metrics": {}
+    },
+    "duration_seconds": 4865.6763796806335
+}

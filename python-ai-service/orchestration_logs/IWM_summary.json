@@ -1,0 +1,17 @@
+{
+    "symbol": "IWM",
+    "timestamp": "2025-12-19T14:26:14.450629",
+    "regressor": {
+        "status": "success",
+        "metrics": {}
+    },
+    "classifiers": {
+        "status": "success",
+        "metrics": {}
+    },
+    "gbm": {
+        "status": "success",
+        "metrics": {}
+    },
+    "duration_seconds": 4706.135093450546
+}

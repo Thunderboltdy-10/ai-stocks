@@ -1,0 +1,43 @@
+{
+  "symbol": "AAPL",
+  "timestamp": "2025-12-27T18:10:39.024806",
+  "aggregate_wfe": 0.0,
+  "passed": false,
+  "recommendation": "FAIL: Aggregate WFE (0.0%) below threshold (50.0%). Do NOT proceed to production. Investigate overfitting issues.",
+  "data_summary": {
+    "total_samples": 11292,
+    "start_date": "1980-12-12",
+    "end_date": "2025-12-26",
+    "n_features": 157,
+    "sequence_length": 60
+  },
+  "model_results": {
+    "lstm": {
+      "wfe": 0.0,
+      "direction_accuracy": 0.0,
+      "direction_accuracy_std": 0.0,
+      "sharpe_ratio": 0.0,
+      "consistency_score": 0.0,
+      "variance_collapsed": false,
+      "passed": false
+    },
+    "gbm": {
+      "wfe": 0.0,
+      "direction_accuracy": 0.5,
+      "direction_accuracy_std": 0.0,
+      "sharpe_ratio": 0.0,
+      "consistency_score": 0.0,
+      "variance_collapsed": true,
+      "passed": false
+    },
+    "xlstm_ts": {
+      "wfe": 0.0,
+      "direction_accuracy": 0.0,
+      "direction_accuracy_std": 0.0,
+      "sharpe_ratio": 0.0,
+      "consistency_score": 0.0,
+      "variance_collapsed": false,
+      "passed": false
+    }
+  }
+}

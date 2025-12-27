@@ -1,0 +1,40 @@
+{
+  "file_extensions": {
+    ".pkl": "pickle",
+    ".pickle": "pickle",
+    ".h5": "keras",
+    ".keras": "keras",
+    ".pt": "pytorch",
+    ".pth": "pytorch",
+    ".ckpt": "tensorflow_checkpoint",
+    ".joblib": "joblib",
+    ".weights": "weights"
+  },
+  "model_type_patterns": {
+    "lstm": ["lstm", "LSTM", "long_short"],
+    "gbm": ["gbm", "gradient_boosting", "GBM", "xgboost", "lightgbm"],
+    "tft": ["tft", "temporal_fusion", "TFT"],
+    "quantile": ["quantile", "Quantile"],
+    "binary_classifier": ["binary", "classifier", "Classifier"],
+    "regressor": ["regressor", "Regressor", "regression"],
+    "ensemble": ["ensemble", "Ensemble", "fusion"],
+    "scaler": ["scaler", "Scaler", "normalizer"],
+    "pca": ["pca", "PCA", "decomposition"],
+    "patchtst": ["patchtst", "PatchTST", "patch_tst"]
+  },
+  "training_script_patterns": {
+    "lstm": ["train_lstm", "train_LSTM", "lstm_train"],
+    "gbm": ["train_gbm", "train_gradient", "gbm_train"],
+    "tft": ["train_tft", "train_temporal", "tft_train"],
+    "quantile": ["train_quantile", "quantile_train"],
+    "classifier": ["train_classifier", "train_binary", "classifier_train"],
+    "regressor": ["train_regressor", "train_regression", "regressor_train"],
+    "ensemble": ["train_ensemble", "train_fusion", "ensemble_train"],
+    "patchtst": ["train_patchtst", "train_patch", "patchtst_train"]
+  },
+  "inference_script_patterns": {
+    "predict": ["predict_", "inference_", "infer_"],
+    "ensemble": ["predict_ensemble", "inference_ensemble"],
+    "backtest": ["backtest_", "evaluate_"]
+  }
+}

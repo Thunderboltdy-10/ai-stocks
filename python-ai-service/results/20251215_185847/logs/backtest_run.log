@@ -1,0 +1,46 @@
+
+============================================================
+PROCESSING: AAPL
+============================================================
+  Running regressor_only...
+    -> Sharpe: 1.607
+  Running gbm_only...
+    -> Sharpe: 4.465
+  Running gbm_heavy...
+    -> Sharpe: 4.465
+  Running balanced...
+    -> Sharpe: 4.465
+  Running lstm_heavy...
+    -> Sharpe: 4.465
+
+============================================================
+PROCESSING: HOOD
+============================================================
+  Running regressor_only...
+    -> Sharpe: 2.516
+  Running gbm_only...
+    -> Sharpe: -0.897
+  Running gbm_heavy...
+    -> Sharpe: -0.897
+  Running balanced...
+    -> Sharpe: -0.897
+  Running lstm_heavy...
+    -> Sharpe: -0.897
+
+Results saved to: results/20251215_185847/backtest_results.json
+
+============================================================
+SUMMARY TABLE
+============================================================
+Symbol   Mode              Sharpe     Return      MaxDD
+------------------------------------------------------------
+AAPL     regressor_only     1.607      0.17%     -4.59%
+AAPL     gbm_only           4.465      0.17%     -0.39%
+AAPL     gbm_heavy          4.465      0.17%     -0.39%
+AAPL     balanced           4.465      0.17%     -0.39%
+AAPL     lstm_heavy         4.465      0.17%     -0.39%
+HOOD     regressor_only     2.516     -0.09%     -6.04%
+HOOD     gbm_only          -0.897     -0.09%     -7.18%
+HOOD     gbm_heavy         -0.897     -0.09%     -7.18%
+HOOD     balanced          -0.897     -0.09%     -7.18%
+HOOD     lstm_heavy        -0.897     -0.09%     -7.18%

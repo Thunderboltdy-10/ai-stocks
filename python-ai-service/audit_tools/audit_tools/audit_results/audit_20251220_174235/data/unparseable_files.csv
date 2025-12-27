@@ -1,0 +1,2 @@
+filepath,error_type,error_message,line_number
+/home/thunderboltdy/ai-stocks/python-ai-service/service/prediction_service.py,SyntaxError,"unexpected indent (prediction_service.py, line 327)",327

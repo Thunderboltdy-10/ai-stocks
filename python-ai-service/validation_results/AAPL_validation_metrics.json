@@ -1,0 +1,32 @@
+{
+  "symbol": "AAPL",
+  "test_metrics": {
+    "directional_accuracy": 0.5168340224453633,
+    "correlation": 0.02290468883575257,
+    "mae": "0.02121842",
+    "pred_std": "0.02063787",
+    "cumulative_return": "0.7359787",
+    "annualized_return": "0.109549105",
+    "sharpe_ratio": 0.3520698891342481,
+    "max_drawdown": "0.7475394",
+    "win_rate": 0.5168340224453633
+  },
+  "val_metrics": {
+    "directional_accuracy": 0.5,
+    "correlation": 0.021071782082102065,
+    "mae": "0.017347198",
+    "pred_std": "0.0134194745",
+    "cumulative_return": "-0.24362421",
+    "annualized_return": "-0.036284458",
+    "sharpe_ratio": -0.1424202056802759,
+    "max_drawdown": "0.89847016",
+    "win_rate": 0.5
+  },
+  "training_history": {
+    "epochs_trained": 0,
+    "final_train_loss": null,
+    "final_val_loss": null
+  },
+  "target_met": "False",
+  "timestamp": "2025-12-18T18:01:48.888951"
+}

@@ -1,0 +1,40 @@
+# AI-Stocks Model Monitoring Cron Jobs
+#
+# Install with: sudo cp ai-stocks-monitoring.cron /etc/cron.d/ai-stocks-monitoring
+#
+# Environment variables and PATH must be explicitly set in cron jobs.
+# Ensure the following are set:
+# - Working directory must be ai-stocks/python-ai-service
+# - Python environment must be activated (use full path to python binary)
+# - All output is logged to monitoring_logs/cron.log
+
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+HOME=/home/thunderboltdy
+
+# HEALTH CHECK SCHEDULE
+# Runs every weekday morning at 6:00 AM (before market open)
+# Validates model infrastructure and prediction quality
+0 6 * * 1-5 cd /home/thunderboltdy/ai-stocks/python-ai-service && /home/thunderboltdy/miniconda3/envs/ai-stocks/bin/python scripts/health_check.py >> monitoring_logs/cron.log 2>&1
+
+# DAILY MONITORING SCHEDULE
+# Runs every weekday at 6:00 PM (after market close)
+# Calculates IC, direction accuracy, Sharpe ratio
+# Generates alerts if metrics fall below thresholds
+0 18 * * 1-5 cd /home/thunderboltdy/ai-stocks/python-ai-service && /home/thunderboltdy/miniconda3/envs/ai-stocks/bin/python scripts/monitor_models.py >> monitoring_logs/cron.log 2>&1
+
+# WEEKLY SUMMARY SCHEDULE (OPTIONAL)
+# Runs every Sunday at 8:00 PM
+# Aggregates weekly statistics and trend analysis
+# (Script not yet implemented - placeholder for future)
+# 0 20 * * 0 cd /home/thunderboltdy/ai-stocks/python-ai-service && /home/thunderboltdy/miniconda3/envs/ai-stocks/bin/python scripts/generate_monitoring_summary.py >> monitoring_logs/cron.log 2>&1
+
+# EMAIL ALERTS (OPTIONAL)
+# Send alerts for critical issues
+# Requires mail/mailx utility and proper SMTP configuration
+# To enable, replace EXAMPLE@EMAIL.COM with actual email address
+# 18 18 * * 1-5 cd /home/thunderboltdy/ai-stocks/python-ai-service && if grep -q CRITICAL monitoring_logs/monitoring_report_*.txt | tail -1; then mail -s "AI-STOCKS CRITICAL ALERT" EXAMPLE@EMAIL.COM < monitoring_logs/monitoring_report_*.txt | tail -1; fi >> monitoring_logs/cron.log 2>&1
+
+# LOG ROTATION (OPTIONAL)
+# Archive old monitoring logs monthly (keep 90 days)
+0 0 1 * * find /home/thunderboltdy/ai-stocks/python-ai-service/monitoring_logs -name "*.log" -mtime +90 -delete && find /home/thunderboltdy/ai-stocks/python-ai-service/monitoring_logs -name "*.json" -mtime +90 -delete >> /home/thunderboltdy/ai-stocks/python-ai-service/monitoring_logs/cron.log 2>&1

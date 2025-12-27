@@ -1,0 +1,142 @@
+{
+  "brier_score": 0.865546218487395,
+  "calibration_error_per_bin": {
+    "buy": {
+      "0.3-0.4": {
+        "expected": 0.0,
+        "actual": 0.8823529411764706,
+        "error": 0.8823529411764706,
+        "count": 68,
+        "ci_lower": 0.7846488137630566,
+        "ci_upper": 0.939165800610788
+      },
+      "0.4-0.5": {
+        "expected": null,
+        "actual": null,
+        "error": null,
+        "count": 0,
+        "ci_lower": null,
+        "ci_upper": null
+      },
+      "0.5-0.6": {
+        "expected": null,
+        "actual": null,
+        "error": null,
+        "count": 0,
+        "ci_lower": null,
+        "ci_upper": null
+      },
+      "0.6-0.7": {
+        "expected": null,
+        "actual": null,
+        "error": null,
+        "count": 0,
+        "ci_lower": null,
+        "ci_upper": null
+      },
+      "0.7-0.8": {
+        "expected": null,
+        "actual": null,
+        "error": null,
+        "count": 0,
+        "ci_lower": null,
+        "ci_upper": null
+      },
+      "0.8-0.9": {
+        "expected": null,
+        "actual": null,
+        "error": null,
+        "count": 0,
+        "ci_lower": null,
+        "ci_upper": null
+      },
+      "0.9-1.0": {
+        "expected": null,
+        "actual": null,
+        "error": null,
+        "count": 0,
+        "ci_lower": null,
+        "ci_upper": null
+      }
+    },
+    "sell": {
+      "0.3-0.4": {
+        "expected": 0.0,
+        "actual": 0.8431372549019608,
+        "error": 0.8431372549019608,
+        "count": 51,
+        "ci_lower": 0.7198929160164018,
+        "ci_upper": 0.9183087411197868
+      },
+      "0.4-0.5": {
+        "expected": null,
+        "actual": null,
+        "error": null,
+        "count": 0,
+        "ci_lower": null,
+        "ci_upper": null
+      },
+      "0.5-0.6": {
+        "expected": null,
+        "actual": null,
+        "error": null,
+        "count": 0,
+        "ci_lower": null,
+        "ci_upper": null
+      },
+      "0.6-0.7": {
+        "expected": null,
+        "actual": null,
+        "error": null,
+        "count": 0,
+        "ci_lower": null,
+        "ci_upper": null
+      },
+      "0.7-0.8": {
+        "expected": null,
+        "actual": null,
+        "error": null,
+        "count": 0,
+        "ci_lower": null,
+        "ci_upper": null
+      },
+      "0.8-0.9": {
+        "expected": null,
+        "actual": null,
+        "error": null,
+        "count": 0,
+        "ci_lower": null,
+        "ci_upper": null
+      },
+      "0.9-1.0": {
+        "expected": null,
+        "actual": null,
+        "error": null,
+        "count": 0,
+        "ci_lower": null,
+        "ci_upper": null
+      }
+    }
+  },
+  "calibration_points": {
+    "buy": [
+      [
+        0.0,
+        0.8823529411764706,
+        0.7846488137630566,
+        0.939165800610788,
+        68
+      ]
+    ],
+    "sell": [
+      [
+        0.0,
+        0.8431372549019608,
+        0.7198929160164018,
+        0.9183087411197868,
+        51
+      ]
+    ]
+  },
+  "plot_path": "/home/thunderboltdy/ai-stocks/python-ai-service/backtest_results/^IBEX_20251223_125339/calibration_curve.png"
+}

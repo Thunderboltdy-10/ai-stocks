@@ -1,0 +1,42 @@
+[
+  {
+    "severity": "MEDIUM",
+    "category": "Organization",
+    "title": "Root-level clutter detected",
+    "description": "13 files found in root directory that should be organized",
+    "affected_count": 13,
+    "recommendation": "Move files to appropriate subdirectories"
+  },
+  {
+    "severity": "LOW",
+    "category": "Cleanup",
+    "title": "Deprecated files present",
+    "description": "1 deprecated files consuming 0.1 MB",
+    "affected_count": 1,
+    "recommendation": "Archive or delete deprecated files"
+  },
+  {
+    "severity": "HIGH",
+    "category": "Models",
+    "title": "Orphaned model artifacts",
+    "description": "136 orphaned models consuming 163.6 MB",
+    "affected_count": 136,
+    "recommendation": "Review and delete/archive orphaned models"
+  },
+  {
+    "severity": "MEDIUM",
+    "category": "Categorization",
+    "title": "High proportion of unknown files",
+    "description": "148 files (10.1%) could not be categorized",
+    "affected_count": 148,
+    "recommendation": "Review and improve categorization rules"
+  },
+  {
+    "severity": "LOW",
+    "category": "Quality",
+    "title": "Low confidence categorizations",
+    "description": "148 files categorized with low confidence",
+    "affected_count": 148,
+    "recommendation": "Review flagged files manually"
+  }
+]

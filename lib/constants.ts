@@ -41,7 +41,7 @@ export const MARKET_OVERVIEW_WIDGET_CONFIG = {
     colorTheme: 'dark', // dark mode
     dateRange: '12M', // last 12 months
     locale: 'en', // language
-    largeChartUrl: '', // link to a large chart if needed
+    largeChartUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/stocks`,
     isTransparent: true, // makes background transparent
     showFloatingTooltip: true, // show tooltip on hover
     plotLineColorGrowing: '#0FEDBE', // line color when price goes up
@@ -190,6 +190,7 @@ export const MARKET_DATA_WIDGET_CONFIG = {
             ],
         },
     ],
+    largeChartUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/stocks`,
 };
 export const SYMBOL_INFO_WIDGET_CONFIG = (symbol: string) => ({
     symbol: symbol.toUpperCase(),

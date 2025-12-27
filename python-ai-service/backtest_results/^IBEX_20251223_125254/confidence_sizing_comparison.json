@@ -1,0 +1,11 @@
+{
+  "symbol": "^IBEX",
+  "fused_metrics": {
+    "cum_return": 0.02945870666515349,
+    "sharpe": 4.372138700452529
+  },
+  "hybrid_metrics": {
+    "cum_return": 0.02945870666515349,
+    "sharpe": 4.372138700452529
+  }
+}

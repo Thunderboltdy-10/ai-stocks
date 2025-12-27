@@ -1,0 +1,11 @@
+{
+  "symbol": "AAPL",
+  "fused_metrics": {
+    "cum_return": 0.11903570726978274,
+    "sharpe": 5.137286608917649
+  },
+  "hybrid_metrics": {
+    "cum_return": 0.11903570726978274,
+    "sharpe": 5.137286608917649
+  }
+}

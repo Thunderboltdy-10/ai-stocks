@@ -1,0 +1,30 @@
+{
+  "root_directory": "/home/thunderboltdy/ai-stocks/python-ai-service",
+  "output_directory": "audit_tools/audit_results",
+  "max_file_size_mb": 100,
+  "enable_html_reports": true,
+  "enable_interactive_charts": true,
+  "dependency_graph_layout": "spring",
+  "max_graph_nodes": 200,
+  "skip_binary_files": true,
+  "parse_timeout_seconds": 5,
+  "verbose": true,
+  "categories": [
+    "CORE_TRAINING",
+    "CORE_INFERENCE",
+    "CORE_EVALUATION",
+    "CORE_DATA_PIPELINE",
+    "UTILITY",
+    "TEST",
+    "CONFIG",
+    "ARTIFACT",
+    "DEPRECATED",
+    "EXPERIMENTAL",
+    "ORPHAN",
+    "ROOT_CLUTTER",
+    "UNKNOWN"
+  ],
+  "low_confidence_threshold": 0.60,
+  "model_age_threshold_days": 180,
+  "large_file_threshold_mb": 100
+}

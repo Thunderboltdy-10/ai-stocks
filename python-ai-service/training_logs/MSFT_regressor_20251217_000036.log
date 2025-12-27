@@ -1,0 +1,34 @@
+2025-12-17 00:00:36 | INFO     | training.MSFT.regressor | Training log initialized: /home/thunderboltdy/ai-stocks/python-ai-service/training_logs/MSFT_regressor_20251217_000036.log
+2025-12-17 00:00:36 | DEBUG    | training.MSFT.regressor | Symbol: MSFT, Model Type: regressor
+2025-12-17 00:00:36 | DEBUG    | training.MSFT.regressor | Python version: 3.10.19 (main, Oct 21 2025, 16:43:05) [GCC 11.2.0]
+2025-12-17 00:00:36 | INFO     | training.MSFT.regressor | Starting regressor training for MSFT
+2025-12-17 00:00:36 | INFO     | training.MSFT.regressor | Arguments: epochs=100, batch_size=512, sequence_length=90, seed=42
+2025-12-17 00:00:36 | INFO     | training.MSFT.regressor | [OK] Feature count validated: 147 features
+2025-12-17 00:00:36 | INFO     | training.MSFT.regressor | Using all 147 features
+2025-12-17 00:00:36 | INFO     | training.MSFT.regressor | 
+2025-12-17 00:00:36 | INFO     | training.MSFT.regressor | ============================================================
+2025-12-17 00:00:36 | INFO     | training.MSFT.regressor | TARGET DISTRIBUTION CHECK
+2025-12-17 00:00:36 | INFO     | training.MSFT.regressor | ============================================================
+2025-12-17 00:00:36 | INFO     | training.MSFT.regressor |    Positive: 50.8% (5,084 samples) | mean: +1.51%
+2025-12-17 00:00:36 | INFO     | training.MSFT.regressor |    Negative: 47.1% (4,723 samples) | mean: -1.43%
+2025-12-17 00:00:36 | INFO     | training.MSFT.regressor |    Zero:     2.1% (210 samples)
+2025-12-17 00:00:36 | INFO     | training.MSFT.regressor |    Overall:  mean=+0.089%, std=2.097%
+2025-12-17 00:00:36 | INFO     | training.MSFT.regressor | 
+2025-12-17 00:00:36 | INFO     | training.MSFT.regressor |    Percentiles:
+2025-12-17 00:00:36 | INFO     | training.MSFT.regressor |       10th: -2.156%
+2025-12-17 00:00:36 | INFO     | training.MSFT.regressor |       25th: -0.908%
+2025-12-17 00:00:36 | INFO     | training.MSFT.regressor |       50th: +0.038% (median)
+2025-12-17 00:00:36 | INFO     | training.MSFT.regressor |       75th: +1.103%
+2025-12-17 00:00:36 | INFO     | training.MSFT.regressor |       90th: +2.327%
+2025-12-17 00:00:36 | INFO     | training.MSFT.regressor | 
+2025-12-17 00:00:36 | INFO     | training.MSFT.regressor | [OK] Distribution is balanced
+2025-12-17 00:00:36 | INFO     | training.MSFT.regressor | ============================================================
+2025-12-17 00:00:36 | INFO     | training.MSFT.regressor |    [OK] Target distribution metadata saved to /home/thunderboltdy/ai-stocks/python-ai-service/saved_models/MSFT/target_distribution.json
+2025-12-17 00:00:39 | INFO     | training.MSFT.regressor | 
+=== Data Quality Pre-Check ===
+2025-12-17 00:00:40 | WARNING  | training.MSFT.regressor | [WARN] 36 features have near-zero variance
+2025-12-17 00:00:40 | INFO     | training.MSFT.regressor | Target range: [-1.2000, 1.2000]
+2025-12-17 00:00:40 | INFO     | training.MSFT.regressor | Target std: 0.7601 (should be ~1 after scaling)
+2025-12-17 00:00:40 | INFO     | training.MSFT.regressor | [OK] Data quality checks passed
+2025-12-17 00:00:40 | INFO     | training.MSFT.regressor | [OK] Training with 147 features (93 technical + 20 new + 34 sentiment)
+2025-12-17 00:00:40 | INFO     | training.MSFT.regressor |   Input shape: (7942, 90, 147) = (samples=7942, seq_len=90, features=147)

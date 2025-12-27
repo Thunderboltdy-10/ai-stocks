@@ -1,0 +1,17 @@
+Symbol,FusionMode,Sharpe,CumReturn%,MaxDD%,BaselineSharpe,SharpeDelta,Notes
+AAPL,regressor_only,1.607,3.95,-4.59,1.607,+0.000,
+AAPL,gbm_only,4.465,2.07,-0.39,4.465,+0.000,
+AAPL,gbm_heavy,2.009,4.68,-4.02,,,
+AAPL,balanced,1.807,4.37,-4.36,,,
+AAPL,lstm_heavy,1.688,4.13,-4.48,,,
+HOOD,regressor_only,2.516,11.81,-6.04,2.516,+0.000,
+HOOD,gbm_only,-0.897,-3.92,-7.18,-0.897,+0.000,
+HOOD,gbm_heavy,-0.897,-3.92,-7.18,,,LSTM collapsed, fell back to GBM
+HOOD,balanced,-0.897,-3.92,-7.18,,,LSTM collapsed, fell back to GBM
+HOOD,lstm_heavy,-0.897,-3.92,-7.18,,,LSTM collapsed, fell back to GBM
+MSFT,gbm_only,-3.546,-4.52,-5.81,,,
+AMZN,gbm_only,-0.008,-0.08,-2.82,,,
+NVDA,gbm_only,0.647,0.67,-1.25,,,
+TSLA,gbm_only,-1.812,-1.77,-3.11,,,
+XOM,gbm_only,2.268,3.24,-2.75,,,
+JPM,gbm_only,2.654,0.13,-0.16,,,

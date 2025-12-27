@@ -1,0 +1,554 @@
+[
+  {
+    "symbol": "AAPL",
+    "fusion_mode": "gbm_only",
+    "success": true,
+    "metrics": {
+      "sharpe": 4.465,
+      "cum_return": 2.07,
+      "max_drawdown": -0.39,
+      "total_trades": 0,
+      "win_rate": 0.0
+    },
+    "duration": 6.848076105117798,
+    "error": null
+  },
+  {
+    "symbol": "AAPL",
+    "fusion_mode": "regressor_only",
+    "success": true,
+    "metrics": {
+      "sharpe": 1.607,
+      "cum_return": 3.95,
+      "max_drawdown": -4.59,
+      "total_trades": 0,
+      "win_rate": 0.0
+    },
+    "duration": 11.63555383682251,
+    "error": null
+  },
+  {
+    "symbol": "AAPL",
+    "fusion_mode": "gbm_heavy",
+    "success": true,
+    "metrics": {
+      "sharpe": 2.009,
+      "cum_return": 4.68,
+      "max_drawdown": -4.02,
+      "total_trades": 0,
+      "win_rate": 0.0
+    },
+    "duration": 11.254172325134277,
+    "error": null
+  },
+  {
+    "symbol": "AAPL",
+    "fusion_mode": "balanced",
+    "success": true,
+    "metrics": {
+      "sharpe": 1.807,
+      "cum_return": 4.37,
+      "max_drawdown": -4.36,
+      "total_trades": 0,
+      "win_rate": 0.0
+    },
+    "duration": 10.984403371810913,
+    "error": null
+  },
+  {
+    "symbol": "AAPL",
+    "fusion_mode": "lstm_heavy",
+    "success": true,
+    "metrics": {
+      "sharpe": 1.688,
+      "cum_return": 4.13,
+      "max_drawdown": -4.48,
+      "total_trades": 0,
+      "win_rate": 0.0
+    },
+    "duration": 11.536845207214355,
+    "error": null
+  },
+  {
+    "symbol": "HOOD",
+    "fusion_mode": "gbm_only",
+    "success": true,
+    "metrics": {
+      "sharpe": -0.897,
+      "cum_return": -3.92,
+      "max_drawdown": -7.18,
+      "total_trades": 0,
+      "win_rate": 0.0
+    },
+    "duration": 6.433889865875244,
+    "error": null
+  },
+  {
+    "symbol": "HOOD",
+    "fusion_mode": "regressor_only",
+    "success": true,
+    "metrics": {
+      "sharpe": 2.516,
+      "cum_return": 11.81,
+      "max_drawdown": -6.04,
+      "total_trades": 0,
+      "win_rate": 0.0
+    },
+    "duration": 10.023618698120117,
+    "error": null
+  },
+  {
+    "symbol": "HOOD",
+    "fusion_mode": "gbm_heavy",
+    "success": true,
+    "metrics": {
+      "sharpe": -0.897,
+      "cum_return": -3.92,
+      "max_drawdown": -7.18,
+      "total_trades": 0,
+      "win_rate": 0.0
+    },
+    "duration": 10.569308280944824,
+    "error": null
+  },
+  {
+    "symbol": "HOOD",
+    "fusion_mode": "balanced",
+    "success": true,
+    "metrics": {
+      "sharpe": -0.897,
+      "cum_return": -3.92,
+      "max_drawdown": -7.18,
+      "total_trades": 0,
+      "win_rate": 0.0
+    },
+    "duration": 10.45081353187561,
+    "error": null
+  },
+  {
+    "symbol": "HOOD",
+    "fusion_mode": "lstm_heavy",
+    "success": true,
+    "metrics": {
+      "sharpe": -0.897,
+      "cum_return": -3.92,
+      "max_drawdown": -7.18,
+      "total_trades": 0,
+      "win_rate": 0.0
+    },
+    "duration": 9.616583585739136,
+    "error": null
+  },
+  {
+    "symbol": "MSFT",
+    "fusion_mode": "gbm_only",
+    "success": false,
+    "error": "TIMEOUT"
+  },
+  {
+    "symbol": "MSFT",
+    "fusion_mode": "regressor_only",
+    "success": false,
+    "metrics": {
+      "sharpe": null,
+      "cum_return": null,
+      "max_drawdown": null,
+      "total_trades": null,
+      "win_rate": null
+    },
+    "duration": 3.1806693077087402,
+    "error": "WARNING: All log messages before absl::InitializeLog() is called are written to STDERR\nI0000 00:00:1765828940.703532  305277 cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.\nTo enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.\n"
+  },
+  {
+    "symbol": "MSFT",
+    "fusion_mode": "gbm_heavy",
+    "success": false,
+    "metrics": {
+      "sharpe": null,
+      "cum_return": null,
+      "max_drawdown": null,
+      "total_trades": null,
+      "win_rate": null
+    },
+    "duration": 3.1519479751586914,
+    "error": "WARNING: All log messages before absl::InitializeLog() is called are written to STDERR\nI0000 00:00:1765828943.839444  305315 cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.\nTo enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.\n"
+  },
+  {
+    "symbol": "MSFT",
+    "fusion_mode": "balanced",
+    "success": false,
+    "metrics": {
+      "sharpe": null,
+      "cum_return": null,
+      "max_drawdown": null,
+      "total_trades": null,
+      "win_rate": null
+    },
+    "duration": 3.226712465286255,
+    "error": "WARNING: All log messages before absl::InitializeLog() is called are written to STDERR\nI0000 00:00:1765828947.024320  305359 cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.\nTo enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.\n"
+  },
+  {
+    "symbol": "MSFT",
+    "fusion_mode": "lstm_heavy",
+    "success": false,
+    "metrics": {
+      "sharpe": null,
+      "cum_return": null,
+      "max_drawdown": null,
+      "total_trades": null,
+      "win_rate": null
+    },
+    "duration": 3.123124599456787,
+    "error": "WARNING: All log messages before absl::InitializeLog() is called are written to STDERR\nI0000 00:00:1765828950.229603  305397 cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.\nTo enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.\n"
+  },
+  {
+    "symbol": "AMZN",
+    "fusion_mode": "gbm_only",
+    "success": true,
+    "metrics": {
+      "sharpe": -0.008,
+      "cum_return": -0.08,
+      "max_drawdown": -2.82,
+      "total_trades": 0,
+      "win_rate": 0.0
+    },
+    "duration": 6.778563737869263,
+    "error": null
+  },
+  {
+    "symbol": "AMZN",
+    "fusion_mode": "regressor_only",
+    "success": false,
+    "metrics": {
+      "sharpe": null,
+      "cum_return": null,
+      "max_drawdown": null,
+      "total_trades": null,
+      "win_rate": null
+    },
+    "duration": 2.559691905975342,
+    "error": "WARNING: All log messages before absl::InitializeLog() is called are written to STDERR\nI0000 00:00:1765828959.545328  305524 cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.\nTo enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.\n"
+  },
+  {
+    "symbol": "AMZN",
+    "fusion_mode": "gbm_heavy",
+    "success": false,
+    "metrics": {
+      "sharpe": null,
+      "cum_return": null,
+      "max_drawdown": null,
+      "total_trades": null,
+      "win_rate": null
+    },
+    "duration": 3.008035659790039,
+    "error": "WARNING: All log messages before absl::InitializeLog() is called are written to STDERR\nI0000 00:00:1765828962.665154  305568 cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.\nTo enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.\n"
+  },
+  {
+    "symbol": "AMZN",
+    "fusion_mode": "balanced",
+    "success": false,
+    "metrics": {
+      "sharpe": null,
+      "cum_return": null,
+      "max_drawdown": null,
+      "total_trades": null,
+      "win_rate": null
+    },
+    "duration": 3.0323233604431152,
+    "error": "WARNING: All log messages before absl::InitializeLog() is called are written to STDERR\nI0000 00:00:1765828965.671840  305606 cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.\nTo enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.\n"
+  },
+  {
+    "symbol": "AMZN",
+    "fusion_mode": "lstm_heavy",
+    "success": false,
+    "metrics": {
+      "sharpe": null,
+      "cum_return": null,
+      "max_drawdown": null,
+      "total_trades": null,
+      "win_rate": null
+    },
+    "duration": 2.9687180519104004,
+    "error": "WARNING: All log messages before absl::InitializeLog() is called are written to STDERR\nI0000 00:00:1765828968.703526  305650 cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.\nTo enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.\n"
+  },
+  {
+    "symbol": "NVDA",
+    "fusion_mode": "gbm_only",
+    "success": true,
+    "metrics": {
+      "sharpe": 0.647,
+      "cum_return": 0.67,
+      "max_drawdown": -1.25,
+      "total_trades": 0,
+      "win_rate": 0.0
+    },
+    "duration": 7.027644634246826,
+    "error": null
+  },
+  {
+    "symbol": "NVDA",
+    "fusion_mode": "regressor_only",
+    "success": false,
+    "metrics": {
+      "sharpe": null,
+      "cum_return": null,
+      "max_drawdown": null,
+      "total_trades": null,
+      "win_rate": null
+    },
+    "duration": 3.414364814758301,
+    "error": "WARNING: All log messages before absl::InitializeLog() is called are written to STDERR\nI0000 00:00:1765828978.782462  305778 cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.\nTo enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.\n"
+  },
+  {
+    "symbol": "NVDA",
+    "fusion_mode": "gbm_heavy",
+    "success": false,
+    "metrics": {
+      "sharpe": null,
+      "cum_return": null,
+      "max_drawdown": null,
+      "total_trades": null,
+      "win_rate": null
+    },
+    "duration": 3.0487353801727295,
+    "error": "WARNING: All log messages before absl::InitializeLog() is called are written to STDERR\nI0000 00:00:1765828982.147614  305816 cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.\nTo enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.\n"
+  },
+  {
+    "symbol": "NVDA",
+    "fusion_mode": "balanced",
+    "success": false,
+    "metrics": {
+      "sharpe": null,
+      "cum_return": null,
+      "max_drawdown": null,
+      "total_trades": null,
+      "win_rate": null
+    },
+    "duration": 3.1311068534851074,
+    "error": "WARNING: All log messages before absl::InitializeLog() is called are written to STDERR\nI0000 00:00:1765828985.204156  305860 cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.\nTo enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.\n"
+  },
+  {
+    "symbol": "NVDA",
+    "fusion_mode": "lstm_heavy",
+    "success": false,
+    "metrics": {
+      "sharpe": null,
+      "cum_return": null,
+      "max_drawdown": null,
+      "total_trades": null,
+      "win_rate": null
+    },
+    "duration": 3.201915740966797,
+    "error": "WARNING: All log messages before absl::InitializeLog() is called are written to STDERR\nI0000 00:00:1765828988.344516  305898 cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.\nTo enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.\n"
+  },
+  {
+    "symbol": "TSLA",
+    "fusion_mode": "gbm_only",
+    "success": true,
+    "metrics": {
+      "sharpe": -1.812,
+      "cum_return": -1.77,
+      "max_drawdown": -3.11,
+      "total_trades": 0,
+      "win_rate": 0.0
+    },
+    "duration": 137.35492396354675,
+    "error": null
+  },
+  {
+    "symbol": "TSLA",
+    "fusion_mode": "regressor_only",
+    "success": false,
+    "metrics": {
+      "sharpe": null,
+      "cum_return": null,
+      "max_drawdown": null,
+      "total_trades": null,
+      "win_rate": null
+    },
+    "duration": 3.2527692317962646,
+    "error": "WARNING: All log messages before absl::InitializeLog() is called are written to STDERR\nI0000 00:00:1765829128.916561  306429 cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.\nTo enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.\n"
+  },
+  {
+    "symbol": "TSLA",
+    "fusion_mode": "gbm_heavy",
+    "success": false,
+    "metrics": {
+      "sharpe": null,
+      "cum_return": null,
+      "max_drawdown": null,
+      "total_trades": null,
+      "win_rate": null
+    },
+    "duration": 3.064479351043701,
+    "error": "WARNING: All log messages before absl::InitializeLog() is called are written to STDERR\nI0000 00:00:1765829132.143162  306467 cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.\nTo enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.\n"
+  },
+  {
+    "symbol": "TSLA",
+    "fusion_mode": "balanced",
+    "success": false,
+    "metrics": {
+      "sharpe": null,
+      "cum_return": null,
+      "max_drawdown": null,
+      "total_trades": null,
+      "win_rate": null
+    },
+    "duration": 3.157597780227661,
+    "error": "WARNING: All log messages before absl::InitializeLog() is called are written to STDERR\nI0000 00:00:1765829135.236447  306511 cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.\nTo enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.\n"
+  },
+  {
+    "symbol": "TSLA",
+    "fusion_mode": "lstm_heavy",
+    "success": false,
+    "metrics": {
+      "sharpe": null,
+      "cum_return": null,
+      "max_drawdown": null,
+      "total_trades": null,
+      "win_rate": null
+    },
+    "duration": 3.1647610664367676,
+    "error": "WARNING: All log messages before absl::InitializeLog() is called are written to STDERR\nI0000 00:00:1765829138.375014  306549 cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.\nTo enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.\n"
+  },
+  {
+    "symbol": "XOM",
+    "fusion_mode": "gbm_only",
+    "success": true,
+    "metrics": {
+      "sharpe": 2.268,
+      "cum_return": 3.24,
+      "max_drawdown": -2.75,
+      "total_trades": 0,
+      "win_rate": 0.0
+    },
+    "duration": 7.77699089050293,
+    "error": null
+  },
+  {
+    "symbol": "XOM",
+    "fusion_mode": "regressor_only",
+    "success": false,
+    "metrics": {
+      "sharpe": null,
+      "cum_return": null,
+      "max_drawdown": null,
+      "total_trades": null,
+      "win_rate": null
+    },
+    "duration": 2.7271888256073,
+    "error": "WARNING: All log messages before absl::InitializeLog() is called are written to STDERR\nI0000 00:00:1765829149.275205  306676 cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.\nTo enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.\n"
+  },
+  {
+    "symbol": "XOM",
+    "fusion_mode": "gbm_heavy",
+    "success": false,
+    "metrics": {
+      "sharpe": null,
+      "cum_return": null,
+      "max_drawdown": null,
+      "total_trades": null,
+      "win_rate": null
+    },
+    "duration": 3.5310773849487305,
+    "error": "WARNING: All log messages before absl::InitializeLog() is called are written to STDERR\nI0000 00:00:1765829152.090397  306720 cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.\nTo enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.\n"
+  },
+  {
+    "symbol": "XOM",
+    "fusion_mode": "balanced",
+    "success": false,
+    "metrics": {
+      "sharpe": null,
+      "cum_return": null,
+      "max_drawdown": null,
+      "total_trades": null,
+      "win_rate": null
+    },
+    "duration": 3.401986837387085,
+    "error": "WARNING: All log messages before absl::InitializeLog() is called are written to STDERR\nI0000 00:00:1765829155.583895  306764 cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.\nTo enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.\n"
+  },
+  {
+    "symbol": "XOM",
+    "fusion_mode": "lstm_heavy",
+    "success": false,
+    "metrics": {
+      "sharpe": null,
+      "cum_return": null,
+      "max_drawdown": null,
+      "total_trades": null,
+      "win_rate": null
+    },
+    "duration": 2.987428903579712,
+    "error": "WARNING: All log messages before absl::InitializeLog() is called are written to STDERR\nI0000 00:00:1765829158.932646  306802 cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.\nTo enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.\n"
+  },
+  {
+    "symbol": "JPM",
+    "fusion_mode": "gbm_only",
+    "success": true,
+    "metrics": {
+      "sharpe": 2.654,
+      "cum_return": 0.13,
+      "max_drawdown": -0.16,
+      "total_trades": 0,
+      "win_rate": 0.0
+    },
+    "duration": 7.404247522354126,
+    "error": null
+  },
+  {
+    "symbol": "JPM",
+    "fusion_mode": "regressor_only",
+    "success": false,
+    "metrics": {
+      "sharpe": null,
+      "cum_return": null,
+      "max_drawdown": null,
+      "total_trades": null,
+      "win_rate": null
+    },
+    "duration": 3.024879217147827,
+    "error": "WARNING: All log messages before absl::InitializeLog() is called are written to STDERR\nI0000 00:00:1765829169.342394  306929 cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.\nTo enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.\n"
+  },
+  {
+    "symbol": "JPM",
+    "fusion_mode": "gbm_heavy",
+    "success": false,
+    "metrics": {
+      "sharpe": null,
+      "cum_return": null,
+      "max_drawdown": null,
+      "total_trades": null,
+      "win_rate": null
+    },
+    "duration": 3.2118899822235107,
+    "error": "WARNING: All log messages before absl::InitializeLog() is called are written to STDERR\nI0000 00:00:1765829172.377599  306973 cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.\nTo enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.\n"
+  },
+  {
+    "symbol": "JPM",
+    "fusion_mode": "balanced",
+    "success": false,
+    "metrics": {
+      "sharpe": null,
+      "cum_return": null,
+      "max_drawdown": null,
+      "total_trades": null,
+      "win_rate": null
+    },
+    "duration": 3.027139186859131,
+    "error": "WARNING: All log messages before absl::InitializeLog() is called are written to STDERR\nI0000 00:00:1765829175.574930  307011 cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.\nTo enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.\n"
+  },
+  {
+    "symbol": "JPM",
+    "fusion_mode": "lstm_heavy",
+    "success": false,
+    "metrics": {
+      "sharpe": null,
+      "cum_return": null,
+      "max_drawdown": null,
+      "total_trades": null,
+      "win_rate": null
+    },
+    "duration": 2.9995501041412354,
+    "error": "WARNING: All log messages before absl::InitializeLog() is called are written to STDERR\nI0000 00:00:1765829178.582003  307055 cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.\nTo enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.\n"
+  }
+]

@@ -1,0 +1,22 @@
+{
+  "timestamp": "2025-12-23T13:03:45.717413",
+  "symbol": "META",
+  "raw_shape": [
+    3419,
+    7
+  ],
+  "engineered_shape": [
+    3419,
+    162
+  ],
+  "prepared_shape": [
+    3417,
+    165
+  ],
+  "feature_count": 157,
+  "expected_feature_count": 157,
+  "raw_hash": "4b146da8ccbe30222295d9f710b4ead5",
+  "engineered_hash": "3bf936a10b1e667424fccc8cfb74eddd",
+  "prepared_hash": "046d6c8062c8ddd07501fca3c6a83366",
+  "version": "3.1"
+}

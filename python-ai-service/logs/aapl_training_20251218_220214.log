@@ -1,0 +1,24 @@
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1766091734.803843   17416 cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+usage: train_1d_regressor_final.py [-h] [--epochs EPOCHS]
+                                   [--batch-size BATCH_SIZE]
+                                   [--sequence-length SEQUENCE_LENGTH]
+                                   [--target-noise-std TARGET_NOISE_STD]
+                                   [--loss {huber,mae,quantile,huber_mae}]
+                                   [--quantile QUANTILE] [--no-log-targets]
+                                   [--no-standard-scaler]
+                                   [--no-direction-loss] [--use-multitask]
+                                   [--no-multitask] [--quantile-ensemble]
+                                   [--balance-targets]
+                                   [--balance-strategy {undersample,oversample,hybrid}]
+                                   [--use-selected-features]
+                                   [--augment-negatives]
+                                   [--augmentation-factor AUGMENTATION_FACTOR]
+                                   [--use-directional-loss]
+                                   [--use-anti-collapse-loss]
+                                   [--directional-weight DIRECTIONAL_WEIGHT]
+                                   [--variance-regularization VARIANCE_REGULARIZATION]
+                                   [--seed SEED]
+                                   symbol
+train_1d_regressor_final.py: error: unrecognized arguments: --batch_size 512 --learning_rate 0.0003

@@ -1,0 +1,34 @@
+2025-12-19 15:44:44 | INFO     | training.ASML.regressor | Training log initialized: /home/thunderboltdy/ai-stocks/python-ai-service/training_logs/ASML_regressor_20251219_154444.log
+2025-12-19 15:44:44 | DEBUG    | training.ASML.regressor | Symbol: ASML, Model Type: regressor
+2025-12-19 15:44:44 | DEBUG    | training.ASML.regressor | Python version: 3.10.19 (main, Oct 21 2025, 16:43:05) [GCC 11.2.0]
+2025-12-19 15:44:44 | INFO     | training.ASML.regressor | Starting regressor training for ASML
+2025-12-19 15:44:44 | INFO     | training.ASML.regressor | Arguments: epochs=50, batch_size=512, sequence_length=90, seed=42
+2025-12-19 15:45:02 | INFO     | training.ASML.regressor | [OK] Feature count validated: 157 features
+2025-12-19 15:45:02 | INFO     | training.ASML.regressor | Using all 157 features
+2025-12-19 15:45:02 | INFO     | training.ASML.regressor | 
+2025-12-19 15:45:02 | INFO     | training.ASML.regressor | ============================================================
+2025-12-19 15:45:02 | INFO     | training.ASML.regressor | TARGET DISTRIBUTION CHECK
+2025-12-19 15:45:02 | INFO     | training.ASML.regressor | ============================================================
+2025-12-19 15:45:02 | INFO     | training.ASML.regressor |    Positive: 51.0% (3,951 samples) | mean: +2.13%
+2025-12-19 15:45:02 | INFO     | training.ASML.regressor |    Negative: 47.9% (3,709 samples) | mean: -2.10%
+2025-12-19 15:45:02 | INFO     | training.ASML.regressor |    Zero:     1.1% (83 samples)
+2025-12-19 15:45:02 | INFO     | training.ASML.regressor |    Overall:  mean=+0.081%, std=3.026%
+2025-12-19 15:45:02 | INFO     | training.ASML.regressor | 
+2025-12-19 15:45:02 | INFO     | training.ASML.regressor |    Percentiles:
+2025-12-19 15:45:02 | INFO     | training.ASML.regressor |       10th: -3.155%
+2025-12-19 15:45:02 | INFO     | training.ASML.regressor |       25th: -1.348%
+2025-12-19 15:45:02 | INFO     | training.ASML.regressor |       50th: +0.065% (median)
+2025-12-19 15:45:02 | INFO     | training.ASML.regressor |       75th: +1.575%
+2025-12-19 15:45:02 | INFO     | training.ASML.regressor |       90th: +3.262%
+2025-12-19 15:45:02 | INFO     | training.ASML.regressor | 
+2025-12-19 15:45:02 | INFO     | training.ASML.regressor | [OK] Distribution is balanced
+2025-12-19 15:45:02 | INFO     | training.ASML.regressor | ============================================================
+2025-12-19 15:45:02 | INFO     | training.ASML.regressor |    [OK] Target distribution metadata saved to /home/thunderboltdy/ai-stocks/python-ai-service/saved_models/ASML/target_distribution.json
+2025-12-19 15:45:05 | INFO     | training.ASML.regressor | 
+=== Data Quality Pre-Check ===
+2025-12-19 15:45:05 | WARNING  | training.ASML.regressor | [WARN] 38 features have near-zero variance
+2025-12-19 15:45:05 | INFO     | training.ASML.regressor | Target range: [-1.2000, 1.2000]
+2025-12-19 15:45:05 | INFO     | training.ASML.regressor | Target std: 0.7393 (should be ~1 after scaling)
+2025-12-19 15:45:05 | INFO     | training.ASML.regressor | [OK] Data quality checks passed
+2025-12-19 15:45:05 | INFO     | training.ASML.regressor | [OK] Training with 157 features (93 technical + 20 new + 34 sentiment)
+2025-12-19 15:45:05 | INFO     | training.ASML.regressor |   Input shape: (6123, 90, 157) = (samples=6123, seq_len=90, features=157)

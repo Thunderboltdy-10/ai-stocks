@@ -1,0 +1,22 @@
+{
+  "timestamp": "2025-12-22T20:49:47.499859",
+  "symbol": "KO",
+  "raw_shape": [
+    16102,
+    7
+  ],
+  "engineered_shape": [
+    16102,
+    162
+  ],
+  "prepared_shape": [
+    16100,
+    165
+  ],
+  "feature_count": 157,
+  "expected_feature_count": 157,
+  "raw_hash": "2ad0b70ae29eb9d7b35053a64b115631",
+  "engineered_hash": "521786eb49f7e166a53b6223c0324fdd",
+  "prepared_hash": "5290e99d5f9a18bad618b072110fc6eb",
+  "version": "3.1"
+}

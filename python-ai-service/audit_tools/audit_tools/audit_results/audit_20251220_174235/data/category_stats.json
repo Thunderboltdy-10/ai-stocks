@@ -1,0 +1,62 @@
+{
+  "CONFIG": {
+    "count": 159,
+    "avg_confidence": 0.8415094339622636,
+    "low_confidence_count": 0
+  },
+  "CORE_TRAINING": {
+    "count": 192,
+    "avg_confidence": 0.9000000000000002,
+    "low_confidence_count": 0
+  },
+  "UTILITY": {
+    "count": 26,
+    "avg_confidence": 0.7923076923076924,
+    "low_confidence_count": 0
+  },
+  "ORPHAN": {
+    "count": 19,
+    "avg_confidence": 0.75,
+    "low_confidence_count": 0
+  },
+  "TEST": {
+    "count": 497,
+    "avg_confidence": 0.9499999999999998,
+    "low_confidence_count": 0
+  },
+  "ROOT_CLUTTER": {
+    "count": 13,
+    "avg_confidence": 0.9000000000000001,
+    "low_confidence_count": 0
+  },
+  "ARTIFACT": {
+    "count": 406,
+    "avg_confidence": 0.9349753694581281,
+    "low_confidence_count": 0
+  },
+  "UNKNOWN": {
+    "count": 148,
+    "avg_confidence": 0.0,
+    "low_confidence_count": 148
+  },
+  "CORE_DATA_PIPELINE": {
+    "count": 2,
+    "avg_confidence": 0.8,
+    "low_confidence_count": 0
+  },
+  "DEPRECATED": {
+    "count": 1,
+    "avg_confidence": 0.95,
+    "low_confidence_count": 0
+  },
+  "CORE_INFERENCE": {
+    "count": 4,
+    "avg_confidence": 0.9,
+    "low_confidence_count": 0
+  },
+  "EXPERIMENTAL": {
+    "count": 1,
+    "avg_confidence": 0.8,
+    "low_confidence_count": 0
+  }
+}

@@ -61,6 +61,7 @@ declare global {
         renderAs?: 'button' | 'text';
         label?: string;
         initialStocks: StockWithWatchlistStatus[];
+        userEmail?: string;
     };
 
     type WelcomeEmailData = {
@@ -217,6 +218,76 @@ declare global {
         threshold: number;
         changePercent?: number;
     };
+
+    interface Prediction {
+      symbol: string;
+      risk_profile: 'conservative' | 'aggressive';
+      timestamp: string;
+      
+      // Price predictions
+      current_price: number;
+      predicted_price: number;
+      predicted_log_return: number;
+      expected_return_pct: number;
+      price_change: number;
+      
+      // Classification
+      recommendation: 'BUY' | 'SELL' | 'HOLD';
+      recommendation_confidence: number;
+      class_probabilities: {
+        SELL: number;
+        HOLD: number;
+        BUY: number;
+      };
+      
+      // Technical indicators (expanded)
+      technical_indicators: {
+        rsi: number;
+        rsi_signal: string;
+        macd: number;
+        macd_signal: number;
+        macd_trend: string;
+        volatility_20d: number;
+        volatility_pct: number;
+        return_1d_pct: number;
+        return_5d_pct: number;
+        volume_ratio: number;
+        volume_signal: string;
+        bb_position: number;
+      };
+      
+      // Model metadata
+      metadata: {
+        sequence_length: number;
+        n_features: number;
+        prediction_horizon: number;  // Number of days ahead prediction is for (e.g., 5)
+        model_version: string;
+        threshold_multiplier: number;
+      };
+      
+      // Warnings
+      warnings: string[];
+    }
+    
+    interface HistoricalDataItem {
+      date: string;
+      open: number;
+      high: number;
+      low: number;
+      close: number;
+    }
+
+    interface CandlestickChartProps {
+      symbol: string;
+      data: HistoricalDataItem[];
+      prediction: Prediction;
+    }
+
+    interface LineChartProps {
+      symbol: string;
+      historicalData: HistoricalDataItem[];
+      prediction: Prediction;
+    }
 }
 
 export {};

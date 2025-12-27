@@ -1,0 +1,370 @@
+2025-12-18 22:33:05,316 - __main__ - INFO - Using seed: 42
+2025-12-18 22:33:05,317 - __main__ - INFO - Preparing GBM data for NVDA...
+2025-12-18 22:33:05,317 - data.cache_manager - INFO - DataCacheManager initialized: cache
+2025-12-18 22:33:05,318 - data.cache_manager - INFO - 📊 Fetching fresh data for NVDA...
+2025-12-18 22:33:05,318 - data.cache_manager - INFO -   1/3 Fetching OHLCV data...
+2025-12-18 22:33:05,318 - data.data_fetcher - INFO - Fetching data for NVDA (period=max)
+2025-12-18 22:33:05,802 - data.data_fetcher - INFO - ✓ Fetched 6770 days of data for NVDA
+2025-12-18 22:33:05,803 - data.cache_manager - INFO -   2/3 Engineering features (sentiment=enabled)...
+2025-12-18 22:37:07,853 - data.cache_manager - INFO - 📰 Fetching fresh news for NVDA...
+2025-12-18 22:37:07,855 - data.news_fetcher - ERROR - finnhub-python library not found. Install with:
+pip install finnhub-python>=2.4.0
+2025-12-18 22:37:07,855 - data.cache_manager - ERROR - Failed to fetch news for NVDA: No module named 'finnhub'
+2025-12-18 22:37:07,856 - data.news_fetcher - ERROR - finnhub-python library not found. Install with:
+pip install finnhub-python>=2.4.0
+2025-12-18 22:37:07,856 - data.feature_engineer - WARNING - Direct news fetch failed for NVDA: No module named 'finnhub'
+/home/thunderboltdy/ai-stocks/python-ai-service/data/feature_engineer.py:1229: UserWarning: Feature engineering verified for look-ahead bias. All .shift() calls use positive or zero values. All .rolling() windows use past data only.
+  warnings.warn(
+2025-12-18 22:37:08,001 - data.feature_engineer - INFO - Cleaning features and handling NaN values (no look-ahead)...
+2025-12-18 22:37:08,009 - data.feature_engineer - WARNING - Filling remaining NaNs with neutral values: {'returns': 1, 'log_returns': 1, 'volatility_5d': 5, 'volatility_20d': 20, 'rsi': 13, 'macd': 25, 'macd_signal': 33, 'macd_histogram': 33, 'stoch_k': 13, 'stoch_d': 15, 'sma_10': 9, 'sma_20': 19, 'sma_50': 49, 'price_to_sma20': 19, 'price_to_sma50': 49, 'sma_10_20_cross': 19, 'bb_upper': 19, 'bb_lower': 19, 'bb_width': 19, 'bb_position': 19, 'realized_vol_20d': 2, 'rv_iv_spread': 2, 'volume_sma': 19, 'volume_ratio': 19, 'momentum_1d': 1, 'momentum_5d': 5, 'momentum_20d': 20, 'rate_of_change_10d': 10, 'vol_ratio_5_20': 20, 'volume_price_trend': 19, 'accumulation_distribution': 38, 'return_lag_1': 2, 'return_lag_2': 3, 'return_lag_5': 6, 'velocity_5d': 5, 'velocity_10d': 10, 'velocity_20d': 20, 'acceleration_5d': 10, 'rsi_velocity': 18, 'volume_velocity': 5, 'gap_up': 1, 'gap_down': 1, 'rsi_momentum': 18, 'momentum_divergence_5d': 18, 'momentum_divergence_20d': 33, 'distance_to_fib_382': 20, 'distance_to_fib_500': 20, 'distance_to_fib_618': 20, 'vwap_deviation': 19, 'vwap_volume_ratio': 19, 'vwap_band_position': 19, 'vw_momentum_5d': 5, 'vw_momentum_20d': 20}
+2025-12-18 22:37:08,037 - data.feature_engineer - INFO - [OK] All NaN values handled. Shape: (6770, 162)
+2025-12-18 22:37:08,052 - data.feature_engineer - INFO - [AUDIT] Feature Audit for NVDA:
+2025-12-18 22:37:08,053 - data.feature_engineer - INFO -    Actual: 155 features
+2025-12-18 22:37:08,053 - data.feature_engineer - INFO -    Expected: 147 features
+2025-12-18 22:37:08,053 - data.feature_engineer - WARNING -    [WARN] Extra features (8): ['momentum_low_vol', 'momentum_high_vol', 'regime_normal_vol', 'volatility_regime_high', 'stoch_k_high_vol', 'stoch_k_low_vol', 'bb_position_high_vol', 'volatility_regime_low']
+2025-12-18 22:37:08,053 - data.feature_engineer - INFO -    Categories: {'price_momentum': 19, 'volatility': 42, 'volume': 21, 'trend': 18, 'pattern': 5, 'support_resistance': 11, 'sentiment': 17, 'regime': 13, 'divergence': 21, 'new_v31': 21}
+2025-12-18 22:37:08,081 - data.feature_engineer - INFO - [OK] Feature engineering complete: (6770, 152) with EXACTLY 147 features
+2025-12-18 22:37:08,082 - data.feature_engineer - INFO - [OK] Feature engineering complete: (6770, 152)
+2025-12-18 22:37:08,089 - data.cache_manager - INFO -   3/3 Preparing training data...
+2025-12-18 22:37:08,773 - data.cache_manager - INFO - 🔍 Validating data alignment...
+2025-12-18 22:37:08,776 - data.cache_manager - INFO - ✓ Sequence alignment validated (20 samples checked)
+2025-12-18 22:37:08,777 - data.cache_manager - INFO - ✓ Alignment validation passed
+2025-12-18 22:37:08,777 - data.cache_manager - WARNING - Feature count mismatch in prepared data: expected=147, got=150
+2025-12-18 22:37:08,777 - data.cache_manager - INFO -   Raw shape: (6770, 7)
+2025-12-18 22:37:08,777 - data.cache_manager - INFO -   Engineered shape: (6770, 152)
+2025-12-18 22:37:08,777 - data.cache_manager - INFO -   Prepared shape: (6768, 155)
+2025-12-18 22:37:08,777 - data.cache_manager - INFO -   Index alignment: 6768 rows preserved from 6770
+2025-12-18 22:37:08,802 - data.cache_manager - INFO - ✓ Cached data for NVDA: (6768, 155)
+2025-12-18 22:37:08,802 - __main__ - INFO - Using cached data: (6768, 155)
+2025-12-18 22:37:08,802 - __main__ - INFO - Found 14 sentiment features - ensure they are properly lagged
+2025-12-18 22:37:08,802 - __main__ - INFO - ✓ No look-ahead leakage detected in feature names
+2025-12-18 22:37:08,804 - __main__ - INFO - Target range after clipping: [-0.1000, 0.1000]
+2025-12-18 22:37:08,806 - __main__ - INFO - Data shape: X=(6768, 147), y=(6768,)
+2025-12-18 22:37:08,806 - __main__ - INFO - 
+============================================================
+2025-12-18 22:37:08,806 - __main__ - INFO - Training XGBoost...
+2025-12-18 22:37:08,806 - __main__ - INFO - ============================================================
+2025-12-18 22:37:08,806 - __main__ - INFO - Walk-forward CV: 5 splits, test_size=60, gap=1
+2025-12-18 22:37:08,806 - __main__ - INFO - Total samples: 6768, min train size: 1128
+2025-12-18 22:37:08,806 - __main__ - INFO - 
+--- Fold 1/5 ---
+2025-12-18 22:37:08,806 - __main__ - INFO - Train: 6467 samples (indices 0-6466)
+2025-12-18 22:37:08,807 - __main__ - INFO - Val: 60 samples (indices 6468-6527)
+2025-12-18 22:37:09,624 - __main__ - INFO -   XGBoost early stopped at iteration 121
+2025-12-18 22:37:09,626 - __main__ - WARNING -   ⚠️ Fold 1 SEVERE BIAS: 93.3% positive
+2025-12-18 22:37:09,628 - __main__ - INFO -   MSE: 0.000509, MAE: 0.018185, R²: 0.0515
+2025-12-18 22:37:09,628 - __main__ - INFO -   Direction Acc: 0.5167, IC: 0.2760
+2025-12-18 22:37:09,628 - __main__ - INFO -   Prediction std: 0.003070
+/home/thunderboltdy/ai-stocks/python-ai-service/training/train_gbm_baseline.py:191: UserWarning: No artists with labels found to put in legend.  Note that artists whose label start with an underscore are ignored when legend() is called with no argument.
+  axes[1].legend()
+2025-12-18 22:37:09,886 - __main__ - INFO - ✓ Training curve saved: logs/xgb_training_curve_NVDA_fold1.png
+2025-12-18 22:37:09,886 - __main__ - INFO - 
+--- Fold 2/5 ---
+2025-12-18 22:37:09,886 - __main__ - INFO - Train: 6527 samples (indices 0-6526)
+2025-12-18 22:37:09,886 - __main__ - INFO - Val: 60 samples (indices 6528-6587)
+2025-12-18 22:37:13,345 - __main__ - INFO -   MSE: 0.001606, MAE: 0.030506, R²: -0.1521
+2025-12-18 22:37:13,345 - __main__ - INFO -   Direction Acc: 0.4833, IC: 0.0217
+2025-12-18 22:37:13,345 - __main__ - INFO -   Prediction std: 0.011932
+/home/thunderboltdy/ai-stocks/python-ai-service/training/train_gbm_baseline.py:191: UserWarning: No artists with labels found to put in legend.  Note that artists whose label start with an underscore are ignored when legend() is called with no argument.
+  axes[1].legend()
+2025-12-18 22:37:13,620 - __main__ - INFO - ✓ Training curve saved: logs/xgb_training_curve_NVDA_fold2.png
+2025-12-18 22:37:13,621 - __main__ - INFO - 
+--- Fold 3/5 ---
+2025-12-18 22:37:13,621 - __main__ - INFO - Train: 6587 samples (indices 0-6586)
+2025-12-18 22:37:13,621 - __main__ - INFO - Val: 60 samples (indices 6588-6647)
+2025-12-18 22:37:16,824 - __main__ - INFO -   MSE: 0.001238, MAE: 0.027734, R²: -0.2449
+2025-12-18 22:37:16,824 - __main__ - INFO -   Direction Acc: 0.4000, IC: -0.0018
+2025-12-18 22:37:16,824 - __main__ - INFO -   Prediction std: 0.012014
+/home/thunderboltdy/ai-stocks/python-ai-service/training/train_gbm_baseline.py:191: UserWarning: No artists with labels found to put in legend.  Note that artists whose label start with an underscore are ignored when legend() is called with no argument.
+  axes[1].legend()
+2025-12-18 22:37:17,061 - __main__ - INFO - ✓ Training curve saved: logs/xgb_training_curve_NVDA_fold3.png
+2025-12-18 22:37:17,062 - __main__ - INFO - 
+--- Fold 4/5 ---
+2025-12-18 22:37:17,062 - __main__ - INFO - Train: 6647 samples (indices 0-6646)
+2025-12-18 22:37:17,062 - __main__ - INFO - Val: 60 samples (indices 6648-6707)
+2025-12-18 22:37:19,925 - __main__ - INFO -   MSE: 0.000289, MAE: 0.013008, R²: 0.0866
+2025-12-18 22:37:19,926 - __main__ - INFO -   Direction Acc: 0.5667, IC: 0.2957
+2025-12-18 22:37:19,926 - __main__ - INFO -   Prediction std: 0.005331
+/home/thunderboltdy/ai-stocks/python-ai-service/training/train_gbm_baseline.py:191: UserWarning: No artists with labels found to put in legend.  Note that artists whose label start with an underscore are ignored when legend() is called with no argument.
+  axes[1].legend()
+2025-12-18 22:37:20,174 - __main__ - INFO - ✓ Training curve saved: logs/xgb_training_curve_NVDA_fold4.png
+2025-12-18 22:37:20,175 - __main__ - INFO - 
+--- Fold 5/5 ---
+2025-12-18 22:37:20,175 - __main__ - INFO - Train: 6707 samples (indices 0-6706)
+2025-12-18 22:37:20,175 - __main__ - INFO - Val: 60 samples (indices 6708-6767)
+2025-12-18 22:37:23,032 - __main__ - INFO -   MSE: 0.000616, MAE: 0.020264, R²: -0.1710
+2025-12-18 22:37:23,032 - __main__ - INFO -   Direction Acc: 0.4500, IC: -0.0740
+2025-12-18 22:37:23,032 - __main__ - INFO -   Prediction std: 0.007614
+/home/thunderboltdy/ai-stocks/python-ai-service/training/train_gbm_baseline.py:191: UserWarning: No artists with labels found to put in legend.  Note that artists whose label start with an underscore are ignored when legend() is called with no argument.
+  axes[1].legend()
+2025-12-18 22:37:23,279 - __main__ - INFO - ✓ Training curve saved: logs/xgb_training_curve_NVDA_fold5.png
+2025-12-18 22:37:23,281 - __main__ - INFO - 
+=== XGB CV Summary ===
+2025-12-18 22:37:23,281 - __main__ - INFO - MSE: 0.000852 ± 0.000550
+2025-12-18 22:37:23,281 - __main__ - INFO - MAE: 0.021939 ± 0.007135
+2025-12-18 22:37:23,281 - __main__ - INFO - R²: -0.0860 ± 0.1462
+2025-12-18 22:37:23,281 - __main__ - INFO - Direction Acc: 0.4833 ± 0.0635
+2025-12-18 22:37:23,281 - __main__ - INFO - IC: 0.1035 ± 0.1703
+2025-12-18 22:37:23,281 - __main__ - INFO - Avg prediction std: 0.007992
+2025-12-18 22:37:23,282 - __main__ - INFO - Training final XGB model on 6768 samples...
+2025-12-18 22:37:23,567 - __main__ - INFO - Final XGBoost model: best iteration = 46
+/home/thunderboltdy/ai-stocks/python-ai-service/training/train_gbm_baseline.py:191: UserWarning: No artists with labels found to put in legend.  Note that artists whose label start with an underscore are ignored when legend() is called with no argument.
+  axes[1].legend()
+2025-12-18 22:37:23,821 - __main__ - INFO - ✓ Training curve saved: logs/xgb_training_curve_NVDA_final.png
+2025-12-18 22:37:23,823 - __main__ - INFO - Prediction stats: mean=0.000917, std=0.004062
+2025-12-18 22:37:23,823 - __main__ - INFO - Prediction distribution: 82.2% positive, 17.8% negative
+2025-12-18 22:37:23,823 - __main__ - INFO - Final IC: 0.5038, Direction Acc: 0.5912
+2025-12-18 22:37:23,823 - __main__ - WARNING - ⚠️ Predictions are biased: 82.2% positive, 17.8% negative
+2025-12-18 22:37:23,841 - __main__ - INFO - XGBoost model saved to saved_models/NVDA/gbm/xgb_reg.joblib
+2025-12-18 22:37:23,841 - __main__ - INFO - 
+============================================================
+2025-12-18 22:37:23,841 - __main__ - INFO - Training LightGBM...
+2025-12-18 22:37:23,841 - __main__ - INFO - ============================================================
+2025-12-18 22:37:23,842 - __main__ - INFO - Walk-forward CV: 5 splits, test_size=60, gap=1
+2025-12-18 22:37:23,842 - __main__ - INFO - Total samples: 6768, min train size: 1128
+2025-12-18 22:37:23,842 - __main__ - INFO - 
+--- Fold 1/5 ---
+2025-12-18 22:37:23,842 - __main__ - INFO - Train: 6467 samples (indices 0-6466)
+2025-12-18 22:37:23,842 - __main__ - INFO - Val: 60 samples (indices 6468-6527)
+2025-12-18 22:37:24,282 - __main__ - INFO -   LightGBM trained 73 trees
+/home/thunderboltdy/miniconda3/envs/ai-stocks/lib/python3.10/site-packages/sklearn/utils/validation.py:2749: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+2025-12-18 22:37:24,284 - __main__ - INFO -   LightGBM Diagnostics (Fold 1):
+2025-12-18 22:37:24,284 - __main__ - INFO -     Prediction std: 0.001887
+2025-12-18 22:37:24,284 - __main__ - INFO -     Positive predictions: 96.7%
+2025-12-18 22:37:24,284 - __main__ - INFO -     Mean prediction: 0.002032
+2025-12-18 22:37:24,284 - __main__ - WARNING -   ⚠️ Fold 1 SEVERE BIAS: 96.7% positive
+2025-12-18 22:37:24,285 - __main__ - INFO -   MSE: 0.000526, MAE: 0.018700, R²: 0.0201
+2025-12-18 22:37:24,286 - __main__ - INFO -   Direction Acc: 0.5167, IC: 0.1685
+2025-12-18 22:37:24,286 - __main__ - INFO -   Prediction std: 0.001887
+/home/thunderboltdy/ai-stocks/python-ai-service/training/train_gbm_baseline.py:191: UserWarning: No artists with labels found to put in legend.  Note that artists whose label start with an underscore are ignored when legend() is called with no argument.
+  axes[1].legend()
+2025-12-18 22:37:24,534 - __main__ - INFO - ✓ Training curve saved: logs/lgb_training_curve_NVDA_fold1.png
+2025-12-18 22:37:24,535 - __main__ - INFO - 
+--- Fold 2/5 ---
+2025-12-18 22:37:24,535 - __main__ - INFO - Train: 6527 samples (indices 0-6526)
+2025-12-18 22:37:24,535 - __main__ - INFO - Val: 60 samples (indices 6528-6587)
+2025-12-18 22:37:27,065 - __main__ - INFO -   LightGBM trained 1000 trees
+/home/thunderboltdy/miniconda3/envs/ai-stocks/lib/python3.10/site-packages/sklearn/utils/validation.py:2749: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+2025-12-18 22:37:27,068 - __main__ - INFO -   LightGBM Diagnostics (Fold 2):
+2025-12-18 22:37:27,068 - __main__ - INFO -     Prediction std: 0.011060
+2025-12-18 22:37:27,068 - __main__ - INFO -     Positive predictions: 65.0%
+2025-12-18 22:37:27,068 - __main__ - INFO -     Mean prediction: 0.004872
+2025-12-18 22:37:27,070 - __main__ - INFO -   MSE: 0.001581, MAE: 0.029598, R²: -0.1340
+2025-12-18 22:37:27,070 - __main__ - INFO -   Direction Acc: 0.5500, IC: -0.0021
+2025-12-18 22:37:27,070 - __main__ - INFO -   Prediction std: 0.011060
+/home/thunderboltdy/ai-stocks/python-ai-service/training/train_gbm_baseline.py:191: UserWarning: No artists with labels found to put in legend.  Note that artists whose label start with an underscore are ignored when legend() is called with no argument.
+  axes[1].legend()
+2025-12-18 22:37:27,316 - __main__ - INFO - ✓ Training curve saved: logs/lgb_training_curve_NVDA_fold2.png
+2025-12-18 22:37:27,317 - __main__ - INFO - 
+--- Fold 3/5 ---
+2025-12-18 22:37:27,317 - __main__ - INFO - Train: 6587 samples (indices 0-6586)
+2025-12-18 22:37:27,317 - __main__ - INFO - Val: 60 samples (indices 6588-6647)
+2025-12-18 22:37:29,789 - __main__ - INFO -   LightGBM trained 1000 trees
+/home/thunderboltdy/miniconda3/envs/ai-stocks/lib/python3.10/site-packages/sklearn/utils/validation.py:2749: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+2025-12-18 22:37:29,791 - __main__ - INFO -   LightGBM Diagnostics (Fold 3):
+2025-12-18 22:37:29,791 - __main__ - INFO -     Prediction std: 0.010228
+2025-12-18 22:37:29,791 - __main__ - INFO -     Positive predictions: 55.0%
+2025-12-18 22:37:29,791 - __main__ - INFO -     Mean prediction: 0.000778
+2025-12-18 22:37:29,792 - __main__ - INFO -   MSE: 0.001115, MAE: 0.025032, R²: -0.1214
+2025-12-18 22:37:29,792 - __main__ - INFO -   Direction Acc: 0.5500, IC: -0.0003
+2025-12-18 22:37:29,792 - __main__ - INFO -   Prediction std: 0.010228
+/home/thunderboltdy/ai-stocks/python-ai-service/training/train_gbm_baseline.py:191: UserWarning: No artists with labels found to put in legend.  Note that artists whose label start with an underscore are ignored when legend() is called with no argument.
+  axes[1].legend()
+2025-12-18 22:37:30,045 - __main__ - INFO - ✓ Training curve saved: logs/lgb_training_curve_NVDA_fold3.png
+2025-12-18 22:37:30,045 - __main__ - INFO - 
+--- Fold 4/5 ---
+2025-12-18 22:37:30,045 - __main__ - INFO - Train: 6647 samples (indices 0-6646)
+2025-12-18 22:37:30,045 - __main__ - INFO - Val: 60 samples (indices 6648-6707)
+2025-12-18 22:37:33,092 - __main__ - INFO -   LightGBM trained 1000 trees
+/home/thunderboltdy/miniconda3/envs/ai-stocks/lib/python3.10/site-packages/sklearn/utils/validation.py:2749: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+2025-12-18 22:37:33,094 - __main__ - INFO -   LightGBM Diagnostics (Fold 4):
+2025-12-18 22:37:33,094 - __main__ - INFO -     Prediction std: 0.005552
+2025-12-18 22:37:33,094 - __main__ - INFO -     Positive predictions: 71.7%
+2025-12-18 22:37:33,094 - __main__ - INFO -     Mean prediction: 0.003173
+2025-12-18 22:37:33,095 - __main__ - INFO -   MSE: 0.000304, MAE: 0.013265, R²: 0.0385
+2025-12-18 22:37:33,096 - __main__ - INFO -   Direction Acc: 0.5667, IC: 0.2260
+2025-12-18 22:37:33,096 - __main__ - INFO -   Prediction std: 0.005552
+/home/thunderboltdy/ai-stocks/python-ai-service/training/train_gbm_baseline.py:191: UserWarning: No artists with labels found to put in legend.  Note that artists whose label start with an underscore are ignored when legend() is called with no argument.
+  axes[1].legend()
+2025-12-18 22:37:33,466 - __main__ - INFO - ✓ Training curve saved: logs/lgb_training_curve_NVDA_fold4.png
+2025-12-18 22:37:33,466 - __main__ - INFO - 
+--- Fold 5/5 ---
+2025-12-18 22:37:33,466 - __main__ - INFO - Train: 6707 samples (indices 0-6706)
+2025-12-18 22:37:33,466 - __main__ - INFO - Val: 60 samples (indices 6708-6767)
+2025-12-18 22:37:36,156 - __main__ - INFO -   LightGBM trained 1000 trees
+/home/thunderboltdy/miniconda3/envs/ai-stocks/lib/python3.10/site-packages/sklearn/utils/validation.py:2749: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+2025-12-18 22:37:36,157 - __main__ - INFO -   LightGBM Diagnostics (Fold 5):
+2025-12-18 22:37:36,158 - __main__ - INFO -     Prediction std: 0.006683
+2025-12-18 22:37:36,158 - __main__ - INFO -     Positive predictions: 68.3%
+2025-12-18 22:37:36,158 - __main__ - INFO -     Mean prediction: 0.002216
+2025-12-18 22:37:36,159 - __main__ - INFO -   MSE: 0.000603, MAE: 0.019440, R²: -0.1472
+2025-12-18 22:37:36,159 - __main__ - INFO -   Direction Acc: 0.4667, IC: -0.0867
+2025-12-18 22:37:36,159 - __main__ - INFO -   Prediction std: 0.006683
+/home/thunderboltdy/ai-stocks/python-ai-service/training/train_gbm_baseline.py:191: UserWarning: No artists with labels found to put in legend.  Note that artists whose label start with an underscore are ignored when legend() is called with no argument.
+  axes[1].legend()
+2025-12-18 22:37:36,410 - __main__ - INFO - ✓ Training curve saved: logs/lgb_training_curve_NVDA_fold5.png
+2025-12-18 22:37:36,412 - __main__ - INFO - 
+=== LGB CV Summary ===
+2025-12-18 22:37:36,412 - __main__ - INFO - MSE: 0.000826 ± 0.000516
+2025-12-18 22:37:36,413 - __main__ - INFO - MAE: 0.021207 ± 0.006275
+2025-12-18 22:37:36,413 - __main__ - INFO - R²: -0.0688 ± 0.0902
+2025-12-18 22:37:36,413 - __main__ - INFO - Direction Acc: 0.5300 ± 0.0398
+2025-12-18 22:37:36,413 - __main__ - INFO - IC: 0.0611 ± 0.1307
+2025-12-18 22:37:36,413 - __main__ - INFO - Avg prediction std: 0.007082
+2025-12-18 22:37:36,414 - __main__ - INFO - Training final LGB model on 6768 samples...
+2025-12-18 22:37:36,791 - __main__ - INFO - Phase 1 complete: best_iter=15, using 200 trees for final model
+2025-12-18 22:37:36,791 - __main__ - INFO - Phase 2 config: {'n_estimators': 200, 'learning_rate': 0.03, 'max_depth': 6, 'num_leaves': 31, 'subsample': 0.8, 'colsample_bytree': 0.8, 'min_child_samples': 20, 'reg_alpha': 0.005, 'reg_lambda': 0.01, 'min_split_gain': 0.0, 'random_state': 42, 'n_jobs': -1, 'objective': 'huber', 'alpha': 0.9, 'metric': ['rmse'], 'verbosity': -1, 'force_col_wise': True, 'deterministic': True}
+2025-12-18 22:37:37,203 - __main__ - INFO - Phase 2 complete: Final LightGBM model trained 200 trees
+/home/thunderboltdy/ai-stocks/python-ai-service/training/train_gbm_baseline.py:191: UserWarning: No artists with labels found to put in legend.  Note that artists whose label start with an underscore are ignored when legend() is called with no argument.
+  axes[1].legend()
+2025-12-18 22:37:37,434 - __main__ - INFO - ✓ Training curve saved: logs/lgb_training_curve_NVDA_final.png
+/home/thunderboltdy/miniconda3/envs/ai-stocks/lib/python3.10/site-packages/sklearn/utils/validation.py:2749: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+2025-12-18 22:37:37,442 - __main__ - INFO - Prediction stats: mean=0.001115, std=0.008748
+2025-12-18 22:37:37,442 - __main__ - INFO - Prediction distribution: 68.5% positive, 31.5% negative
+2025-12-18 22:37:37,442 - __main__ - INFO - Final IC: 0.7145, Direction Acc: 0.7017
+2025-12-18 22:37:37,459 - __main__ - INFO - LightGBM model saved to saved_models/NVDA/gbm/lgb_reg.joblib
+2025-12-18 22:37:37,460 - __main__ - INFO - 
+✓ GBM training complete for NVDA
+2025-12-18 22:37:37,460 - __main__ - INFO -   Models saved to: saved_models/NVDA/gbm
+[INFO] Adding volatility spread features for NVDA...
+✓ Fetched VIX data: 6769 days
+✓ Added volatility spread features (latest spread: 73.98%)
+[OK] Volatility spread features added (5 new columns)
+   Regime distribution - LOW: 2.45%, NORMAL: 88.32%, HIGH: 9.23%
+   Current regime: NORMAL_VOL | Regime transitions/year: 9.05
+   -> Preparing sentiment features (loads FinBERT + news data on first run, may take a few minutes)...
+
+=== Fetching Sentiment Features for NVDA ===
+Fetching news from 1999-01-22 to 2025-12-18 (9887 days)...
+[WARN] No news data available or fetch failed. Using zero-filled sentiment features.
+
+=== Look-Ahead Bias Verification ===
+Checking for common look-ahead patterns...
+[OK] All shifts use positive or zero values (no negative shifts)
+[OK] All rolling windows use past data only
+[OK] Forward-looking features only in target labels (handled separately)
+
+=== Feature Quality Check ===
+[OK] No features with >5% NaN values
+[OK] No inf values (successfully handled)
+
+[WARN] Features with wide ranges (may need clipping):
+   rsi: [25.6192, 81.8151] range=56.1958
+   stoch_k: [0.9285, 99.4878] range=98.5592
+   stoch_d: [4.1295, 96.9105] range=92.7810
+   rsi_low_vol: [0.0000, 66.2663] range=66.2663
+   rsi_high_vol: [0.0000, 63.6619] range=63.6619
+   ... and 17 more
+
+Total features: 157
+Total samples after cleaning: 6770
+Technical features by category (expected sum): 116
+Actual technical list length: 113
+Difference from canonical 113: 0
+Technical features by category (expected sum): 116
+Actual technical list length: 113
+Difference from canonical 113: 0
+
+=== Feature Count Diagnostic ===
+Expected features (count=147). Present feature cols (count=157).
+Extra 10 features (will be dropped): ['Dividends', 'Stock Splits', 'regime_normal_vol', 'bb_position_high_vol', 'stoch_k_low_vol', 'stoch_k_high_vol', 'momentum_low_vol', 'momentum_high_vol', 'volatility_regime_low', 'volatility_regime_high']
+Dropped unexpected columns: ['Dividends', 'Stock Splits', 'regime_normal_vol', 'bb_position_high_vol', 'stoch_k_low_vol', 'stoch_k_high_vol', 'momentum_low_vol', 'momentum_high_vol', 'volatility_regime_low', 'volatility_regime_high']
+Final feature count after auto-fix: 147
+Technical features by category (expected sum): 116
+Actual technical list length: 113
+Difference from canonical 113: 0
+Technical features by category (expected sum): 116
+Actual technical list length: 113
+Difference from canonical 113: 0
+✅ Training data prepared:
+   Total rows: 6768
+   Features: 147
+   Targets: ['target_1d']
+   Lost rows (NaN): 2
+
+=== Target Statistics (BEFORE clipping) ===
+Range: [-0.4344, 0.3536]
+Mean: 0.001232, Std: 0.037397
+Percentiles: 1%=-0.0975, 99%=0.1012
+P1.3: Winsorized 270 values (3.99%)
+Clipped 0 values (0.00%)
+\n=== Target Statistics (AFTER scaling) ===
+Mean: -0.000000 (should be ~0)
+Std: 1.000000 (should be ~1)
+Range: [-2.52, 2.57]
+Saved target engineering diagnostics to: data/target_engineering_comparison.png
+Technical features by category (expected sum): 116
+Actual technical list length: 113
+Difference from canonical 113: 0
+Training until validation scores don't improve for 100 rounds
+[100]	training's rmse: 0.0299923	validation's rmse: 0.0230429
+Early stopping, best iteration is:
+[73]	training's rmse: 0.0308176	validation's rmse: 0.0229292
+[100]	training's rmse: 0.0298846	validation's rmse: 0.0381707
+[200]	training's rmse: 0.0273991	validation's rmse: 0.0385811
+[300]	training's rmse: 0.0253759	validation's rmse: 0.0385522
+[400]	training's rmse: 0.0234579	validation's rmse: 0.0386678
+[500]	training's rmse: 0.0217703	validation's rmse: 0.0391132
+[600]	training's rmse: 0.020327	validation's rmse: 0.0393237
+[700]	training's rmse: 0.0188716	validation's rmse: 0.0394165
+[800]	training's rmse: 0.0176113	validation's rmse: 0.039635
+[900]	training's rmse: 0.0165268	validation's rmse: 0.0397606
+[1000]	training's rmse: 0.015562	validation's rmse: 0.0397621
+[100]	training's rmse: 0.0300618	validation's rmse: 0.031805
+[200]	training's rmse: 0.0274601	validation's rmse: 0.0317018
+[300]	training's rmse: 0.0252948	validation's rmse: 0.0318953
+[400]	training's rmse: 0.0234993	validation's rmse: 0.0323132
+[500]	training's rmse: 0.0216715	validation's rmse: 0.0328776
+[600]	training's rmse: 0.0201417	validation's rmse: 0.0331547
+[700]	training's rmse: 0.0187118	validation's rmse: 0.0333288
+[800]	training's rmse: 0.0174423	validation's rmse: 0.0333304
+[900]	training's rmse: 0.0162977	validation's rmse: 0.0333385
+[1000]	training's rmse: 0.0151969	validation's rmse: 0.0333966
+[100]	training's rmse: 0.0301817	validation's rmse: 0.0177642
+[200]	training's rmse: 0.0276641	validation's rmse: 0.0173784
+[300]	training's rmse: 0.0255001	validation's rmse: 0.017243
+[400]	training's rmse: 0.023481	validation's rmse: 0.0172185
+[500]	training's rmse: 0.0215646	validation's rmse: 0.0174121
+[600]	training's rmse: 0.0201414	validation's rmse: 0.0173023
+[700]	training's rmse: 0.018773	validation's rmse: 0.0173585
+[800]	training's rmse: 0.0174124	validation's rmse: 0.017455
+[900]	training's rmse: 0.0162482	validation's rmse: 0.0173328
+[1000]	training's rmse: 0.0152319	validation's rmse: 0.0174487
+[100]	training's rmse: 0.0301309	validation's rmse: 0.022933
+[200]	training's rmse: 0.0276561	validation's rmse: 0.0233085
+[300]	training's rmse: 0.0253677	validation's rmse: 0.0237601
+[400]	training's rmse: 0.0233581	validation's rmse: 0.0236186
+[500]	training's rmse: 0.0217209	validation's rmse: 0.0237455
+[600]	training's rmse: 0.0201325	validation's rmse: 0.0238866
+[700]	training's rmse: 0.0187416	validation's rmse: 0.0240826
+[800]	training's rmse: 0.0174548	validation's rmse: 0.0241681
+[900]	training's rmse: 0.0162106	validation's rmse: 0.0245349
+[1000]	training's rmse: 0.0152139	validation's rmse: 0.0245629
+Training until validation scores don't improve for 100 rounds
+[100]	training's rmse: 0.0299238	validation's rmse: 0.0310614
+Early stopping, best iteration is:
+[15]	training's rmse: 0.0328971	validation's rmse: 0.0309434
+
+============================================================
+TRAINING SUMMARY
+============================================================
+
+XGB:
+  MSE:  0.000852 ± 0.000550
+  MAE:  0.021939 ± 0.007135
+  R²:   -0.0860 ± 0.1462
+  Dir:  0.4833 ± 0.0635
+  IC:   0.1035 ± 0.1703
+
+LGB:
+  MSE:  0.000826 ± 0.000516
+  MAE:  0.021207 ± 0.006275
+  R²:   -0.0688 ± 0.0902
+  Dir:  0.5300 ± 0.0398
+  IC:   0.0611 ± 0.1307

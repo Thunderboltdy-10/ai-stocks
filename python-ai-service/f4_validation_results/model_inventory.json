@@ -1,0 +1,69 @@
+{
+  "metadata": {
+    "scan_date": "2025-12-20T21:44:04.910108",
+    "saved_models_dir": "/home/thunderboltdy/ai-stocks/python-ai-service/saved_models",
+    "total_symbols": 10
+  },
+  "inventory": {
+    "MSFT": {
+      "regressor": true,
+      "classifiers": false,
+      "gbm": false,
+      "quantile": false
+    },
+    "KO": {
+      "regressor": true,
+      "classifiers": true,
+      "gbm": false,
+      "quantile": false
+    },
+    "ASML": {
+      "regressor": true,
+      "classifiers": true,
+      "gbm": false,
+      "quantile": false
+    },
+    "AAPL": {
+      "regressor": true,
+      "classifiers": true,
+      "gbm": false,
+      "quantile": false
+    },
+    "SPY": {
+      "regressor": false,
+      "classifiers": false,
+      "gbm": false,
+      "quantile": false
+    },
+    "META": {
+      "regressor": false,
+      "classifiers": false,
+      "gbm": false,
+      "quantile": false
+    },
+    "TSLA": {
+      "regressor": false,
+      "classifiers": false,
+      "gbm": false,
+      "quantile": false
+    },
+    "GOOGL": {
+      "regressor": false,
+      "classifiers": false,
+      "gbm": false,
+      "quantile": false
+    },
+    "NVDA": {
+      "regressor": false,
+      "classifiers": false,
+      "gbm": false,
+      "quantile": false
+    },
+    "IWM": {
+      "regressor": true,
+      "classifiers": true,
+      "gbm": false,
+      "quantile": false
+    }
+  }
+}

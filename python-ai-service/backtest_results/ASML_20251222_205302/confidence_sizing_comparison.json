@@ -1,0 +1,11 @@
+{
+  "symbol": "ASML",
+  "fused_metrics": {
+    "cum_return": 0.3612667351384251,
+    "sharpe": 8.05612915074482
+  },
+  "hybrid_metrics": {
+    "cum_return": 0.3612667351384251,
+    "sharpe": 8.05612915074482
+  }
+}

@@ -1,0 +1,34 @@
+2025-12-16 23:26:51 | INFO     | training.TSLA.regressor | Training log initialized: /home/thunderboltdy/ai-stocks/python-ai-service/training_logs/TSLA_regressor_20251216_232651.log
+2025-12-16 23:26:51 | DEBUG    | training.TSLA.regressor | Symbol: TSLA, Model Type: regressor
+2025-12-16 23:26:51 | DEBUG    | training.TSLA.regressor | Python version: 3.10.19 (main, Oct 21 2025, 16:43:05) [GCC 11.2.0]
+2025-12-16 23:26:51 | INFO     | training.TSLA.regressor | Starting regressor training for TSLA
+2025-12-16 23:26:51 | INFO     | training.TSLA.regressor | Arguments: epochs=100, batch_size=512, sequence_length=90, seed=42
+2025-12-16 23:29:03 | INFO     | training.TSLA.regressor | [OK] Feature count validated: 147 features
+2025-12-16 23:29:03 | INFO     | training.TSLA.regressor | Using all 147 features
+2025-12-16 23:29:03 | INFO     | training.TSLA.regressor | 
+2025-12-16 23:29:03 | INFO     | training.TSLA.regressor | ============================================================
+2025-12-16 23:29:03 | INFO     | training.TSLA.regressor | TARGET DISTRIBUTION CHECK
+2025-12-16 23:29:03 | INFO     | training.TSLA.regressor | ============================================================
+2025-12-16 23:29:03 | INFO     | training.TSLA.regressor |    Positive: 51.7% (2,011 samples) | mean: +2.59%
+2025-12-16 23:29:03 | INFO     | training.TSLA.regressor |    Negative: 48.0% (1,868 samples) | mean: -2.48%
+2025-12-16 23:29:03 | INFO     | training.TSLA.regressor |    Zero:     0.3% (10 samples)
+2025-12-16 23:29:03 | INFO     | training.TSLA.regressor |    Overall:  mean=+0.147%, std=3.628%
+2025-12-16 23:29:03 | INFO     | training.TSLA.regressor | 
+2025-12-16 23:29:03 | INFO     | training.TSLA.regressor |    Percentiles:
+2025-12-16 23:29:03 | INFO     | training.TSLA.regressor |       10th: -3.748%
+2025-12-16 23:29:03 | INFO     | training.TSLA.regressor |       25th: -1.664%
+2025-12-16 23:29:03 | INFO     | training.TSLA.regressor |       50th: +0.125% (median)
+2025-12-16 23:29:03 | INFO     | training.TSLA.regressor |       75th: +1.944%
+2025-12-16 23:29:03 | INFO     | training.TSLA.regressor |       90th: +4.001%
+2025-12-16 23:29:03 | INFO     | training.TSLA.regressor | 
+2025-12-16 23:29:03 | INFO     | training.TSLA.regressor | [OK] Distribution is balanced
+2025-12-16 23:29:03 | INFO     | training.TSLA.regressor | ============================================================
+2025-12-16 23:29:03 | INFO     | training.TSLA.regressor |    [OK] Target distribution metadata saved to /home/thunderboltdy/ai-stocks/python-ai-service/saved_models/TSLA/target_distribution.json
+2025-12-16 23:29:06 | INFO     | training.TSLA.regressor | 
+=== Data Quality Pre-Check ===
+2025-12-16 23:29:06 | WARNING  | training.TSLA.regressor | [WARN] 37 features have near-zero variance
+2025-12-16 23:29:06 | INFO     | training.TSLA.regressor | Target range: [-1.2000, 1.2000]
+2025-12-16 23:29:06 | INFO     | training.TSLA.regressor | Target std: 0.7337 (should be ~1 after scaling)
+2025-12-16 23:29:06 | INFO     | training.TSLA.regressor | [OK] Data quality checks passed
+2025-12-16 23:29:06 | INFO     | training.TSLA.regressor | [OK] Training with 147 features (93 technical + 20 new + 34 sentiment)
+2025-12-16 23:29:06 | INFO     | training.TSLA.regressor |   Input shape: (3040, 90, 147) = (samples=3040, seq_len=90, features=147)

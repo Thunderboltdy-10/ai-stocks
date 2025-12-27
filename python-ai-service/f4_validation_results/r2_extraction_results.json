@@ -1,0 +1,86 @@
+{
+  "symbols_tested": [
+    "AAPL",
+    "ASML",
+    "IWM",
+    "KO",
+    "MSFT"
+  ],
+  "results": {
+    "AAPL": {
+      "status": "SUCCESS",
+      "r2_score": -0.011332197397041499,
+      "smape": 168.53458694773298,
+      "mae": 0.012915261869535087,
+      "dir_acc": 0.5275310834813499,
+      "metadata": {
+        "training_date": "N/A",
+        "sequence_length": "N/A",
+        "units": "N/A"
+      },
+      "warning": "NEGATIVE_R2"
+    },
+    "ASML": {
+      "status": "SUCCESS",
+      "r2_score": -0.011595882775060407,
+      "smape": 166.01886426569232,
+      "mae": 0.019568509114498627,
+      "dir_acc": 0.5264532984977139,
+      "metadata": {
+        "training_date": "N/A",
+        "sequence_length": "N/A",
+        "units": "N/A"
+      },
+      "warning": "NEGATIVE_R2"
+    },
+    "IWM": {
+      "status": "SUCCESS",
+      "r2_score": 2.1777025563052277e-05,
+      "smape": 171.19020036918593,
+      "mae": 0.0110726318396961,
+      "dir_acc": 0.5212933753943217,
+      "metadata": {
+        "training_date": "N/A",
+        "sequence_length": "N/A",
+        "units": "N/A"
+      }
+    },
+    "KO": {
+      "status": "SUCCESS",
+      "r2_score": -0.003110305624826948,
+      "smape": 176.62845022662844,
+      "mae": 0.007499016426294031,
+      "dir_acc": 0.49000624609618987,
+      "metadata": {
+        "training_date": "N/A",
+        "sequence_length": "N/A",
+        "units": "N/A"
+      },
+      "warning": "NEGATIVE_R2"
+    },
+    "MSFT": {
+      "status": "SUCCESS",
+      "r2_score": -0.2162206542681555,
+      "smape": 133.65580422317407,
+      "mae": 0.01435333622595747,
+      "dir_acc": 0.5397784491440081,
+      "metadata": {
+        "training_date": "N/A",
+        "sequence_length": "N/A",
+        "units": "N/A"
+      },
+      "warning": "NEGATIVE_R2"
+    }
+  },
+  "summary": {
+    "avg_r2": -0.048447452607904264,
+    "min_r2": -0.2162206542681555,
+    "max_r2": 2.1777025563052277e-05,
+    "symbols_with_negative_r2": [
+      "AAPL",
+      "ASML",
+      "KO",
+      "MSFT"
+    ]
+  }
+}

@@ -1,0 +1,336 @@
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1766314045.780387    5648 cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+[GPU] Mixed precision policy set to: mixed_float16
+[INFO] Training log initialized: /home/thunderboltdy/ai-stocks/python-ai-service/training_logs/AAPL_regressor_20251221_114730.log
+[INFO] Starting regressor training for AAPL
+[INFO] Arguments: epochs=20, batch_size=32, sequence_length=90, seed=42
+W0000 00:00:1766314050.163521    5648 gpu_device.cc:2456] TensorFlow was not built with CUDA kernel binaries compatible with compute capability 12.0a. CUDA kernels will be jit-compiled from PTX, which could take 30 minutes or longer.
+INFO:data.cache_manager:📰 Fetching fresh news for AAPL...
+INFO:data.news_fetcher:✓ Finnhub client initialized
+INFO:data.news_fetcher:Fetching news for AAPL (last 365 days)...
+INFO:data.news_fetcher:Retrieved 250 articles
+INFO:data.news_fetcher:✓ Processed 250 articles for AAPL
+INFO:data.cache_manager:✓ Cached 250 news articles for AAPL
+INFO:data.sentiment_features:Creating complete sentiment feature set...
+INFO:data.sentiment_features:Input: 250 news articles; price days: 11348
+INFO:data.sentiment_features:Initializing FinBERT sentiment analyzer...
+INFO:data.sentiment_analyzer:Initializing FinBERT Sentiment Analyzer...
+INFO:data.sentiment_analyzer:Using device: cuda
+INFO:data.sentiment_analyzer:Loading model: ProsusAI/finbert
+INFO:data.sentiment_analyzer:✓ Model loaded successfully
+INFO:data.sentiment_features:After sentiment analysis: 250 articles, 249 non-zero scores
+INFO:data.sentiment_features:After sentiment analysis: 250 articles
+INFO:data.sentiment_features:Aggregating sentiment for 250 news articles...
+INFO:data.sentiment_features:After aggregation: 13 unique days
+INFO:data.sentiment_features:✓ Aligned to 11348 trading days
+INFO:data.sentiment_features:   Days with news: 9
+INFO:data.sentiment_features:After daily aggregation: 11348 days with sentiment
+INFO:data.sentiment_features:✓ Created sentiment technical indicators (canonical)
+INFO:data.sentiment_features:✓ Created sentiment-price divergence features
+INFO:data.sentiment_features:✓ Created news volume impact features
+INFO:data.sentiment_features:✓ Created sentiment regime features (canonical)
+INFO:data.sentiment_features:✓ Created 34 sentiment features (canonical)
+ERROR:data.feature_engineer:❌ CRITICAL: All sentiment features are ZERO for AAPL!
+   This means news data fetch FAILED.
+   1. Check finnhub-python installed: pip install finnhub-python
+   2. Check FINNHUB_API_KEY set in .env
+   3. Check API key valid or rate limit not exceeded
+
+   Training will continue but sentiment features will have 0.0 importance!
+/home/thunderboltdy/ai-stocks/python-ai-service/data/feature_engineer.py:1239: UserWarning: Feature engineering verified for look-ahead bias. All .shift() calls use positive or zero values. All .rolling() windows use past data only.
+  warnings.warn(
+INFO:data.feature_engineer:Cleaning features and handling NaN values (no look-ahead)...
+WARNING:data.feature_engineer:Filling remaining NaNs with neutral values: {'returns': 1, 'log_returns': 1, 'volatility_5d': 5, 'volatility_20d': 20, 'rsi': 13, 'macd': 25, 'macd_signal': 33, 'macd_histogram': 33, 'stoch_k': 13, 'stoch_d': 15, 'sma_10': 9, 'sma_20': 19, 'sma_50': 49, 'price_to_sma20': 19, 'price_to_sma50': 49, 'sma_10_20_cross': 19, 'bb_upper': 19, 'bb_lower': 19, 'bb_width': 19, 'bb_position': 19, 'vix': 2288, 'realized_vol_20d': 2, 'rv_iv_spread': 2288, 'volume_sma': 19, 'volume_ratio': 19, 'momentum_1d': 1, 'momentum_5d': 5, 'momentum_20d': 20, 'rate_of_change_10d': 10, 'vol_ratio_5_20': 20, 'volume_price_trend': 19, 'accumulation_distribution': 38, 'return_lag_1': 2, 'return_lag_2': 3, 'return_lag_5': 6, 'velocity_5d': 5, 'velocity_10d': 10, 'velocity_20d': 20, 'acceleration_5d': 10, 'rsi_velocity': 18, 'volume_velocity': 6, 'gap_up': 1, 'gap_down': 1, 'rsi_momentum': 18, 'momentum_divergence_5d': 18, 'momentum_divergence_20d': 33, 'distance_to_fib_382': 20, 'distance_to_fib_500': 20, 'distance_to_fib_618': 20, 'vwap_deviation': 19, 'vwap_volume_ratio': 19, 'vwap_band_position': 19, 'vw_momentum_5d': 5, 'vw_momentum_20d': 20}
+INFO:data.feature_engineer:[OK] All NaN values handled. Shape: (11348, 172)
+INFO:data.feature_engineer:[AUDIT] Feature Audit for AAPL:
+INFO:data.feature_engineer:   Actual: 165 features
+INFO:data.feature_engineer:   Expected: 157 features
+WARNING:data.feature_engineer:   [WARN] Extra features (8): ['momentum_low_vol', 'stoch_k_high_vol', 'stoch_k_low_vol', 'volatility_regime_low', 'bb_position_high_vol', 'momentum_high_vol', 'regime_normal_vol', 'volatility_regime_high']
+INFO:data.feature_engineer:   Categories: {'price_momentum': 19, 'volatility': 43, 'volume': 22, 'trend': 18, 'pattern': 5, 'support_resistance': 13, 'sentiment': 17, 'regime': 13, 'divergence': 21, 'new_v31': 21}
+INFO:data.feature_engineer:[OK] Feature engineering complete: (11348, 162) with EXACTLY 157 features
+INFO:data.feature_engineer:[OK] Feature engineering complete: (11348, 162)
+INFO:data.cache_manager:  3/3 Preparing training data...
+INFO:data.cache_manager:🔍 Validating data alignment...
+INFO:data.cache_manager:✓ Sequence alignment validated (20 samples checked)
+INFO:data.cache_manager:✓ Alignment validation passed
+WARNING:data.cache_manager:Feature count mismatch in prepared data: expected=157, got=160
+INFO:data.cache_manager:  Raw shape: (11348, 7)
+INFO:data.cache_manager:  Engineered shape: (11348, 162)
+INFO:data.cache_manager:  Prepared shape: (11346, 165)
+INFO:data.cache_manager:  Index alignment: 11346 rows preserved from 11348
+INFO:data.cache_manager:✓ Cached data for AAPL: (11346, 165)
+[GPU] Found 1 GPU(s): ['/physical_device:GPU:0']
+[GPU] Memory growth enabled
+[GPU] Using float32 for training (mixed precision disabled for stability)
+
+======================================================================
+  TRAINING 1-DAY REGRESSOR: AAPL
+======================================================================
+
+Target scaler: RobustScaler (clipped to ±0.15)
+Log targets: False | Target noise std: 0.0001
+Multi-task learning: True
+Loss: huber (quantile=n/a)
+🛡️  ANTI-COLLAPSE LOSS: ENABLED (AntiCollapseDirectionalLoss - prevents variance collapse)
+Variance regularization: ENABLED (weight=0.5)
+Feature selection: DISABLED (using all features)
+
+[DATA] Loading data...
+[INFO] Adding volatility spread features for AAPL...
+✓ Fetched VIX data: 9059 days
+✓ Added volatility spread features (latest spread: -11.99%)
+[OK] Volatility spread features added (5 new columns)
+   Regime distribution - LOW: 2.84%, NORMAL: 89.35%, HIGH: 7.81%
+   Current regime: NORMAL_VOL | Regime transitions/year: 8.19
+   -> Calculating Phase 4 S/R features (Pivots, VAP, Dynamic Zones)...
+   -> Preparing sentiment features (loads FinBERT + news data on first run, may take a few minutes)...
+
+=== Fetching Sentiment Features for AAPL ===
+Fetching news from 1980-12-12 to 2025-12-19 (16503 days)...
+[OK] Got 250 news articles
+[OK] Created 34 sentiment features
+[OK] Integrated 34 sentiment features
+
+=== Look-Ahead Bias Verification ===
+Checking for common look-ahead patterns...
+[OK] All shifts use positive or zero values (no negative shifts)
+[OK] All rolling windows use past data only
+[OK] Forward-looking features only in target labels (handled separately)
+
+=== Feature Quality Check ===
+[WARN] Features with >5% NaN values:
+   vix: 2288 (20.2%)
+   rv_iv_spread: 2288 (20.2%)
+[OK] No inf values (successfully handled)
+
+[WARN] Features with wide ranges (may need clipping):
+   rsi: [24.3523, 81.3145] range=56.9622
+   stoch_k: [0.0000, 99.7545] range=99.7545
+   stoch_d: [3.1196, 97.3147] range=94.1950
+   rsi_low_vol: [0.0000, 65.4462] range=65.4462
+   rsi_high_vol: [0.0000, 53.2267] range=53.2267
+   ... and 16 more
+
+Total features: 167
+Total samples after cleaning: 11348
+Technical features by category (expected sum): 116
+Actual technical list length: 123
+Difference from canonical 113: 10
+
+❌ DRIFT DETECTED!
+Categories sum to: 116
+List has: 123
+Extra technical items (tail): ['latest_high_pivot', 'latest_low_pivot', 'dist_to_high_pivot', 'dist_to_low_pivot', 'vap_poc_price', 'dist_to_vap_poc', 'hvn_proximity', 'near_resistance_zone', 'near_support_zone', 'volume_concentration_score']
+Technical features by category (expected sum): 116
+Actual technical list length: 123
+Difference from canonical 113: 10
+
+❌ DRIFT DETECTED!
+Categories sum to: 116
+List has: 123
+Extra technical items (tail): ['latest_high_pivot', 'latest_low_pivot', 'dist_to_high_pivot', 'dist_to_low_pivot', 'vap_poc_price', 'dist_to_vap_poc', 'hvn_proximity', 'near_resistance_zone', 'near_support_zone', 'volume_concentration_score']
+
+=== Feature Count Diagnostic ===
+Expected features (count=157). Present feature cols (count=167).
+Extra 10 features (will be dropped): ['Dividends', 'Stock Splits', 'regime_normal_vol', 'bb_position_high_vol', 'stoch_k_low_vol', 'stoch_k_high_vol', 'momentum_low_vol', 'momentum_high_vol', 'volatility_regime_low', 'volatility_regime_high']
+Dropped unexpected columns: ['Dividends', 'Stock Splits', 'regime_normal_vol', 'bb_position_high_vol', 'stoch_k_low_vol', 'stoch_k_high_vol', 'momentum_low_vol', 'momentum_high_vol', 'volatility_regime_low', 'volatility_regime_high']
+Final feature count after auto-fix: 157
+Technical features by category (expected sum): 116
+Actual technical list length: 123
+Difference from canonical 113: 10
+
+❌ DRIFT DETECTED!
+Categories sum to: 116
+List has: 123
+Extra technical items (tail): ['latest_high_pivot', 'latest_low_pivot', 'dist_to_high_pivot', 'dist_to_low_pivot', 'vap_poc_price', 'dist_to_vap_poc', 'hvn_proximity', 'near_resistance_zone', 'near_support_zone', 'volume_concentration_score']
+Technical features by category (expected sum): 116
+Actual technical list length: 123
+Difference from canonical 113: 10
+
+❌ DRIFT DETECTED!
+Categories sum to: 116
+List has: 123
+Extra technical items (tail): ['latest_high_pivot', 'latest_low_pivot', 'dist_to_high_pivot', 'dist_to_low_pivot', 'vap_poc_price', 'dist_to_vap_poc', 'hvn_proximity', 'near_resistance_zone', 'near_support_zone', 'volume_concentration_score']
+✅ Training data prepared:
+   Total rows: 11346
+   Features: 157
+   Targets: ['target_1d']
+   Lost rows (NaN): 2
+
+=== Target Statistics (BEFORE clipping) ===
+Range: [-0.7312, 0.2869]
+Mean: 0.000704, Std: 0.028053
+Percentiles: 1%=-0.0728, 99%=0.0745
+P1.3: Winsorized 452 values (3.98%)
+Clipped 0 values (0.00%)
+\n=== Target Statistics (AFTER scaling) ===
+Mean: -0.000000 (should be ~0)
+Std: 1.000000 (should be ~1)
+Range: [-2.49, 2.51]
+Saved target engineering diagnostics to: data/target_engineering_comparison.png
+Technical features by category (expected sum): 116
+Actual technical list length: 123
+Difference from canonical 113: 10
+
+❌ DRIFT DETECTED!
+Categories sum to: 116
+List has: 123
+Extra technical items (tail): ['latest_high_pivot', 'latest_low_pivot', 'dist_to_high_pivot', 'dist_to_low_pivot', 'vap_poc_price', 'dist_to_vap_poc', 'hvn_proximity', 'near_resistance_zone', 'near_support_zone', 'volume_concentration_score']
+Technical features by category (expected sum): 116
+Actual technical list length: 123
+Difference from canonical 113: 10
+
+❌ DRIFT DETECTED!
+Categories sum to: 116
+List has: 123
+Extra technical items (tail): ['latest_high_pivot', 'latest_low_pivot', 'dist_to_high_pivot', 'dist_to_low_pivot', 'vap_poc_price', 'dist_to_vap_poc', 'hvn_proximity', 'near_resistance_zone', 'near_support_zone', 'volume_concentration_score']
+Technical features by category (expected sum): 116
+Actual technical list length: 123
+Difference from canonical 113: 10
+
+❌ DRIFT DETECTED!
+Categories sum to: 116
+List has: 123
+Extra technical items (tail): ['latest_high_pivot', 'latest_low_pivot', 'dist_to_high_pivot', 'dist_to_low_pivot', 'vap_poc_price', 'dist_to_vap_poc', 'hvn_proximity', 'near_resistance_zone', 'near_support_zone', 'volume_concentration_score']
+   [OK] Freshly generated features: 11346 samples, 157 features
+[INFO] Using all 157 features
+INFO:training.AAPL.regressor:Using all 157 features
+   [OK] Using 1-DAY horizon (research optimal)
+   [OK] Using 90-day sequences (quarterly context)
+
+[DATA] Validating target distribution...
+[INFO] 
+INFO:training.AAPL.regressor:
+[INFO] ============================================================
+INFO:training.AAPL.regressor:============================================================
+[INFO] TARGET DISTRIBUTION CHECK
+INFO:training.AAPL.regressor:TARGET DISTRIBUTION CHECK
+[INFO] ============================================================
+INFO:training.AAPL.regressor:============================================================
+[INFO]    Positive: 50.0% (5,671 samples) | mean: +1.96%
+INFO:training.AAPL.regressor:   Positive: 50.0% (5,671 samples) | mean: +1.96%
+[INFO]    Negative: 46.7% (5,304 samples) | mean: -1.95%
+INFO:training.AAPL.regressor:   Negative: 46.7% (5,304 samples) | mean: -1.95%
+[INFO]    Zero:     3.3% (371 samples)
+INFO:training.AAPL.regressor:   Zero:     3.3% (371 samples)
+[INFO]    Overall:  mean=+0.070%, std=2.805%
+INFO:training.AAPL.regressor:   Overall:  mean=+0.070%, std=2.805%
+[INFO] 
+INFO:training.AAPL.regressor:
+[INFO]    Percentiles:
+INFO:training.AAPL.regressor:   Percentiles:
+[INFO]       10th: -2.826%
+INFO:training.AAPL.regressor:      10th: -2.826%
+[INFO]       25th: -1.252%
+INFO:training.AAPL.regressor:      25th: -1.252%
+[INFO]       50th: +0.000% (median)
+INFO:training.AAPL.regressor:      50th: +0.000% (median)
+[INFO]       75th: +1.414%
+INFO:training.AAPL.regressor:      75th: +1.414%
+[INFO]       90th: +3.020%
+INFO:training.AAPL.regressor:      90th: +3.020%
+[INFO] 
+INFO:training.AAPL.regressor:
+[INFO] [OK] Distribution is balanced
+INFO:training.AAPL.regressor:[OK] Distribution is balanced
+[INFO] ============================================================
+INFO:training.AAPL.regressor:============================================================
+[INFO]    [OK] Target distribution metadata saved to /home/thunderboltdy/ai-stocks/python-ai-service/saved_models/AAPL/target_distribution.json
+INFO:training.AAPL.regressor:   [OK] Target distribution metadata saved to /home/thunderboltdy/ai-stocks/python-ai-service/saved_models/AAPL/target_distribution.json
+W0000 00:00:1766314113.244200    5648 gpu_device.cc:2456] TensorFlow was not built with CUDA kernel binaries compatible with compute capability 12.0a. CUDA kernels will be jit-compiled from PTX, which could take 30 minutes or longer.
+I0000 00:00:1766314113.251845    5648 gpu_device.cc:2040] Created device /job:localhost/replica:0/task:0/device:GPU:0 with 12764 MB memory:  -> device: 0, name: NVIDIA GeForce RTX 5060 Ti, pci bus id: 0000:2b:00.0, compute capability: 12.0a
+I0000 00:00:1766314118.011392    5936 cuda_dnn.cc:461] Loaded cuDNN version 91400
+I0000 00:00:1766314120.703187    5933 service.cc:153] XLA service 0x78f64c02c140 initialized for platform CUDA (this does not guarantee that XLA will be used). Devices:
+I0000 00:00:1766314120.703232    5933 service.cc:161]   StreamExecutor device (0): NVIDIA GeForce RTX 5060 Ti, Compute Capability 12.0a
+I0000 00:00:1766314121.902894    5933 device_compiler.h:208] Compiled cluster using XLA!  This line is logged at most once for the lifetime of the process.
+I0000 00:00:1766314121.957272    5933 dump_mlir_util.cc:269] disabling MLIR crash reproducer, set env var `MLIR_CRASH_REPRODUCER_DIRECTORY` to enable.
+I0000 00:00:1766314122.194752    5933 dot_merger.cc:476] Merging Dots in computation: cluster_0__XlaCompiledKernel_true__XlaHasReferenceVars_false__XlaNumConstantArgs_0__XlaNumResourceArgs_123_.40
+I0000 00:00:1766314122.203660    5933 dot_merger.cc:476] Merging Dots in computation: cluster_0__XlaCompiledKernel_true__XlaHasReferenceVars_false__XlaNumConstantArgs_0__XlaNumResourceArgs_123_.40
+I0000 00:00:1766314122.992991    6113 subprocess_compilation.cc:348] ptxas warning : Registers are spilled to local memory in function 'gemm_fusion_dot_48', 36 bytes spill stores, 88 bytes spill loads
+
+I0000 00:00:1766314124.855479    6111 subprocess_compilation.cc:348] ptxas warning : Registers are spilled to local memory in function 'gemm_fusion_dot_5', 4 bytes spill stores, 4 bytes spill loads
+
+I0000 00:00:1766314125.190045    6103 subprocess_compilation.cc:348] ptxas warning : Registers are spilled to local memory in function 'gemm_fusion_dot_48', 16 bytes spill stores, 8 bytes spill loads
+
+   [OK] Target distribution validation passed
+   [OK] Using precomputed target scaling from prepare_training_data. Scaled length: 11346
+
+=== Target Scaling Verification ===
+Original target range: [-0.731248, 0.286892]
+Scaled target range: [-2.490840, 2.509288]
+Scaled target stats: mean=-0.000000, std=1.000000
+Target scaler: (parameters not accessible)
+Inverse transform roundtrip error: 0.00099132
+
+   Train: 9005, Val: 2252
+
+[TARGET] Preparing multi-task targets...
+
+[INFO] Multi-task target distribution:
+   Sign classes - Down: 4647 (51.6%), Flat: 6 (0.1%), Up: 4352 (48.3%)
+   Volatility range: [0.0008, 0.2450]
+   [OK] Sign classes prepared (3 classes: down/flat/up)
+   [OK] Volatility targets prepared and scaled
+
+[BUILD] Building model...
+   Multi-task architecture: 3 output heads (magnitude + sign + volatility)
+   [OK] 993,349 parameters
+
+[CHECK] Initial model prediction check...
+   Initial predictions: std=0.255371, range=0.948242
+   [OK] Initial predictions have healthy variance
+   [OK] LR Schedule: warmup to 3.0e-05, drop 50% at epoch 40
+   [ANTI-COLLAPSE] Using AntiCollapseDirectionalLoss (v4.1 - dynamic)
+      Initial variance_penalty_weight=0.5000
+   [OK] Loss: magnitude(huber) + variance_reg(0.5) + 0.15*sign(CCE) + 0.1*volatility(MSE)
+
+[TRAIN] Training with LR warmup + cosine decay...
+   Warmup: 10 epochs (0.00005 -> 0.0005)
+   Cosine decay: 10 epochs (0.0005 -> 0.00001)
+
+[CHECK] Validating training data...
+   [OK] All training data validated (no NaN/Inf)
+   [CALLBACK] Added CurriculumLearningCallback to training loop
+[INFO] 
+=== Data Quality Pre-Check ===
+INFO:training.AAPL.regressor:
+=== Data Quality Pre-Check ===
+[WARNING] [WARN] 38 features have near-zero variance
+WARNING:training.AAPL.regressor:[WARN] 38 features have near-zero variance
+[INFO] Target range: [-1.2000, 1.2000]
+INFO:training.AAPL.regressor:Target range: [-1.2000, 1.2000]
+[INFO] Target std: 0.7765 (should be ~1 after scaling)
+INFO:training.AAPL.regressor:Target std: 0.7765 (should be ~1 after scaling)
+[INFO] [OK] Data quality checks passed
+INFO:training.AAPL.regressor:[OK] Data quality checks passed
+[INFO] [OK] Training with 157 features (93 technical + 20 new + 34 sentiment)
+INFO:training.AAPL.regressor:[OK] Training with 157 features (93 technical + 20 new + 34 sentiment)
+[INFO]   Input shape: (9005, 90, 157) = (samples=9005, seq_len=90, features=157)
+INFO:training.AAPL.regressor:  Input shape: (9005, 90, 157) = (samples=9005, seq_len=90, features=157)
+
+[OPTIMIZE] Creating optimized data pipeline for GPU...
+[PIPELINE] Creating optimized tf.data.Dataset with batch_size=32
+[PIPELINE] Enabled shuffling (buffer_size=4502)
+[PIPELINE] Enabled caching - preprocessed data cached in memory
+[PIPELINE] Enabled prefetching (buffer_size=2) - aggressive GPU feeding
+[PIPELINE] Creating optimized tf.data.Dataset with batch_size=32
+[PIPELINE] Enabled caching - preprocessed data cached in memory
+[PIPELINE] Enabled prefetching (buffer_size=2) - aggressive GPU feeding
+
+Epoch 1: LearningRateScheduler setting learning rate to 3e-06.
+Epoch 1/20
+Traceback (most recent call last):
+  File "/home/thunderboltdy/ai-stocks/python-ai-service/training/train_1d_regressor_final.py", line 2946, in <module>
+    main()
+  File "/home/thunderboltdy/ai-stocks/python-ai-service/training/train_1d_regressor_final.py", line 2915, in main
+    model = train_1d_regressor(
+  File "/home/thunderboltdy/ai-stocks/python-ai-service/training/train_1d_regressor_final.py", line 2289, in train_1d_regressor
+    history = model.fit(
+  File "/home/thunderboltdy/miniconda3/envs/ai-stocks/lib/python3.10/site-packages/keras/src/utils/traceback_utils.py", line 122, in error_handler
+    raise e.with_traceback(filtered_tb) from None
+  File "/home/thunderboltdy/ai-stocks/python-ai-service/training/train_1d_regressor_final.py", line 142, in r_squared_metric
+    ss_res = tf.reduce_sum(tf.square(y_true - y_pred))
+TypeError: Input 'y' of 'Sub' Op has type float16 that does not match type float32 of argument 'x'.
+
+[FAIL] FATAL ERROR during regressor training: Input 'y' of 'Sub' Op has type float16 that does not match type float32 of argument 'x'.

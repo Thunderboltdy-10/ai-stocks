@@ -1,0 +1,91 @@
+{
+  "exclusion_patterns": [
+    ".git",
+    "__pycache__",
+    ".pytest_cache",
+    "*.pyc",
+    "*.pyo",
+    ".venv",
+    "venv",
+    "node_modules",
+    ".vscode",
+    ".idea",
+    "*.egg-info"
+  ],
+  "path_based_rules": {
+    "TEST": {
+      "patterns": ["tests/", "test_"],
+      "confidence": 0.95
+    },
+    "UTILITY": {
+      "patterns": ["utils/", "helpers/", "scripts/"],
+      "confidence": 0.80
+    },
+    "CONFIG": {
+      "patterns": ["config/", "configs/", "configuration/"],
+      "confidence": 0.90
+    },
+    "DEPRECATED": {
+      "patterns": ["deprecated/", "archive_deprecated/", "old_"],
+      "confidence": 0.95
+    },
+    "EXPERIMENTAL": {
+      "patterns": ["experimental/", "research/", "sandbox/"],
+      "confidence": 0.85
+    }
+  },
+  "name_based_rules": {
+    "CORE_TRAINING": {
+      "patterns": ["train_", "training_", "fit_"],
+      "confidence": 0.90
+    },
+    "CORE_INFERENCE": {
+      "patterns": ["predict_", "inference_", "infer_"],
+      "confidence": 0.90
+    },
+    "CORE_EVALUATION": {
+      "patterns": ["evaluate_", "backtest_", "validation_", "test_performance"],
+      "confidence": 0.85
+    },
+    "CORE_DATA_PIPELINE": {
+      "patterns": ["pipeline", "preprocess", "feature_", "data_fetch"],
+      "confidence": 0.80
+    },
+    "TEST": {
+      "patterns": ["test_", "spec_"],
+      "confidence": 0.95
+    },
+    "CONFIG": {
+      "patterns": ["config", "settings", "constants"],
+      "confidence": 0.75
+    },
+    "DEPRECATED": {
+      "patterns": ["deprecated", "_old", "_backup", "_v1", "_v2"],
+      "confidence": 0.90
+    }
+  },
+  "content_markers": {
+    "DEPRECATED": {
+      "markers": ["DEPRECATED", "DO NOT USE", "OBSOLETE", "NO LONGER USED"],
+      "confidence": 0.95
+    },
+    "EXPERIMENTAL": {
+      "markers": ["EXPERIMENTAL", "WIP", "WORK IN PROGRESS", "TODO: VERIFY", "DRAFT"],
+      "confidence": 0.80
+    },
+    "TEST": {
+      "markers": ["unittest", "pytest", "test case"],
+      "confidence": 0.70
+    }
+  },
+  "import_based_rules": {
+    "TEST": {
+      "imports": ["unittest", "pytest", "mock", "nose"],
+      "confidence": 0.90
+    },
+    "CORE_TRAINING": {
+      "imports": ["torch.optim", "tensorflow.keras.callbacks", "sklearn.model_selection"],
+      "confidence": 0.75
+    }
+  }
+}

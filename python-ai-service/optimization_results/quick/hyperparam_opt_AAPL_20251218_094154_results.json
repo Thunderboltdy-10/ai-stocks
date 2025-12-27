@@ -1,0 +1,33 @@
+{
+  "study_name": "hyperparam_opt_AAPL_20251218_094154",
+  "best_value": 0.6419609700275745,
+  "best_params": {
+    "model_type": "lstm_transformer",
+    "learning_rate": 0.0001357603611130944,
+    "batch_size": 1024,
+    "dropout": 0.29760413109138006,
+    "loss_type": "huber",
+    "lstm_units": 128,
+    "lstm_d_model": 128,
+    "lstm_num_heads": 8,
+    "lstm_num_blocks": 4,
+    "lstm_ff_dim": 128
+  },
+  "best_user_attrs": {
+    "directional_accuracy": 0.5189125295508275,
+    "sharpe_ratio": 0.8001616560202618,
+    "correlation": 0.04379792605217278,
+    "pred_std": "0.05572231",
+    "cumulative_return": "1.3670771",
+    "best_val_loss": 0.001642138697206974
+  },
+  "n_trials": 10,
+  "metadata": {
+    "symbol": "AAPL",
+    "n_features": 147,
+    "train_size": 7897,
+    "val_size": 1692,
+    "test_size": 1693
+  },
+  "timestamp": "2025-12-18T09:51:32.931443"
+}

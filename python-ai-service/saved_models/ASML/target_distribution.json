@@ -1,0 +1,30 @@
+{
+  "symbol": "ASML",
+  "n_total": 7743,
+  "n_positive": 3951,
+  "n_negative": 3709,
+  "n_zero": 83,
+  "pct_positive": 0.5103,
+  "pct_negative": 0.479,
+  "pct_zero": 0.0107,
+  "mean_positive": 0.021319,
+  "mean_negative": -0.021012,
+  "std_positive": 0.021663,
+  "std_negative": 0.022068,
+  "mean": 0.000813,
+  "std": 0.030257,
+  "percentiles": {
+    "p10": -0.031549,
+    "p25": -0.013483,
+    "p50": 0.000649,
+    "p75": 0.015753,
+    "p90": 0.032617
+  },
+  "validation_thresholds": {
+    "min_positive_pct": 0.3,
+    "min_negative_pct": 0.3
+  },
+  "validated_at": "2025-12-19T15:45:02.906075",
+  "validation_passed": true,
+  "validation_issues": []
+}

@@ -1,0 +1,30 @@
+{
+  "symbol": "KO",
+  "n_total": 16098,
+  "n_positive": 7910,
+  "n_negative": 7390,
+  "n_zero": 798,
+  "pct_positive": 0.4914,
+  "pct_negative": 0.4591,
+  "pct_zero": 0.0496,
+  "mean_positive": 0.010587,
+  "mean_negative": -0.010334,
+  "std_positive": 0.010281,
+  "std_negative": 0.01057,
+  "mean": 0.000458,
+  "std": 0.014391,
+  "percentiles": {
+    "p10": -0.01471,
+    "p25": -0.006745,
+    "p50": 0.0,
+    "p75": 0.007435,
+    "p90": 0.015886
+  },
+  "validation_thresholds": {
+    "min_positive_pct": 0.3,
+    "min_negative_pct": 0.3
+  },
+  "validated_at": "2025-12-19T17:05:50.525279",
+  "validation_passed": true,
+  "validation_issues": []
+}

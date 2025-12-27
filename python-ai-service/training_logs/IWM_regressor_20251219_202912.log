@@ -1,0 +1,26 @@
+2025-12-19 20:29:12 | INFO     | training.IWM.regressor | Training log initialized: /home/thunderboltdy/ai-stocks/python-ai-service/training_logs/IWM_regressor_20251219_202912.log
+2025-12-19 20:29:12 | DEBUG    | training.IWM.regressor | Symbol: IWM, Model Type: regressor
+2025-12-19 20:29:12 | DEBUG    | training.IWM.regressor | Python version: 3.10.19 (main, Oct 21 2025, 16:43:05) [GCC 11.2.0]
+2025-12-19 20:29:12 | INFO     | training.IWM.regressor | Starting regressor training for IWM
+2025-12-19 20:29:12 | INFO     | training.IWM.regressor | Arguments: epochs=1, batch_size=512, sequence_length=90, seed=42
+2025-12-19 20:29:12 | INFO     | training.IWM.regressor | [OK] Feature count validated: 157 features
+2025-12-19 20:29:12 | INFO     | training.IWM.regressor | Using all 157 features
+2025-12-19 20:29:12 | INFO     | training.IWM.regressor | 
+2025-12-19 20:29:12 | INFO     | training.IWM.regressor | ============================================================
+2025-12-19 20:29:12 | INFO     | training.IWM.regressor | TARGET DISTRIBUTION CHECK
+2025-12-19 20:29:12 | INFO     | training.IWM.regressor | ============================================================
+2025-12-19 20:29:12 | INFO     | training.IWM.regressor |    Positive: 53.0% (3,407 samples) | mean: +1.05%
+2025-12-19 20:29:12 | INFO     | training.IWM.regressor |    Negative: 46.7% (3,002 samples) | mean: -1.13%
+2025-12-19 20:29:12 | INFO     | training.IWM.regressor |    Zero:     0.3% (19 samples)
+2025-12-19 20:29:12 | INFO     | training.IWM.regressor |    Overall:  mean=+0.031%, std=1.513%
+2025-12-19 20:29:12 | INFO     | training.IWM.regressor | 
+2025-12-19 20:29:12 | INFO     | training.IWM.regressor |    Percentiles:
+2025-12-19 20:29:12 | INFO     | training.IWM.regressor |       10th: -1.675%
+2025-12-19 20:29:12 | INFO     | training.IWM.regressor |       25th: -0.746%
+2025-12-19 20:29:12 | INFO     | training.IWM.regressor |       50th: +0.100% (median)
+2025-12-19 20:29:12 | INFO     | training.IWM.regressor |       75th: +0.858%
+2025-12-19 20:29:12 | INFO     | training.IWM.regressor |       90th: +1.665%
+2025-12-19 20:29:12 | INFO     | training.IWM.regressor | 
+2025-12-19 20:29:12 | INFO     | training.IWM.regressor | [OK] Distribution is balanced
+2025-12-19 20:29:12 | INFO     | training.IWM.regressor | ============================================================
+2025-12-19 20:29:12 | INFO     | training.IWM.regressor |    [OK] Target distribution metadata saved to /home/thunderboltdy/ai-stocks/python-ai-service/saved_models/IWM/target_distribution.json

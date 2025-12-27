@@ -1,0 +1,5 @@
+2025-12-19 00:24:21 | INFO     | training.AAPL.regressor | Training log initialized: /home/thunderboltdy/ai-stocks/python-ai-service/training_logs/AAPL_regressor_20251219_002421.log
+2025-12-19 00:24:21 | DEBUG    | training.AAPL.regressor | Symbol: AAPL, Model Type: regressor
+2025-12-19 00:24:21 | DEBUG    | training.AAPL.regressor | Python version: 3.10.19 (main, Oct 21 2025, 16:43:05) [GCC 11.2.0]
+2025-12-19 00:24:21 | INFO     | training.AAPL.regressor | Starting regressor training for AAPL
+2025-12-19 00:24:21 | INFO     | training.AAPL.regressor | Arguments: epochs=50, batch_size=512, sequence_length=90, seed=42

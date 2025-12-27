@@ -1,0 +1,85 @@
+{
+    "timestamp": "2025-12-18T22:50:00",
+    "system_status": {
+        "architecture": "Regressor-First (GBM + LSTM-Transformer)",
+        "active_models": [
+            "LSTM-Transformer (v4)",
+            "PatchTST (v1)",
+            "LightGBM",
+            "XGBoost"
+        ],
+        "gpu_status": "Active (RTX 5060 Ti)",
+        "feature_count": 147
+    },
+    "model_performance": {
+        "AAPL": {
+            "status": "Production Candidate",
+            "best_model": "GBM Ensemble (LightGBM Heavy)",
+            "sharpe_ratio": 1.77,
+            "directional_accuracy": 51.7,
+            "prediction_std": 0.0056,
+            "notes": "LSTM collapsed (std=0.0014). GBM highly effective."
+        },
+        "MSFT": {
+            "status": "Optimization Needed",
+            "best_model": "GBM Ensemble",
+            "sharpe_ratio": -1.73,
+            "directional_accuracy": 60.0,
+            "prediction_std": 0.0049,
+            "notes": "Good directional accuracy (60%) but negative returns due to bear market (-6.5% buy&hold)."
+        },
+        "GOOGL": {
+            "status": "Under Evaluation",
+            "best_model": "GBM Ensemble",
+            "sharpe_ratio": null,
+            "directional_accuracy": 50.0,
+            "prediction_std": null,
+            "notes": "GBM trained. Backtest completed (4 trades)."
+        },
+        "NVDA": {
+            "status": "Training Completed",
+            "best_model": "GBM Ensemble",
+            "notes": "GBM trained (dir_acc=53%, IC=0.10). Backtest in progress."
+        },
+        "TSLA": {
+            "status": "Training Completed",
+            "best_model": "GBM Ensemble",
+            "notes": "GBM trained. Backtest in progress."
+        },
+        "META": {
+            "status": "Training Completed",
+            "best_model": "GBM Ensemble",
+            "notes": "GBM trained. Backtest in progress."
+        },
+        "SPY": {
+            "status": "Training Completed",
+            "best_model": "GBM Ensemble",
+            "notes": "GBM trained. Backtest in progress."
+        }
+    },
+    "known_issues": [
+        {
+            "issue": "Variance Collapse in LSTM",
+            "status": "Persistent",
+            "affected_symbols": [
+                "AAPL",
+                "NVDA",
+                "SPY"
+            ],
+            "mitigation": "Switching to GBM as primary driver until LSTM architecture fixed"
+        },
+        {
+            "issue": "Negative Sharpe in Bear Market",
+            "status": "Observation",
+            "affected_symbols": [
+                "MSFT"
+            ],
+            "mitigation": "Short-selling logic enabled but maybe conservative"
+        }
+    ],
+    "next_steps": [
+        "Complete backtests for NVDA, TSLA, META, SPY",
+        "Analyze PatchTST performance (next iteration)",
+        "Refine LSTM anti-collapse loss (increase variance penalty?)"
+    ]
+}

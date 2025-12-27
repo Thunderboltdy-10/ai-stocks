@@ -1,0 +1,818 @@
+{
+  "symbol": "^IBEX",
+  "regime_metrics": {
+    "BULLISH": {
+      "total_return": 0.24019363930492688,
+      "sharpe": 3.6026379021577304,
+      "max_drawdown": -0.0053659905217227225,
+      "win_rate": 0.7761194029850746,
+      "avg_trade_return": 0.008117720396910503,
+      "num_trades": 67,
+      "avg_position_size": -0.0014763962216673074,
+      "kelly_stats": {
+        "count": 576,
+        "mean": -0.0014763962216673074,
+        "median": 0.0,
+        "std": 0.1363520551354788,
+        "p10": -0.11982437845387858,
+        "p90": 0.09416622040059908
+      }
+    },
+    "SIDEWAYS": {
+      "total_return": 0.4156490007065001,
+      "sharpe": 4.490620206697217,
+      "max_drawdown": -0.00608614250348137,
+      "win_rate": 0.7419354838709677,
+      "avg_trade_return": 0.013811828721911213,
+      "num_trades": 31,
+      "avg_position_size": -0.0029198665884855655,
+      "kelly_stats": {
+        "count": 253,
+        "mean": -0.0029198665884855655,
+        "median": 0.0,
+        "std": 0.2236947113534558,
+        "p10": -0.15689858869881895,
+        "p90": 0.12058665869171777
+      }
+    },
+    "BEARISH": {
+      "total_return": 0.22166151938515055,
+      "sharpe": 5.982364589557414,
+      "max_drawdown": -0.005446886501501675,
+      "win_rate": 1.0,
+      "avg_trade_return": 0.023895626149415563,
+      "num_trades": 18,
+      "avg_position_size": -5.7021876916285376e-05,
+      "kelly_stats": {
+        "count": 171,
+        "mean": -5.7021876916285376e-05,
+        "median": 0.0,
+        "std": 0.2255180846108082,
+        "p10": -0.14921764716137792,
+        "p90": 0.2000475924343735
+      }
+    }
+  },
+  "transitions": [
+    {
+      "index": 57,
+      "from": "SIDEWAYS",
+      "to": "BULLISH",
+      "before_return": 0.00042428266274630033,
+      "after_return": -0.0007458755169061915,
+      "detection_lag_days": 3
+    },
+    {
+      "index": 60,
+      "from": "BULLISH",
+      "to": "SIDEWAYS",
+      "before_return": -6.36824459535612e-05,
+      "after_return": 0.00015352894006137596,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 69,
+      "from": "SIDEWAYS",
+      "to": "BEARISH",
+      "before_return": 0.0021942736874285274,
+      "after_return": 0.01773894241525964,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 76,
+      "from": "BEARISH",
+      "to": "BULLISH",
+      "before_return": 0.011600201984209413,
+      "after_return": 0.001072457948878558,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 78,
+      "from": "BULLISH",
+      "to": "SIDEWAYS",
+      "before_return": -0.004807046592877784,
+      "after_return": 0.0008457246056496892,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 79,
+      "from": "SIDEWAYS",
+      "to": "BULLISH",
+      "before_return": -0.0009435020210286638,
+      "after_return": 6.723602354519187e-05,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 94,
+      "from": "BULLISH",
+      "to": "SIDEWAYS",
+      "before_return": -0.00030141797191396424,
+      "after_return": 0.025913284009069892,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 96,
+      "from": "SIDEWAYS",
+      "to": "BEARISH",
+      "before_return": 0.00963921730912487,
+      "after_return": 0.02477973932933719,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 135,
+      "from": "BEARISH",
+      "to": "SIDEWAYS",
+      "before_return": 0.0006496464213769926,
+      "after_return": 0.0013028411165274534,
+      "detection_lag_days": 1
+    },
+    {
+      "index": 148,
+      "from": "SIDEWAYS",
+      "to": "BULLISH",
+      "before_return": 0.0006038060217434804,
+      "after_return": -0.0010741676112786536,
+      "detection_lag_days": 1
+    },
+    {
+      "index": 149,
+      "from": "BULLISH",
+      "to": "SIDEWAYS",
+      "before_return": 7.474567469256677e-05,
+      "after_return": 0.00461196488806781,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 150,
+      "from": "SIDEWAYS",
+      "to": "BEARISH",
+      "before_return": -0.0007225262354142448,
+      "after_return": 0.0039429325151012495,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 160,
+      "from": "BEARISH",
+      "to": "SIDEWAYS",
+      "before_return": 0.0035804129700958143,
+      "after_return": 0.01230778020171508,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 161,
+      "from": "SIDEWAYS",
+      "to": "BEARISH",
+      "before_return": 0.011623636011867333,
+      "after_return": 0.007447004230842769,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 163,
+      "from": "BEARISH",
+      "to": "SIDEWAYS",
+      "before_return": 0.010045625765035204,
+      "after_return": 0.009088690535590915,
+      "detection_lag_days": 1
+    },
+    {
+      "index": 165,
+      "from": "SIDEWAYS",
+      "to": "BEARISH",
+      "before_return": 0.01230778020171508,
+      "after_return": 0.003290298045833362,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 191,
+      "from": "BEARISH",
+      "to": "SIDEWAYS",
+      "before_return": 0.004819803223141905,
+      "after_return": 0.0036209382924594635,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 203,
+      "from": "SIDEWAYS",
+      "to": "BULLISH",
+      "before_return": 0.0026341010238006834,
+      "after_return": -0.001407771627947474,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 289,
+      "from": "BULLISH",
+      "to": "SIDEWAYS",
+      "before_return": 0.001217083948022779,
+      "after_return": 0.04771704716422276,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 290,
+      "from": "SIDEWAYS",
+      "to": "BULLISH",
+      "before_return": 0.00896582170511051,
+      "after_return": 0.06440764893101902,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 291,
+      "from": "BULLISH",
+      "to": "SIDEWAYS",
+      "before_return": 0.031204209047553277,
+      "after_return": 0.04277752798564305,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 302,
+      "from": "SIDEWAYS",
+      "to": "BULLISH",
+      "before_return": 0.011975811869805453,
+      "after_return": 0.0015426553197148696,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 322,
+      "from": "BULLISH",
+      "to": "SIDEWAYS",
+      "before_return": 0.0010237253649938438,
+      "after_return": 0.00023418822999943245,
+      "detection_lag_days": null
+    },
+    {
+      "index": 323,
+      "from": "SIDEWAYS",
+      "to": "BEARISH",
+      "before_return": 0.0005833311078449199,
+      "after_return": 0.00023418822999943245,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 326,
+      "from": "BEARISH",
+      "to": "SIDEWAYS",
+      "before_return": 0.0009024322160644527,
+      "after_return": -0.00032981203051707375,
+      "detection_lag_days": 3
+    },
+    {
+      "index": 327,
+      "from": "SIDEWAYS",
+      "to": "BEARISH",
+      "before_return": 0.00023418822999943245,
+      "after_return": -0.00040357116696798645,
+      "detection_lag_days": 2
+    },
+    {
+      "index": 330,
+      "from": "BEARISH",
+      "to": "SIDEWAYS",
+      "before_return": -0.00032981203051707375,
+      "after_return": -0.000266262046026422,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 332,
+      "from": "SIDEWAYS",
+      "to": "BEARISH",
+      "before_return": -0.00040357116696798645,
+      "after_return": -0.00020026234253478492,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 333,
+      "from": "BEARISH",
+      "to": "SIDEWAYS",
+      "before_return": -0.000493545726786615,
+      "after_return": -0.00011026138164271782,
+      "detection_lag_days": null
+    },
+    {
+      "index": 338,
+      "from": "SIDEWAYS",
+      "to": "BEARISH",
+      "before_return": -0.00011026138164271782,
+      "after_return": 0.0005330013237798692,
+      "detection_lag_days": 1
+    },
+    {
+      "index": 340,
+      "from": "BEARISH",
+      "to": "SIDEWAYS",
+      "before_return": -0.000664219257645704,
+      "after_return": -0.00012809727738416488,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 345,
+      "from": "SIDEWAYS",
+      "to": "BULLISH",
+      "before_return": -0.00012809727738416488,
+      "after_return": -0.00019285944740354832,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 360,
+      "from": "BULLISH",
+      "to": "SIDEWAYS",
+      "before_return": 0.0007556967153969918,
+      "after_return": -7.731890025231003e-06,
+      "detection_lag_days": 1
+    },
+    {
+      "index": 362,
+      "from": "SIDEWAYS",
+      "to": "BULLISH",
+      "before_return": 0.001819342212225017,
+      "after_return": -0.0015691351282413057,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 364,
+      "from": "BULLISH",
+      "to": "SIDEWAYS",
+      "before_return": 0.0012533824784000114,
+      "after_return": 0.0007130172636831134,
+      "detection_lag_days": 2
+    },
+    {
+      "index": 365,
+      "from": "SIDEWAYS",
+      "to": "BULLISH",
+      "before_return": -7.731890025231003e-06,
+      "after_return": 0.0017505377881434914,
+      "detection_lag_days": 1
+    },
+    {
+      "index": 369,
+      "from": "BULLISH",
+      "to": "SIDEWAYS",
+      "before_return": 0.0007130172636831134,
+      "after_return": -0.0002343627171927931,
+      "detection_lag_days": 4
+    },
+    {
+      "index": 372,
+      "from": "SIDEWAYS",
+      "to": "BULLISH",
+      "before_return": 0.0021110526456555867,
+      "after_return": 1.3186150065180868e-06,
+      "detection_lag_days": 1
+    },
+    {
+      "index": 388,
+      "from": "BULLISH",
+      "to": "SIDEWAYS",
+      "before_return": -0.0006162839997962966,
+      "after_return": 0.0002605576321648151,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 394,
+      "from": "SIDEWAYS",
+      "to": "BULLISH",
+      "before_return": 0.0,
+      "after_return": 0.0005308996346720107,
+      "detection_lag_days": 3
+    },
+    {
+      "index": 396,
+      "from": "BULLISH",
+      "to": "SIDEWAYS",
+      "before_return": 0.0,
+      "after_return": 0.0007505206537274933,
+      "detection_lag_days": 1
+    },
+    {
+      "index": 401,
+      "from": "SIDEWAYS",
+      "to": "BEARISH",
+      "before_return": 0.0007505206537274933,
+      "after_return": 0.0006452833349162024,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 406,
+      "from": "BEARISH",
+      "to": "SIDEWAYS",
+      "before_return": 0.0006452833349162024,
+      "after_return": -0.000492433407270898,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 408,
+      "from": "SIDEWAYS",
+      "to": "BULLISH",
+      "before_return": 0.0004274668672383797,
+      "after_return": 0.0005403773418963809,
+      "detection_lag_days": 4
+    },
+    {
+      "index": 411,
+      "from": "BULLISH",
+      "to": "SIDEWAYS",
+      "before_return": -0.000492433407270898,
+      "after_return": 0.0003349488389532418,
+      "detection_lag_days": 1
+    },
+    {
+      "index": 414,
+      "from": "SIDEWAYS",
+      "to": "BEARISH",
+      "before_return": 0.0007293550894875711,
+      "after_return": -0.0008016873312741701,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 416,
+      "from": "BEARISH",
+      "to": "SIDEWAYS",
+      "before_return": 0.0003349488389532418,
+      "after_return": 3.852117855562831e-05,
+      "detection_lag_days": 1
+    },
+    {
+      "index": 420,
+      "from": "SIDEWAYS",
+      "to": "BULLISH",
+      "before_return": -0.0008013436524548778,
+      "after_return": 0.0009742719906884467,
+      "detection_lag_days": 4
+    },
+    {
+      "index": 426,
+      "from": "BULLISH",
+      "to": "SIDEWAYS",
+      "before_return": 0.0020984057911148657,
+      "after_return": 0.0011856495540645273,
+      "detection_lag_days": 1
+    },
+    {
+      "index": 428,
+      "from": "SIDEWAYS",
+      "to": "BEARISH",
+      "before_return": 0.0035401923084392717,
+      "after_return": 0.0025054196161549136,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 459,
+      "from": "BEARISH",
+      "to": "SIDEWAYS",
+      "before_return": 0.00014749024545368528,
+      "after_return": -0.000814827789510586,
+      "detection_lag_days": 1
+    },
+    {
+      "index": 463,
+      "from": "SIDEWAYS",
+      "to": "BULLISH",
+      "before_return": -0.000814827789510586,
+      "after_return": 0.001234781849413169,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 505,
+      "from": "BULLISH",
+      "to": "SIDEWAYS",
+      "before_return": 0.003251588061734978,
+      "after_return": -0.000969395179285848,
+      "detection_lag_days": 1
+    },
+    {
+      "index": 515,
+      "from": "SIDEWAYS",
+      "to": "BULLISH",
+      "before_return": -0.00010505120366111065,
+      "after_return": 0.0004393540005296348,
+      "detection_lag_days": null
+    },
+    {
+      "index": 516,
+      "from": "BULLISH",
+      "to": "SIDEWAYS",
+      "before_return": 0.00019405444914899483,
+      "after_return": 0.00016683325726196685,
+      "detection_lag_days": null
+    },
+    {
+      "index": 517,
+      "from": "SIDEWAYS",
+      "to": "BULLISH",
+      "before_return": 0.00016383713096823627,
+      "after_return": 0.0002290720707809335,
+      "detection_lag_days": null
+    },
+    {
+      "index": 518,
+      "from": "BULLISH",
+      "to": "SIDEWAYS",
+      "before_return": 0.0004138681730192495,
+      "after_return": -0.0011231496596746382,
+      "detection_lag_days": 4
+    },
+    {
+      "index": 522,
+      "from": "SIDEWAYS",
+      "to": "BEARISH",
+      "before_return": 0.0002290720707809335,
+      "after_return": 5.4381980377993244e-05,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 529,
+      "from": "BEARISH",
+      "to": "SIDEWAYS",
+      "before_return": -0.00025476807598390216,
+      "after_return": -0.0002226125803987955,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 536,
+      "from": "SIDEWAYS",
+      "to": "BEARISH",
+      "before_return": 1.1913322169210261e-05,
+      "after_return": -0.0013838306739921702,
+      "detection_lag_days": 2
+    },
+    {
+      "index": 537,
+      "from": "BEARISH",
+      "to": "SIDEWAYS",
+      "before_return": 1.1913322169210261e-05,
+      "after_return": -0.0012759503007829798,
+      "detection_lag_days": 1
+    },
+    {
+      "index": 541,
+      "from": "SIDEWAYS",
+      "to": "BULLISH",
+      "before_return": -0.0013838306739921702,
+      "after_return": 2.547481055126255e-05,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 608,
+      "from": "BULLISH",
+      "to": "SIDEWAYS",
+      "before_return": 0.00459218104609449,
+      "after_return": 0.000660813381265557,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 613,
+      "from": "SIDEWAYS",
+      "to": "BULLISH",
+      "before_return": 0.000660813381265557,
+      "after_return": 0.0018919800242371831,
+      "detection_lag_days": 1
+    },
+    {
+      "index": 614,
+      "from": "BULLISH",
+      "to": "SIDEWAYS",
+      "before_return": 0.000948757428221203,
+      "after_return": 0.0010984820316184418,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 615,
+      "from": "SIDEWAYS",
+      "to": "BULLISH",
+      "before_return": 0.0002025945318999689,
+      "after_return": 0.0004004079302650787,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 616,
+      "from": "BULLISH",
+      "to": "SIDEWAYS",
+      "before_return": 0.0006573534520966096,
+      "after_return": 0.0010197175252057988,
+      "detection_lag_days": 1
+    },
+    {
+      "index": 625,
+      "from": "SIDEWAYS",
+      "to": "BEARISH",
+      "before_return": 0.0009769509251080777,
+      "after_return": -0.00011651192068118377,
+      "detection_lag_days": null
+    },
+    {
+      "index": 628,
+      "from": "BEARISH",
+      "to": "BULLISH",
+      "before_return": -0.00011651192068118377,
+      "after_return": 0.00043847246301598197,
+      "detection_lag_days": 2
+    },
+    {
+      "index": 630,
+      "from": "BULLISH",
+      "to": "SIDEWAYS",
+      "before_return": -0.00011651192068118377,
+      "after_return": 0.000769685584069979,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 638,
+      "from": "SIDEWAYS",
+      "to": "BEARISH",
+      "before_return": 0.00048135863639142684,
+      "after_return": 0.001131733246234834,
+      "detection_lag_days": 4
+    },
+    {
+      "index": 639,
+      "from": "BEARISH",
+      "to": "SIDEWAYS",
+      "before_return": 0.00013631698042004814,
+      "after_return": 0.0030904188896385687,
+      "detection_lag_days": 3
+    },
+    {
+      "index": 640,
+      "from": "SIDEWAYS",
+      "to": "BEARISH",
+      "before_return": 0.00013631698042004814,
+      "after_return": 0.013121835542202476,
+      "detection_lag_days": 2
+    },
+    {
+      "index": 641,
+      "from": "BEARISH",
+      "to": "SIDEWAYS",
+      "before_return": -0.00022284982937792464,
+      "after_return": 0.013485796388423399,
+      "detection_lag_days": 2
+    },
+    {
+      "index": 642,
+      "from": "SIDEWAYS",
+      "to": "BEARISH",
+      "before_return": -0.00022284982937792464,
+      "after_return": 0.0235536274167083,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 655,
+      "from": "BEARISH",
+      "to": "SIDEWAYS",
+      "before_return": 0.0007900131082323458,
+      "after_return": 0.00037232816546817205,
+      "detection_lag_days": 4
+    },
+    {
+      "index": 660,
+      "from": "SIDEWAYS",
+      "to": "BULLISH",
+      "before_return": 0.00037232816546817205,
+      "after_return": -0.00020507344833931018,
+      "detection_lag_days": null
+    },
+    {
+      "index": 712,
+      "from": "BULLISH",
+      "to": "SIDEWAYS",
+      "before_return": 0.013510374254473545,
+      "after_return": 0.008266907277506563,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 728,
+      "from": "SIDEWAYS",
+      "to": "BEARISH",
+      "before_return": 0.0,
+      "after_return": -0.001496581248461415,
+      "detection_lag_days": 3
+    },
+    {
+      "index": 730,
+      "from": "BEARISH",
+      "to": "SIDEWAYS",
+      "before_return": 0.0,
+      "after_return": -0.0007779764713963244,
+      "detection_lag_days": 1
+    },
+    {
+      "index": 733,
+      "from": "SIDEWAYS",
+      "to": "BULLISH",
+      "before_return": -0.001496581248461415,
+      "after_return": 0.000951099286093493,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 741,
+      "from": "BULLISH",
+      "to": "SIDEWAYS",
+      "before_return": 0.002809052689238145,
+      "after_return": 0.0037361588234925414,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 743,
+      "from": "SIDEWAYS",
+      "to": "BEARISH",
+      "before_return": 0.006507590675625785,
+      "after_return": -0.0002216425247795195,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 752,
+      "from": "BEARISH",
+      "to": "SIDEWAYS",
+      "before_return": -1.9229997007319533e-05,
+      "after_return": -0.00016155161348596625,
+      "detection_lag_days": null
+    },
+    {
+      "index": 759,
+      "from": "SIDEWAYS",
+      "to": "BULLISH",
+      "before_return": -0.0018076952645733613,
+      "after_return": -0.00012460397387592526,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 816,
+      "from": "BULLISH",
+      "to": "SIDEWAYS",
+      "before_return": 0.008462313363280183,
+      "after_return": 0.07984845179798672,
+      "detection_lag_days": 1
+    },
+    {
+      "index": 820,
+      "from": "SIDEWAYS",
+      "to": "BEARISH",
+      "before_return": 0.08711224329448397,
+      "after_return": 0.022947790329322038,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 823,
+      "from": "BEARISH",
+      "to": "SIDEWAYS",
+      "before_return": 0.07773061128973802,
+      "after_return": 0.02118160913452738,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 826,
+      "from": "SIDEWAYS",
+      "to": "BULLISH",
+      "before_return": 0.03042943130540321,
+      "after_return": 0.030730853206038633,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 885,
+      "from": "BULLISH",
+      "to": "SIDEWAYS",
+      "before_return": 0.0007076328800619258,
+      "after_return": -0.001243551060164938,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 891,
+      "from": "SIDEWAYS",
+      "to": "BULLISH",
+      "before_return": -0.00110292217834973,
+      "after_return": -0.00016570441049768014,
+      "detection_lag_days": null
+    }
+  ],
+  "transition_summary": {
+    "SIDEWAYS->BULLISH": {
+      "count": 24,
+      "avg_before_return": 0.0021749627634953853,
+      "avg_after_return": 0.004176365735754385,
+      "avg_detection_lag_days": 0.9
+    },
+    "BULLISH->SIDEWAYS": {
+      "count": 25,
+      "avg_before_return": 0.0026996026297093235,
+      "avg_after_return": 0.008699472757494853,
+      "avg_detection_lag_days": 0.7391304347826086
+    },
+    "SIDEWAYS->BEARISH": {
+      "count": 21,
+      "avg_before_return": 0.0064570824710100515,
+      "avg_after_return": 0.005585813826065668,
+      "avg_detection_lag_days": 0.7
+    },
+    "BEARISH->BULLISH": {
+      "count": 2,
+      "avg_before_return": 0.0057418450317641145,
+      "avg_after_return": 0.00075546520594727,
+      "avg_detection_lag_days": 1.0
+    },
+    "BEARISH->SIDEWAYS": {
+      "count": 19,
+      "avg_before_return": 0.005147898568330452,
+      "avg_after_return": 0.003153112579183691,
+      "avg_detection_lag_days": 1.0588235294117647
+    }
+  }
+}

@@ -1,0 +1,14 @@
+[
+  {
+    "cycle": [
+      "data/sentiment_features.py",
+      "data/feature_engineer.py"
+    ],
+    "length": 2,
+    "severity": "LOW",
+    "categories": [
+      "UNKNOWN",
+      "DEPRECATED"
+    ]
+  }
+]

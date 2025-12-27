@@ -1,0 +1,58 @@
+{
+  "symbol": "KO",
+  "regime_metrics": {
+    "BULLISH": {
+      "total_return": 7.550465552164098e-05,
+      "sharpe": 0.3198232436604312,
+      "max_drawdown": -0.0006646192606397789,
+      "win_rate": 0.0,
+      "avg_trade_return": -0.01288566325501228,
+      "num_trades": 1,
+      "avg_position_size": 0.09023453786132063,
+      "kelly_stats": {
+        "count": 6,
+        "mean": 0.09023453786132063,
+        "median": 0.061405119471315675,
+        "std": 0.10751097485061693,
+        "p10": 0.0,
+        "p90": 0.2092984941126462
+      }
+    },
+    "SIDEWAYS": {
+      "total_return": 0.05007837320293307,
+      "sharpe": 5.10115125907403,
+      "max_drawdown": -0.0037220810730448435,
+      "win_rate": 0.9230769230769231,
+      "avg_trade_return": 0.009865705656989462,
+      "num_trades": 13,
+      "avg_position_size": 0.04630086567399521,
+      "kelly_stats": {
+        "count": 54,
+        "mean": 0.04630086567399521,
+        "median": 0.00946091554002603,
+        "std": 0.19600042101008253,
+        "p10": -0.19163036275499412,
+        "p90": 0.30108578907278205
+      }
+    },
+    "BEARISH": null
+  },
+  "transitions": [
+    {
+      "index": 54,
+      "from": "SIDEWAYS",
+      "to": "BULLISH",
+      "before_return": 0.00627744743469405,
+      "after_return": 7.550465552164098e-05,
+      "detection_lag_days": 0
+    }
+  ],
+  "transition_summary": {
+    "SIDEWAYS->BULLISH": {
+      "count": 1,
+      "avg_before_return": 0.00627744743469405,
+      "avg_after_return": 7.550465552164098e-05,
+      "avg_detection_lag_days": 0.0
+    }
+  }
+}

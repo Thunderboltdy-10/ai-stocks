@@ -1,0 +1,34 @@
+2025-12-19 17:05:50 | INFO     | training.KO.regressor | Training log initialized: /home/thunderboltdy/ai-stocks/python-ai-service/training_logs/KO_regressor_20251219_170550.log
+2025-12-19 17:05:50 | DEBUG    | training.KO.regressor | Symbol: KO, Model Type: regressor
+2025-12-19 17:05:50 | DEBUG    | training.KO.regressor | Python version: 3.10.19 (main, Oct 21 2025, 16:43:05) [GCC 11.2.0]
+2025-12-19 17:05:50 | INFO     | training.KO.regressor | Starting regressor training for KO
+2025-12-19 17:05:50 | INFO     | training.KO.regressor | Arguments: epochs=50, batch_size=512, sequence_length=90, seed=42
+2025-12-19 17:05:50 | INFO     | training.KO.regressor | [OK] Feature count validated: 157 features
+2025-12-19 17:05:50 | INFO     | training.KO.regressor | Using all 157 features
+2025-12-19 17:05:50 | INFO     | training.KO.regressor | 
+2025-12-19 17:05:50 | INFO     | training.KO.regressor | ============================================================
+2025-12-19 17:05:50 | INFO     | training.KO.regressor | TARGET DISTRIBUTION CHECK
+2025-12-19 17:05:50 | INFO     | training.KO.regressor | ============================================================
+2025-12-19 17:05:50 | INFO     | training.KO.regressor |    Positive: 49.1% (7,910 samples) | mean: +1.06%
+2025-12-19 17:05:50 | INFO     | training.KO.regressor |    Negative: 45.9% (7,390 samples) | mean: -1.03%
+2025-12-19 17:05:50 | INFO     | training.KO.regressor |    Zero:     5.0% (798 samples)
+2025-12-19 17:05:50 | INFO     | training.KO.regressor |    Overall:  mean=+0.046%, std=1.439%
+2025-12-19 17:05:50 | INFO     | training.KO.regressor | 
+2025-12-19 17:05:50 | INFO     | training.KO.regressor |    Percentiles:
+2025-12-19 17:05:50 | INFO     | training.KO.regressor |       10th: -1.471%
+2025-12-19 17:05:50 | INFO     | training.KO.regressor |       25th: -0.674%
+2025-12-19 17:05:50 | INFO     | training.KO.regressor |       50th: +0.000% (median)
+2025-12-19 17:05:50 | INFO     | training.KO.regressor |       75th: +0.743%
+2025-12-19 17:05:50 | INFO     | training.KO.regressor |       90th: +1.589%
+2025-12-19 17:05:50 | INFO     | training.KO.regressor | 
+2025-12-19 17:05:50 | INFO     | training.KO.regressor | [OK] Distribution is balanced
+2025-12-19 17:05:50 | INFO     | training.KO.regressor | ============================================================
+2025-12-19 17:05:50 | INFO     | training.KO.regressor |    [OK] Target distribution metadata saved to /home/thunderboltdy/ai-stocks/python-ai-service/saved_models/KO/target_distribution.json
+2025-12-19 17:05:53 | INFO     | training.KO.regressor | 
+=== Data Quality Pre-Check ===
+2025-12-19 17:05:54 | WARNING  | training.KO.regressor | [WARN] 38 features have near-zero variance
+2025-12-19 17:05:54 | INFO     | training.KO.regressor | Target range: [-1.2000, 1.2000]
+2025-12-19 17:05:54 | INFO     | training.KO.regressor | Target std: 0.7780 (should be ~1 after scaling)
+2025-12-19 17:05:54 | INFO     | training.KO.regressor | [OK] Data quality checks passed
+2025-12-19 17:05:54 | INFO     | training.KO.regressor | [OK] Training with 157 features (93 technical + 20 new + 34 sentiment)
+2025-12-19 17:05:54 | INFO     | training.KO.regressor |   Input shape: (12807, 90, 157) = (samples=12807, seq_len=90, features=157)

@@ -1,0 +1,80 @@
+{
+  "symbol": "ASML",
+  "regime_metrics": {
+    "BULLISH": {
+      "total_return": 0.02474193535506508,
+      "sharpe": 10.589429111769215,
+      "max_drawdown": 0.0,
+      "win_rate": null,
+      "avg_trade_return": null,
+      "num_trades": 0,
+      "avg_position_size": -0.3781806941850896,
+      "kelly_stats": {
+        "count": 4,
+        "mean": -0.3781806941850896,
+        "median": -0.3608146764120559,
+        "std": 0.055226135087588606,
+        "p10": -0.4397141904961145,
+        "p90": -0.3305400120924918
+      }
+    },
+    "SIDEWAYS": {
+      "total_return": 0.3283995591209574,
+      "sharpe": 7.899561268381479,
+      "max_drawdown": -0.015103955669493581,
+      "win_rate": 0.8571428571428571,
+      "avg_trade_return": 0.05788111304508671,
+      "num_trades": 7,
+      "avg_position_size": 0.05997453935502276,
+      "kelly_stats": {
+        "count": 56,
+        "mean": 0.05997453935502276,
+        "median": 0.059960293604204094,
+        "std": 0.4119987818876851,
+        "p10": -0.5,
+        "p90": 0.5084280948877291
+      }
+    },
+    "BEARISH": null
+  },
+  "transitions": [
+    {
+      "index": 54,
+      "from": "SIDEWAYS",
+      "to": "BULLISH",
+      "before_return": 0.014035564464020434,
+      "after_return": 0.009157209704010905,
+      "detection_lag_days": 0
+    },
+    {
+      "index": 57,
+      "from": "BULLISH",
+      "to": "SIDEWAYS",
+      "before_return": 0.04252010779086879,
+      "after_return": -0.014999460827613276,
+      "detection_lag_days": null
+    },
+    {
+      "index": 59,
+      "from": "SIDEWAYS",
+      "to": "BULLISH",
+      "before_return": 0.009157209704010905,
+      "after_return": 0.00010609733126853982,
+      "detection_lag_days": null
+    }
+  ],
+  "transition_summary": {
+    "SIDEWAYS->BULLISH": {
+      "count": 2,
+      "avg_before_return": 0.011596387084015669,
+      "avg_after_return": 0.004631653517639722,
+      "avg_detection_lag_days": 0.0
+    },
+    "BULLISH->SIDEWAYS": {
+      "count": 1,
+      "avg_before_return": 0.04252010779086879,
+      "avg_after_return": -0.014999460827613276,
+      "avg_detection_lag_days": null
+    }
+  }
+}

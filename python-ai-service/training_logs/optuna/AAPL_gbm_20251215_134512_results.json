@@ -1,0 +1,24 @@
+{
+  "study_name": "AAPL_gbm_20251215_134512",
+  "model_type": "gbm",
+  "symbol": "AAPL",
+  "metric": "sharpe",
+  "best_value": 1.7105161258019461,
+  "best_params": {
+    "gbm_type": "lightgbm",
+    "n_estimators": 1500,
+    "learning_rate": 0.030405325392865647,
+    "max_depth": 4,
+    "min_child_samples": 19,
+    "subsample": 0.5290418060840998,
+    "colsample_bytree": 0.9330880728874675,
+    "num_leaves": 158,
+    "reg_alpha": 0.023585940584142682,
+    "reg_lambda": 1.5320059381854043e-08,
+    "huber_delta": 0.08706020878304858
+  },
+  "n_trials": 3,
+  "n_completed": 3,
+  "n_pruned": 0,
+  "timestamp": "2025-12-15T13:46:05.149932"
+}
