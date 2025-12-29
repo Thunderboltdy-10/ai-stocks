@@ -1,0 +1,121 @@
+2025-12-28 21:39:02,599 - __main__ - INFO - Using seed: 42
+2025-12-28 21:39:02,599 - __main__ - INFO - Preparing GBM data for AAPL...
+2025-12-28 21:39:02,600 - data.cache_manager - INFO - DataCacheManager initialized: cache
+2025-12-28 21:39:02,652 - data.cache_manager - INFO - ✓ Loaded cached data for AAPL: (11350, 165)
+2025-12-28 21:39:02,652 - __main__ - INFO - Using cached data: (11350, 165)
+2025-12-28 21:39:02,652 - __main__ - INFO - Found 14 sentiment features - ensure they are properly lagged
+2025-12-28 21:39:02,652 - __main__ - INFO - ✓ No look-ahead leakage detected in feature names
+2025-12-28 21:39:02,656 - __main__ - INFO - Target range after clipping: [-0.1000, 0.1000]
+2025-12-28 21:39:02,671 - __main__ - INFO - Data shape: X=(11350, 157), y=(11350,)
+2025-12-28 21:39:02,671 - __main__ - INFO - 
+============================================================
+2025-12-28 21:39:02,671 - __main__ - INFO - Training XGBoost...
+2025-12-28 21:39:02,671 - __main__ - INFO - ============================================================
+2025-12-28 21:39:02,671 - __main__ - INFO - Walk-forward CV: 5 splits, test_size=60, gap=1
+2025-12-28 21:39:02,671 - __main__ - INFO - Total samples: 11350, min train size: 1891
+2025-12-28 21:39:02,672 - __main__ - INFO - 
+--- Fold 1/5 ---
+2025-12-28 21:39:02,672 - __main__ - INFO - Train: 11049 samples (indices 0-11048)
+2025-12-28 21:39:02,672 - __main__ - INFO - Val: 60 samples (indices 11050-11109)
+2025-12-28 21:39:02,740 - __main__ - INFO - Sample weights: positive=0.986, negative=1.051
+2025-12-28 21:39:06,964 - __main__ - INFO -   XGBoost early stopped at iteration 91
+2025-12-28 21:39:06,970 - __main__ - WARNING -   ⚠️ Fold 1 VARIANCE COLLAPSE: pred_std=0.000297
+2025-12-28 21:39:06,970 - __main__ - ERROR -   Current config: reg_lambda=0.0050, reg_alpha=0.0050, objective='reg:squarederror'
+2025-12-28 21:39:06,970 - __main__ - ERROR -   Recommended: reg_lambda < 0.005, reg_alpha < 0.005, objective='regression'
+2025-12-28 21:39:06,971 - __main__ - ERROR -   XGBoost-specific: Increase early_stopping_rounds to 150+, max_depth to 6
+2025-12-28 21:39:06,971 - __main__ - WARNING -   ⚠️ Fold 1 SEVERE BIAS: 95.0% positive
+2025-12-28 21:39:06,977 - __main__ - INFO -   MSE: 0.000119, MAE: 0.008490, R²: -0.0041
+2025-12-28 21:39:06,977 - __main__ - INFO -   Direction Acc: 0.5833, IC: -0.0166
+2025-12-28 21:39:06,977 - __main__ - INFO -   Prediction std: 0.000297
+2025-12-28 21:39:07,226 - __main__ - INFO - ✓ Training curve saved: logs/xgb_training_curve_AAPL_fold1.png
+2025-12-28 21:39:07,227 - __main__ - INFO - 
+--- Fold 2/5 ---
+2025-12-28 21:39:07,227 - __main__ - INFO - Train: 11109 samples (indices 0-11108)
+2025-12-28 21:39:07,227 - __main__ - INFO - Val: 60 samples (indices 11110-11169)
+2025-12-28 21:39:07,284 - __main__ - INFO - Sample weights: positive=0.985, negative=1.052
+2025-12-28 21:39:22,171 - __main__ - INFO -   MSE: 0.000877, MAE: 0.020227, R²: -0.1210
+2025-12-28 21:39:22,171 - __main__ - INFO -   Direction Acc: 0.4500, IC: -0.0825
+2025-12-28 21:39:22,171 - __main__ - INFO -   Prediction std: 0.006435
+2025-12-28 21:39:22,416 - __main__ - INFO - ✓ Training curve saved: logs/xgb_training_curve_AAPL_fold2.png
+2025-12-28 21:39:22,417 - __main__ - INFO - 
+--- Fold 3/5 ---
+2025-12-28 21:39:22,417 - __main__ - INFO - Train: 11169 samples (indices 0-11168)
+2025-12-28 21:39:22,417 - __main__ - INFO - Val: 60 samples (indices 11170-11229)
+2025-12-28 21:39:22,467 - __main__ - INFO - Sample weights: positive=0.986, negative=1.051
+2025-12-28 21:39:37,687 - __main__ - INFO -   MSE: 0.000380, MAE: 0.014945, R²: -0.1072
+2025-12-28 21:39:37,687 - __main__ - INFO -   Direction Acc: 0.4333, IC: 0.1371
+2025-12-28 21:39:37,687 - __main__ - INFO -   Prediction std: 0.006196
+2025-12-28 21:39:37,945 - __main__ - INFO - ✓ Training curve saved: logs/xgb_training_curve_AAPL_fold3.png
+2025-12-28 21:39:37,945 - __main__ - INFO - 
+--- Fold 4/5 ---
+2025-12-28 21:39:37,945 - __main__ - INFO - Train: 11229 samples (indices 0-11228)
+2025-12-28 21:39:37,945 - __main__ - INFO - Val: 60 samples (indices 11230-11289)
+2025-12-28 21:39:38,000 - __main__ - INFO - Sample weights: positive=0.985, negative=1.052
+2025-12-28 21:39:54,321 - __main__ - INFO -   MSE: 0.000255, MAE: 0.011216, R²: -0.0851
+2025-12-28 21:39:54,321 - __main__ - INFO -   Direction Acc: 0.5167, IC: 0.0027
+2025-12-28 21:39:54,321 - __main__ - INFO -   Prediction std: 0.002883
+2025-12-28 21:39:54,573 - __main__ - INFO - ✓ Training curve saved: logs/xgb_training_curve_AAPL_fold4.png
+2025-12-28 21:39:54,573 - __main__ - INFO - 
+--- Fold 5/5 ---
+2025-12-28 21:39:54,573 - __main__ - INFO - Train: 11289 samples (indices 0-11288)
+2025-12-28 21:39:54,573 - __main__ - INFO - Val: 60 samples (indices 11290-11349)
+2025-12-28 21:39:54,627 - __main__ - INFO - Sample weights: positive=0.985, negative=1.052
+2025-12-28 21:40:12,661 - __main__ - INFO -   MSE: 0.000147, MAE: 0.008773, R²: -0.1797
+2025-12-28 21:40:12,661 - __main__ - INFO -   Direction Acc: 0.4167, IC: -0.0093
+2025-12-28 21:40:12,661 - __main__ - INFO -   Prediction std: 0.002669
+2025-12-28 21:40:12,924 - __main__ - INFO - ✓ Training curve saved: logs/xgb_training_curve_AAPL_fold5.png
+2025-12-28 21:40:12,931 - __main__ - WARNING - ⚠️ 1/5 folds have variance collapse (pred_std < 0.001)
+2025-12-28 21:40:12,931 - __main__ - INFO - 
+=== XGB CV Summary ===
+2025-12-28 21:40:12,931 - __main__ - INFO - MSE: 0.000356 ± 0.000309
+2025-12-28 21:40:12,931 - __main__ - INFO - MAE: 0.012730 ± 0.004925
+2025-12-28 21:40:12,931 - __main__ - INFO - R²: -0.0994 ± 0.0638
+2025-12-28 21:40:12,931 - __main__ - INFO - Direction Acc: 0.4800 ± 0.0691
+2025-12-28 21:40:12,931 - __main__ - INFO - IC: 0.0063 ± 0.0803
+2025-12-28 21:40:12,931 - __main__ - INFO - Avg prediction std: 0.003696
+2025-12-28 21:40:12,932 - __main__ - INFO - Training final XGB model on 11350 samples...
+2025-12-28 21:40:12,972 - __main__ - INFO - 3-way split: Train=6810, Val=2270, Test=2270
+2025-12-28 21:40:12,972 - __main__ - INFO - NOTE: Test set is HELD-OUT - metrics computed ONLY on test set
+2025-12-28 21:40:17,283 - __main__ - INFO - Final XGBoost model: best iteration = 1
+2025-12-28 21:40:17,553 - __main__ - INFO - ✓ Training curve saved: logs/xgb_training_curve_AAPL_final.png
+2025-12-28 21:40:17,555 - __main__ - INFO - 
+=== HELD-OUT TEST SET METRICS (NO LEAKAGE) ===
+2025-12-28 21:40:17,555 - __main__ - INFO - Test samples: 2270 (last 20% of data)
+2025-12-28 21:40:17,555 - __main__ - INFO - Test IC: -0.0138
+2025-12-28 21:40:17,556 - __main__ - INFO - Test Direction Accuracy: 0.5388
+2025-12-28 21:40:17,556 - __main__ - INFO - Test Prediction std: 0.000155
+2025-12-28 21:40:17,556 - __main__ - INFO - Test Prediction distribution: 99.9% positive, 0.1% negative
+2025-12-28 21:40:17,557 - __main__ - INFO - Val IC: 0.0317, Val Direction Acc: 0.5220
+2025-12-28 21:40:17,557 - __main__ - INFO - Walk Forward Efficiency (WFE): 103.2%
+2025-12-28 21:40:17,557 - __main__ - INFO - WFE 103.2%: Good - strategy is likely robust
+2025-12-28 21:40:17,557 - __main__ - WARNING - ⚠️ NEGATIVE IC DETECTED: -0.0138
+2025-12-28 21:40:17,557 - __main__ - WARNING -    This means predictions are inversely correlated with actuals
+2025-12-28 21:40:17,557 - __main__ - WARNING -    Direction accuracy will be below 50%
+2025-12-28 21:40:17,557 - __main__ - WARNING - ⚠️ VARIANCE COLLAPSE DETECTED: Predictions have near-zero variance
+2025-12-28 21:40:17,557 - __main__ - WARNING -    This means the model is outputting constant values
+2025-12-28 21:40:17,557 - __main__ - WARNING -    Root causes: early stopping too aggressive, huber_delta too large, or data issues
+2025-12-28 21:40:17,557 - __main__ - WARNING - ⚠️ Predictions are biased: 99.9% positive, 0.1% negative
+Technical features by category (expected sum): 116
+Actual technical list length: 123
+Difference from canonical 113: 10
+
+❌ DRIFT DETECTED!
+Categories sum to: 116
+List has: 123
+Extra technical items (tail): ['latest_high_pivot', 'latest_low_pivot', 'dist_to_high_pivot', 'dist_to_low_pivot', 'vap_poc_price', 'dist_to_vap_poc', 'hvn_proximity', 'near_resistance_zone', 'near_support_zone', 'volume_concentration_score']
+Traceback (most recent call last):
+  File "/home/thunderboltdy/ai-stocks/python-ai-service/training/train_gbm_baseline.py", line 1245, in <module>
+    main()
+    ~~~~^^
+  File "/home/thunderboltdy/ai-stocks/python-ai-service/training/train_gbm_baseline.py", line 1216, in main
+    results = train_gbm_models(
+        symbol=args.symbol.upper(),
+    ...<3 lines>...
+        config=config,
+    )
+  File "/home/thunderboltdy/ai-stocks/python-ai-service/training/train_gbm_baseline.py", line 1112, in train_gbm_models
+    xgb_model, xgb_scaler, xgb_metadata = train_final_model(X, y, 'xgb', config, feature_cols, symbol=symbol)
+                                          ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/thunderboltdy/ai-stocks/python-ai-service/training/train_gbm_baseline.py", line 1003, in train_final_model
+    raise ValueError(f"GBM VARIANCE COLLAPSE: pred_std={pred_std:.6f} < 0.001")
+ValueError: GBM VARIANCE COLLAPSE: pred_std=0.000155 < 0.001

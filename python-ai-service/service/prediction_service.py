@@ -1,6 +1,22 @@
-"""Prediction + backtest orchestration utilities for the FastAPI service."""
+"""Prediction + backtest orchestration utilities for the FastAPI service.
+
+DEPRECATION WARNING (December 2025):
+This module uses binary classifiers which have been deprecated.
+The CLI pipeline now uses the stacking ensemble (inference_and_backtest.py --fusion-mode stacking).
+This service layer should be updated to use StackingPredictor instead of classifiers.
+
+For now, the pos_encoding fix in LSTMTransformerPaper prevents the AttributeError,
+but this module should be refactored to use the new stacking approach.
+"""
 
 from __future__ import annotations
+
+import warnings
+warnings.warn(
+    "prediction_service.py uses deprecated binary classifiers. "
+    "Consider using inference_and_backtest.py with --fusion-mode stacking instead.",
+    DeprecationWarning
+)
 
 from dataclasses import dataclass
 from functools import lru_cache

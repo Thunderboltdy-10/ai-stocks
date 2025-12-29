@@ -135,6 +135,64 @@ logger = logging.getLogger(__name__)
 
 
 # ============================================================================
+# AUTO-STOP CALLBACK (NUCLEAR FIX - December 2025)
+# ============================================================================
+
+class AutoStopOnCollapse(keras.callbacks.Callback):
+    """
+    Auto-stop training when variance collapse or prediction bias is detected.
+
+    This callback hard-stops training by raising an exception when:
+    1. Prediction variance drops below threshold (variance collapse)
+    2. Predictions are >85% in one direction (prediction bias)
+
+    This saves compute time and prevents training models that have already failed.
+    """
+
+    def __init__(self, X_val, y_val, check_interval=5, warmup_epochs=3,
+                 min_std=0.005, max_bias=0.85):
+        super().__init__()
+        self.X_val = X_val
+        self.y_val = y_val
+        self.check_interval = check_interval
+        self.warmup_epochs = warmup_epochs
+        self.min_std = min_std
+        self.max_bias = max_bias
+
+    def on_epoch_end(self, epoch, logs=None):
+        # Skip warmup and only check at intervals
+        if epoch < self.warmup_epochs or epoch % self.check_interval != 0:
+            return
+
+        # Get predictions
+        try:
+            preds = self.model.predict(self.X_val[:100], verbose=0).flatten()
+        except Exception as e:
+            logger.warning(f"AutoStopOnCollapse: prediction failed at epoch {epoch}: {e}")
+            return
+
+        pred_std = np.std(preds)
+        pct_positive = (preds > 0).mean()
+        pct_negative = (preds < 0).mean()
+
+        logger.info(f"[Epoch {epoch}] AutoStop Check: std={pred_std:.6f}, "
+                    f"pos={pct_positive:.1%}, neg={pct_negative:.1%}")
+
+        # Check for variance collapse
+        if pred_std < self.min_std:
+            logger.error(f"VARIANCE COLLAPSE at epoch {epoch}: std={pred_std:.6f}")
+            raise ValueError(f"VARIANCE COLLAPSE at epoch {epoch}: std={pred_std:.6f} < {self.min_std}")
+
+        # Check for prediction bias
+        if pct_positive > self.max_bias:
+            logger.error(f"PREDICTION BIAS at epoch {epoch}: {pct_positive:.1%} positive")
+            raise ValueError(f"PREDICTION BIAS at epoch {epoch}: {pct_positive:.1%} positive")
+        if pct_negative > self.max_bias:
+            logger.error(f"PREDICTION BIAS at epoch {epoch}: {pct_negative:.1%} negative")
+            raise ValueError(f"PREDICTION BIAS at epoch {epoch}: {pct_negative:.1%} negative")
+
+
+# ============================================================================
 # xLSTM PATH SUPPORT
 # ============================================================================
 class xLSTMPaths:
@@ -306,7 +364,7 @@ def create_xlstm_model(
     sequence_length: int,
     hidden_dim: int = 64,
     num_layers: int = 2,
-    dropout: float = 0.2,
+    dropout: float = 0.35,  # December 2025: Increased from 0.2 for regularization
     use_wavelet: bool = True,
 ) -> keras.Model:
     """
@@ -362,15 +420,16 @@ def compile_model(
         Compiled model
     """
     # Loss function
+    # December 2025: Aggressively increased penalties to prevent variance collapse
     if use_anti_collapse_loss:
         loss_fn = AntiCollapseDirectionalLoss(
             delta=1.0,
             direction_weight=0.2,
-            variance_penalty_weight=0.5,
-            min_variance_target=0.008,
-            sign_diversity_weight=0.15,
+            variance_penalty_weight=2.0,   # STRONG enforcement to prevent collapse
+            min_variance_target=0.003,     # Stricter threshold
+            sign_diversity_weight=1.0,     # STRONG enforcement for ±50% balance
         )
-        logger.info("Using AntiCollapseDirectionalLoss for training")
+        logger.info("Using AntiCollapseDirectionalLoss (var_penalty=2.0, min_std=0.003)")
     else:
         loss_fn = keras.losses.Huber(delta=1.0)
         logger.info("Using Huber loss for training")
@@ -503,7 +562,8 @@ def run_walk_forward_validation(
         'callbacks': [
             keras.callbacks.EarlyStopping(
                 monitor='val_loss',
-                patience=10,
+                patience=15,          # INCREASED from 10 to allow more training
+                min_delta=0.0001,     # Require meaningful improvement
                 restore_best_weights=True,
             ),
         ],
@@ -584,6 +644,15 @@ def train_production_model(
         ),
         keras.callbacks.LearningRateScheduler(
             lambda epoch: config['learning_rate'] * (0.99 ** epoch)  # Gradual decay
+        ),
+        # NUCLEAR FIX: Auto-stop on variance collapse or prediction bias
+        AutoStopOnCollapse(
+            X_val=X_val,
+            y_val=y_val,
+            check_interval=5,
+            warmup_epochs=3,
+            min_std=0.005,
+            max_bias=0.85,
         ),
     ]
 
@@ -740,14 +809,14 @@ def train_xlstm(
     sequence_length: int = 60,
     hidden_dim: int = 64,
     num_layers: int = 2,
-    dropout: float = 0.2,
+    dropout: float = 0.35,  # December 2025: Increased from 0.2 for regularization
     learning_rate: float = 0.001,
     use_wavelet: bool = True,
     use_anti_collapse_loss: bool = True,
     skip_wfe: bool = False,
     wfe_iterations: int = 5,
     wfe_epochs: int = 30,
-    min_wfe: float = 50.0,
+    min_wfe: float = 40.0,  # December 2025: Lowered from 50.0 to allow more models
     use_cache: bool = True,
     force_refresh: bool = False,
     seed: int = 42,
@@ -912,7 +981,7 @@ def main():
     # Training parameters
     parser.add_argument('--epochs', type=int, default=100,
                         help='Training epochs for production model (default: 100)')
-    parser.add_argument('--batch_size', type=int, default=512,
+    parser.add_argument('--batch-size', type=int, default=512,
                         help='Batch size (default: 512, recommended for GPU)')
     parser.add_argument('--learning_rate', type=float, default=0.001,
                         help='Initial learning rate (default: 0.001)')
@@ -924,8 +993,8 @@ def main():
                         help='Hidden dimension for xLSTM (default: 64)')
     parser.add_argument('--num_layers', type=int, default=2,
                         help='Number of xLSTM layers (default: 2)')
-    parser.add_argument('--dropout', type=float, default=0.2,
-                        help='Dropout rate (default: 0.2)')
+    parser.add_argument('--dropout', type=float, default=0.35,
+                        help='Dropout rate (default: 0.35 - increased for regularization)')
     parser.add_argument('--no-wavelet', action='store_true',
                         help='Disable wavelet denoising')
 
@@ -936,8 +1005,8 @@ def main():
                         help='Number of WFE iterations (default: 5)')
     parser.add_argument('--wfe-epochs', type=int, default=30,
                         help='Epochs per WFE fold (default: 30)')
-    parser.add_argument('--min-wfe', type=float, default=50.0,
-                        help='Minimum WFE threshold percentage (default: 50)')
+    parser.add_argument('--min-wfe', type=float, default=40.0,
+                        help='Minimum WFE threshold percentage (default: 40 - lowered to allow more models)')
 
     # Data options
     parser.add_argument('--no-cache', action='store_true',

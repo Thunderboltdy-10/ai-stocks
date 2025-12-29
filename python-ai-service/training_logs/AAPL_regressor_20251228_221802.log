@@ -1,0 +1,34 @@
+2025-12-28 22:18:02 | INFO     | training.AAPL.regressor | Training log initialized: /home/thunderboltdy/ai-stocks/python-ai-service/training_logs/AAPL_regressor_20251228_221802.log
+2025-12-28 22:18:02 | DEBUG    | training.AAPL.regressor | Symbol: AAPL, Model Type: regressor
+2025-12-28 22:18:02 | DEBUG    | training.AAPL.regressor | Python version: 3.10.19 (main, Oct 21 2025, 16:43:05) [GCC 11.2.0]
+2025-12-28 22:18:02 | INFO     | training.AAPL.regressor | Starting regressor training for AAPL
+2025-12-28 22:18:02 | INFO     | training.AAPL.regressor | Arguments: epochs=30, batch_size=512, sequence_length=90, seed=42
+2025-12-28 22:18:02 | INFO     | training.AAPL.regressor | [OK] Feature count validated: 157 features
+2025-12-28 22:18:02 | INFO     | training.AAPL.regressor | Using all 157 features
+2025-12-28 22:18:02 | INFO     | training.AAPL.regressor | 
+2025-12-28 22:18:02 | INFO     | training.AAPL.regressor | ============================================================
+2025-12-28 22:18:02 | INFO     | training.AAPL.regressor | TARGET DISTRIBUTION CHECK
+2025-12-28 22:18:02 | INFO     | training.AAPL.regressor | ============================================================
+2025-12-28 22:18:02 | INFO     | training.AAPL.regressor |    Positive: 50.0% (5,673 samples) | mean: +1.96%
+2025-12-28 22:18:02 | INFO     | training.AAPL.regressor |    Negative: 46.7% (5,306 samples) | mean: -1.95%
+2025-12-28 22:18:02 | INFO     | training.AAPL.regressor |    Zero:     3.3% (371 samples)
+2025-12-28 22:18:02 | INFO     | training.AAPL.regressor |    Overall:  mean=+0.070%, std=2.805%
+2025-12-28 22:18:02 | INFO     | training.AAPL.regressor | 
+2025-12-28 22:18:02 | INFO     | training.AAPL.regressor |    Percentiles:
+2025-12-28 22:18:02 | INFO     | training.AAPL.regressor |       10th: -2.825%
+2025-12-28 22:18:02 | INFO     | training.AAPL.regressor |       25th: -1.251%
+2025-12-28 22:18:02 | INFO     | training.AAPL.regressor |       50th: +0.000% (median)
+2025-12-28 22:18:02 | INFO     | training.AAPL.regressor |       75th: +1.412%
+2025-12-28 22:18:02 | INFO     | training.AAPL.regressor |       90th: +3.019%
+2025-12-28 22:18:02 | INFO     | training.AAPL.regressor | 
+2025-12-28 22:18:02 | INFO     | training.AAPL.regressor | [OK] Distribution is balanced
+2025-12-28 22:18:02 | INFO     | training.AAPL.regressor | ============================================================
+2025-12-28 22:18:02 | INFO     | training.AAPL.regressor |    [OK] Target distribution metadata saved to /home/thunderboltdy/ai-stocks/python-ai-service/saved_models/AAPL/target_distribution.json
+2025-12-28 22:18:06 | INFO     | training.AAPL.regressor | 
+=== Data Quality Pre-Check ===
+2025-12-28 22:18:07 | WARNING  | training.AAPL.regressor | [WARN] 38 features have near-zero variance
+2025-12-28 22:18:07 | INFO     | training.AAPL.regressor | Target range: [-1.2000, 1.2000]
+2025-12-28 22:18:07 | INFO     | training.AAPL.regressor | Target std: 0.7786 (should be ~1 after scaling)
+2025-12-28 22:18:07 | INFO     | training.AAPL.regressor | [OK] Data quality checks passed
+2025-12-28 22:18:07 | INFO     | training.AAPL.regressor | [OK] Training with 157 features (93 technical + 20 new + 34 sentiment)
+2025-12-28 22:18:07 | INFO     | training.AAPL.regressor |   Input shape: (8451, 90, 157) = (samples=8451, seq_len=90, features=157)

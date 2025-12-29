@@ -46,7 +46,8 @@ from models.patchtst import (
     TransformerEncoderLayer
 )
 from evaluation.advanced_backtester import AdvancedBacktester
-from evaluation.model_validation_suite import validate_feature_counts, validate_sequences, create_binary_classifier
+from evaluation.model_validation_suite import validate_feature_counts, validate_sequences
+# Note: create_binary_classifier removed - binary classifiers deprecated December 2025
 from inference.confidence_scorer import ConfidenceScorer
 
 # Import ModelPaths for organized model storage (with fallback)
@@ -55,6 +56,15 @@ try:
 except ImportError:
     ModelPaths = None
     find_model_path = None
+
+# Import StackingPredictor for stacking ensemble mode
+try:
+    from inference.stacking_predictor import StackingPredictor, load_stacking_predictor
+    STACKING_AVAILABLE = True
+except ImportError:
+    StackingPredictor = None
+    load_stacking_predictor = None
+    STACKING_AVAILABLE = False
 import sys
 try:
     from dotenv import load_dotenv
@@ -516,20 +526,19 @@ def select_best_available_fusion_mode(requested_mode: str, available_models: dic
     """Choose the best fusion mode given requested mode and available models.
 
     Rules:
-    - If all models required for `requested_mode` are available, return `requested_mode`.
-    - If requested requires both and one is missing, prefer the single-model fallback:
-      prefer 'regressor' when classifiers are missing; prefer 'classifier' when regressor missing.
+    - 'stacking' is the RECOMMENDED mode and requires trained stacking model
+    - If stacking requested but not available, ERROR (don't silently fallback)
     - GBM fusion modes (gbm_only, gbm_heavy, balanced, lstm_heavy) only need regressor+GBM.
     - gbm_only mode ONLY requires GBM model, not the LSTM regressor.
-    - If neither regressor nor classifiers are available, return None to indicate
-      there are no viable fusion options.
+    - If no models are available, return None to indicate no viable fusion options.
+
+    Note: Binary classifiers have been deprecated and removed. 'classifier', 'hybrid',
+    and 'weighted' modes are no longer supported.
     """
     required = {
+        'stacking': ['stacking'],        # Stacking requires trained meta-learner
         'regressor': ['regressor'],
-        'regressor_only': ['regressor'],  # regressor_only only needs regressor
-        'classifier': ['classifiers'],
-        'hybrid': ['regressor', 'classifiers'],
-        'weighted': ['regressor', 'classifiers'],
+        'regressor_only': ['regressor'],
         # GBM fusion modes: need regressor (GBM is optional, uses LSTM-only if GBM missing)
         'gbm_only': ['gbm'],             # GBM-only ONLY requires GBM model
         'gbm_heavy': ['regressor'],      # 70% GBM, 30% LSTM (needs LSTM as base)
@@ -542,13 +551,19 @@ def select_best_available_fusion_mode(requested_mode: str, available_models: dic
     if all(available_models.get(r, False) for r in req):
         return requested_mode
 
-    # Fallback preferences
+    # Stacking mode: ERROR if not available (don't silently fallback)
+    if requested_mode == 'stacking':
+        raise RuntimeError(
+            "Stacking ensemble not found. You must train the stacking model first:\n"
+            "  python train_all.py --symbol <SYMBOL>\n"
+            "Or use a fallback mode: --fusion-mode gbm_only"
+        )
+
+    # Fallback preferences for non-stacking modes
     if available_models.get('gbm', False):
         return 'gbm_only'  # Fallback to GBM-only if GBM is available
     if available_models.get('regressor', False):
         return 'regressor'
-    if available_models.get('classifiers', False):
-        return 'classifier'
 
     # No usable models available
     return None
@@ -1536,48 +1551,47 @@ def compute_classifier_positions(final_signals, buy_probs, sell_probs, max_short
     return positions
 
 
-def fuse_positions(mode, classifier_positions, regressor_positions, final_signals, max_short, 
+def fuse_positions(mode, classifier_positions, regressor_positions, final_signals, max_short,
                    regressor_preds=None, atr_percent=None, return_confidence=False, regime=None):
     """
-    Fuse classifier and regressor positions based on fusion mode.
-    
-    Fusion Modes:
-    - 'classifier': Ignores regressor entirely, uses classifier probabilities for position sizing.
-                   Returns classifier_positions directly with no regressor reference.
+    Fuse model positions based on fusion mode.
+
+    Fusion Modes (December 2025 - Classifiers DEPRECATED):
+    - 'stacking': Uses trained XGBoost meta-learner (RECOMMENDED - handled separately)
     - 'regressor': Uses only regressor predictions for position sizing.
-    - 'regressor_only': Pure regressor strategy - ignores classifiers completely.
-                       Uses regressor predictions directly to generate positions.
-                       Includes confidence filtering (MIN_CONFIDENCE = 0.3).
-    - 'hybrid': Uses classifier when signals fire, zero otherwise (regressor disabled).
-    - 'weighted': Amplifies classifier positions by regressor magnitude.
-    
-    Note: Regressor veto was removed - regressor outputs are ~0.00089 (effectively constant).
-    Regressor positions are no longer used as primary signal; classifier determines direction.
-    
+    - 'regressor_only': Pure regressor strategy with confidence filtering.
+    - 'gbm_only', 'gbm_heavy', 'balanced', 'lstm_heavy': GBM fusion modes.
+
+    Note: Binary classifiers ('classifier', 'hybrid', 'weighted') were deprecated December 2025.
+
     Args:
-        mode: Fusion mode ('classifier', 'regressor', 'regressor_only', 'hybrid', 'weighted')
-        classifier_positions: Position sizes from classifier
-        regressor_positions: Position sizes from regressor  
+        mode: Fusion mode ('stacking', 'regressor', 'regressor_only', 'gbm_*')
+        classifier_positions: DEPRECATED - not used, kept for API compatibility
+        regressor_positions: Position sizes from regressor
         final_signals: Array of signals (1=BUY, -1=SELL, 0=HOLD)
         max_short: Maximum short exposure
         regressor_preds: Raw regressor predictions (used for regressor_only mode)
-        atr_percent: ATR as percentage of price (used for regressor_only volatility adjustment)
-        return_confidence: If True and mode is regressor_only, returns (positions, confidence)
-    
+        atr_percent: ATR as percentage of price (used for volatility adjustment)
+        return_confidence: If True, returns (positions, confidence)
+        regime: Market regime for position adjustment
+
     Returns:
         Fused position sizes array, or tuple (positions, confidence) if return_confidence=True
     """
-    if mode == 'classifier':
-        # Classifier-only mode: use classifier positions directly, ignore regressor completely
-        return classifier_positions
+    # Stacking mode is handled separately in main() with StackingPredictor
+    if mode == 'stacking':
+        raise RuntimeError("Stacking mode should be handled by StackingPredictor, not fuse_positions()")
+
     if mode == 'regressor':
         return regressor_positions
+
     if mode == 'regressor_only':
-        # Pure regressor strategy - ignores classifiers completely
+        # Pure regressor strategy
         positions, confidence = fuse_predictions_regressor_only(regressor_preds, atr_percent, regime=regime)
         if return_confidence:
             return positions, confidence
         return positions
+
     if mode in ('gbm_only', 'gbm_heavy', 'balanced', 'lstm_heavy'):
         # GBM fusion modes: use regressor_positions which have been
         # replaced with GBM-fused predictions in the main function
@@ -1585,21 +1599,9 @@ def fuse_positions(mode, classifier_positions, regressor_positions, final_signal
         if return_confidence:
             return positions, confidence
         return positions
-    if mode == 'hybrid':
-        positions = classifier_positions.copy()
-        # For HOLD signals, use zero instead of regressor (which is always positive)
-        mask = final_signals == 0
-        positions[mask] = 0.0  # Changed from regressor_positions[mask]
-        return np.clip(positions, -max_short, 1.0)
-    if mode == 'weighted':
-        weight = 1.0 + np.clip(np.abs(regressor_positions), 0.0, 1.0)
-        positions = classifier_positions * weight
-        # For HOLD signals, use zero instead of regressor (which is always positive)
-        fallback = final_signals == 0
-        positions[fallback] = 0.0  # Changed from regressor_positions[fallback]
-        return np.clip(positions, -max_short, 1.0)
-    print(f"⚠️ Unknown fusion mode '{mode}', defaulting to classifier-only")
-    return classifier_positions
+
+    # Unknown mode - error instead of silent fallback
+    raise ValueError(f"Unknown fusion mode '{mode}'. Valid modes: stacking, regressor, regressor_only, gbm_only, gbm_heavy, balanced, lstm_heavy")
 
 
 def compute_regressor_confidence(regressor_preds: np.ndarray, window: int = 3) -> np.ndarray:
@@ -4366,7 +4368,7 @@ def main(
     reg_strategy='confidence_scaling',
     reg_threshold=0.01,
     reg_scale=15.0,
-    fusion_mode='classifier',
+    fusion_mode='stacking',  # December 2025: Default changed from 'classifier' to 'stacking'
     gbm_weight_override: float | None = None,
     skip_regressor_backtest=False,
     forward_sim=False,
@@ -4436,11 +4438,34 @@ def main(
     save_dir = Path('saved_models')
     # Track which models successfully loaded
     model_status = {
+        'stacking': False,  # December 2025: Stacking is now primary ensemble method
         'regressor': False,
-        'classifiers': False,
+        'classifiers': False,  # Deprecated - never used
         'quantile': False,
-        'tft': False
+        'tft': False,
+        'gbm': False
     }
+
+    # Check for stacking model availability (December 2025)
+    stacking_predictor = None
+    if fusion_mode == 'stacking':
+        if STACKING_AVAILABLE and load_stacking_predictor is not None:
+            stacking_predictor = load_stacking_predictor(symbol)
+            if stacking_predictor is not None and stacking_predictor.meta_learner is not None:
+                model_status['stacking'] = True
+                print(f"✓ Loaded stacking predictor for {symbol}")
+                print(f"  Base models: {list(stacking_predictor.base_models.keys())}")
+                print(f"  Reliability scores: {stacking_predictor.model_reliability}")
+            else:
+                raise RuntimeError(
+                    f"Stacking ensemble not found for {symbol}. Train it first:\n"
+                    f"  python train_all.py --symbol {symbol}\n"
+                    f"Or use a fallback mode: --fusion-mode gbm_only"
+                )
+        else:
+            raise RuntimeError(
+                "StackingPredictor not available. Check inference/stacking_predictor.py import."
+            )
     # Guard to ensure TFT backtest only runs once even if code reaches multiple
     # integration points below. This avoids duplicate heavy work and double-logs.
     tft_attempted = False
@@ -5337,10 +5362,10 @@ def main(
     # =================================================================
     # CLASSIFIER LOADING (skipped for regressor-only and GBM fusion modes)
     # =================================================================
-    # Only load classifiers if the fusion mode requires them
-    # GBM fusion modes (gbm_only, gbm_heavy, balanced, lstm_heavy) don't need classifiers
-    REGRESSOR_ONLY_MODES = ('regressor_only', 'regressor', 'gbm_only', 'gbm_heavy', 'balanced', 'lstm_heavy')
-    classifier_needed = fusion_mode not in REGRESSOR_ONLY_MODES
+    # Binary classifiers have been DEPRECATED and REMOVED (December 2025)
+    # All fusion modes are now regressor-only modes - classifiers are never loaded
+    REGRESSOR_ONLY_MODES = ('stacking', 'regressor_only', 'regressor', 'gbm_only', 'gbm_heavy', 'balanced', 'lstm_heavy')
+    classifier_needed = False  # Classifiers deprecated - never load them
     
     
     # P0.3-FIX: Calculate market regime globally for use in fusion logic
@@ -7076,12 +7101,11 @@ if __name__ == '__main__':
     p.add_argument('--symbol', type=str, default='AAPL', help='Stock symbol (default: AAPL)')
     p.add_argument('--backtest-days', type=int, default=60,
                    help='Number of most recent test days to evaluate (default 60, 0 = full set)')
-    p.add_argument('--fusion-mode', type=str, default='gbm_only',
-                   choices=['classifier', 'weighted', 'hybrid', 'regressor', 'regressor_only',
+    p.add_argument('--fusion-mode', type=str, default='stacking',
+                   choices=['stacking', 'regressor', 'regressor_only',
                             'gbm_only', 'gbm_heavy', 'balanced', 'lstm_heavy'],
-                   help='Model fusion strategy: regressor_only (pure LSTM regressor, no classifiers), '
-                        'classifier (classifiers only), regressor (pure regressor positions), '
-                        'hybrid (classifier signals + regressor sizing), weighted (amplified by regressor), '
+                   help='Model fusion strategy: stacking (XGBoost meta-learner ensemble - RECOMMENDED), '
+                        'regressor_only (pure LSTM regressor), regressor (pure regressor positions), '
                         'gbm_only (GBM models only, no LSTM), gbm_heavy (70%% GBM + 30%% LSTM), '
                         'balanced (50%% GBM + 50%% LSTM), lstm_heavy (70%% LSTM + 30%% GBM)')
     

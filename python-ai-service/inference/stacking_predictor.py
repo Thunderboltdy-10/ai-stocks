@@ -167,20 +167,42 @@ class StackingPredictor:
             self._load_base_models()
 
     def _load_base_models(self):
-        """Load base models (LSTM, XGBoost, LightGBM)."""
-        # Try to load LSTM regressor
+        """Load base models (LSTM, xLSTM, XGBoost, LightGBM) and their reliability scores."""
+        # Initialize model reliability scores (used for dynamic weighting)
+        self.model_reliability = {}
+
         try:
             from utils.model_paths import ModelPaths
+            import tensorflow as tf
             paths = ModelPaths(self.symbol)
 
-            # LSTM/Transformer
+            # LSTM/Transformer Regressor
             if paths.regressor.model.exists():
-                import tensorflow as tf
                 self.base_models['lstm'] = tf.keras.models.load_model(
                     str(paths.regressor.model),
                     compile=False,
                 )
                 logger.info(f"Loaded LSTM model from {paths.regressor.model}")
+                # Load reliability score from metadata
+                if paths.regressor.metadata.exists():
+                    with open(paths.regressor.metadata, 'rb') as f:
+                        meta = pickle.load(f)
+                        self.model_reliability['lstm'] = meta.get('wfe_score', 0.5)
+
+            # xLSTM-TS Model (December 2025 addition)
+            xlstm_path = self.model_dir / 'xlstm' / 'model.keras'
+            if xlstm_path.exists():
+                self.base_models['xlstm'] = tf.keras.models.load_model(
+                    str(xlstm_path),
+                    compile=False,
+                )
+                logger.info(f"Loaded xLSTM model from {xlstm_path}")
+                # Load reliability score
+                xlstm_meta_path = self.model_dir / 'xlstm' / 'metadata.pkl'
+                if xlstm_meta_path.exists():
+                    with open(xlstm_meta_path, 'rb') as f:
+                        meta = pickle.load(f)
+                        self.model_reliability['xlstm'] = meta.get('wfe_score', 0.4)
 
             # XGBoost
             xgb_path = self.model_dir / 'gbm' / 'xgboost_model.pkl'
@@ -190,6 +212,15 @@ class StackingPredictor:
                 with open(xgb_path, 'rb') as f:
                     self.base_models['xgboost'] = pickle.load(f)
                 logger.info(f"Loaded XGBoost model from {xgb_path}")
+                # Load reliability score from GBM metadata
+                gbm_meta_path = self.model_dir / 'gbm' / 'training_metadata.json'
+                if gbm_meta_path.exists():
+                    import json
+                    with open(gbm_meta_path, 'r') as f:
+                        meta = json.load(f)
+                        val_ic = meta.get('validation', {}).get('xgb', {}).get('ic', 0.0)
+                        # Convert IC to reliability score (IC of 0.1 = 60% reliability)
+                        self.model_reliability['xgboost'] = 0.5 + abs(val_ic) * 1.0
 
             # LightGBM
             lgb_path = self.model_dir / 'gbm' / 'lightgbm_model.pkl'
@@ -199,6 +230,15 @@ class StackingPredictor:
                 with open(lgb_path, 'rb') as f:
                     self.base_models['lightgbm'] = pickle.load(f)
                 logger.info(f"Loaded LightGBM model from {lgb_path}")
+                # Load reliability score
+                if gbm_meta_path.exists():
+                    import json
+                    with open(gbm_meta_path, 'r') as f:
+                        meta = json.load(f)
+                        val_ic = meta.get('validation', {}).get('lgb', {}).get('ic', 0.0)
+                        self.model_reliability['lightgbm'] = 0.5 + abs(val_ic) * 1.0
+
+            logger.info(f"Model reliability scores: {self.model_reliability}")
 
         except Exception as e:
             logger.warning(f"Error loading base models: {e}")
@@ -269,7 +309,7 @@ class StackingPredictor:
         )
 
     def _get_base_predictions(self, features: np.ndarray) -> Dict[str, float]:
-        """Get predictions from all base models."""
+        """Get predictions from all base models (LSTM, xLSTM, XGBoost, LightGBM)."""
         predictions = {}
 
         # LSTM prediction
@@ -277,7 +317,6 @@ class StackingPredictor:
             try:
                 # LSTM expects (batch, seq_len, features)
                 if len(features.shape) == 2:
-                    # Need to reshape for LSTM
                     lstm_input = features.reshape(1, *features.shape)
                 else:
                     lstm_input = features
@@ -286,6 +325,20 @@ class StackingPredictor:
                 predictions['lstm'] = float(pred.flatten()[-1])
             except Exception as e:
                 logger.warning(f"LSTM prediction failed: {e}")
+
+        # xLSTM prediction (December 2025 addition)
+        if 'xlstm' in self.base_models and self.base_models['xlstm'] is not None:
+            try:
+                # xLSTM also expects (batch, seq_len, features)
+                if len(features.shape) == 2:
+                    xlstm_input = features.reshape(1, *features.shape)
+                else:
+                    xlstm_input = features
+
+                pred = self.base_models['xlstm'].predict(xlstm_input, verbose=0)
+                predictions['xlstm'] = float(pred.flatten()[-1])
+            except Exception as e:
+                logger.warning(f"xLSTM prediction failed: {e}")
 
         # XGBoost prediction
         if 'xgboost' in self.base_models and self.base_models['xgboost'] is not None:
@@ -340,11 +393,15 @@ class StackingPredictor:
         base_predictions: Dict[str, float],
         regime: Dict[str, float],
     ) -> np.ndarray:
-        """Build meta-feature vector for meta-learner."""
+        """Build meta-feature vector for meta-learner.
+
+        December 2025 update: Added xLSTM predictions and model reliability scores
+        for dynamic weighting based on each model's validation performance.
+        """
         features = []
 
-        # Base model predictions
-        for name in ['lstm', 'xgboost', 'lightgbm']:
+        # Base model predictions (4 models: lstm, xlstm, xgboost, lightgbm)
+        for name in ['lstm', 'xlstm', 'xgboost', 'lightgbm']:
             features.append(base_predictions.get(name, 0.0))
 
         # Model agreement features
@@ -364,6 +421,14 @@ class StackingPredictor:
         features.append(regime.get('trend_bullish', 0))
         features.append(regime.get('trend_bearish', 0))
         features.append(regime.get('trend_neutral', 0))
+
+        # Model reliability scores (December 2025 - dynamic weighting)
+        # These allow the meta-learner to weight models based on their validation performance
+        reliability = getattr(self, 'model_reliability', {})
+        features.append(reliability.get('lstm', 0.5))
+        features.append(reliability.get('xlstm', 0.4))
+        features.append(reliability.get('xgboost', 0.5))
+        features.append(reliability.get('lightgbm', 0.5))
 
         return np.array(features)
 

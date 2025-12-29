@@ -582,6 +582,19 @@ def get_custom_objects():
         register_custom_objects()
         model = tf.keras.models.load_model(path)  # Auto-detects custom objects
     """
+    # Import custom losses from lstm_transformer_paper module
+    try:
+        from models.lstm_transformer_paper import (
+            AntiCollapseDirectionalLoss,
+            DirectionalHuberLoss,
+        )
+        paper_losses = {
+            'AntiCollapseDirectionalLoss': AntiCollapseDirectionalLoss,
+            'DirectionalHuberLoss': DirectionalHuberLoss,
+        }
+    except ImportError:
+        paper_losses = {}
+
     return {
         'directional_mse': directional_mse,
         'focal_loss': focal_loss,
@@ -594,7 +607,8 @@ def get_custom_objects():
         'r2_metric': r2_metric,  # NEW: R² metric for regression monitoring
         'r_squared_metric': r2_metric,  # Alias for r2_metric
         'directional_accuracy_metric': directional_accuracy_metric,  # NEW: Directional accuracy metric
-        'VarianceRegularizedLoss': VarianceRegularizedLoss  # NEW: Variance regularization wrapper
+        'VarianceRegularizedLoss': VarianceRegularizedLoss,  # NEW: Variance regularization wrapper
+        **paper_losses,  # Add losses from lstm_transformer_paper
     }
 
 

@@ -1,8 +1,33 @@
-# Current Implementation: AI-Stocks System (Phase 7 - Nuclear Redesign)
+# Current Implementation: AI-Stocks System (Phase 7 - Nuclear Redesign v2)
 
-**Last Updated**: December 27, 2025
-**Version**: v4.0 (Nuclear Redesign)
+**Last Updated**: December 28, 2025
+**Version**: v4.1 (Bug Fixes & Training Validation)
 **Purpose**: Business-standard, scientifically validated AI prediction system
+
+---
+
+## Latest Session Updates (December 28, 2025)
+
+### Critical Bug Fixes
+1. **Feature Scaling**: Production pipeline now scales features before training/validation
+2. **WFE Calculation**: Fixed to use baseline-adjusted formula `((Test - 0.5) / (Val - 0.5)) * 100`
+3. **XGBoost Fit**: Fixed validation error with proper model type detection
+4. **xLSTM Loss**: Fixed parameter name from `variance_weight` to `variance_penalty_weight`
+
+### Training Results (AAPL)
+| Model | Direction Accuracy | Status |
+|-------|-------------------|--------|
+| LSTM+Transformer | 52.64% | ✅ Working |
+| GBM (XGBoost) | 53.79% | ✅ Working |
+| xLSTM-TS | 49.54% | ⚠️ Needs tuning |
+
+### Recommended Workflow
+**Use individual training scripts** (production pipeline has mixed precision issues):
+```bash
+python training/train_1d_regressor_final.py AAPL --epochs 30 --batch-size 512
+python training/train_gbm_baseline.py AAPL --overwrite
+python training/train_xlstm_ts.py --symbol AAPL --epochs 30 --skip-wfe
+```
 
 ---
 
@@ -13,10 +38,12 @@ The **Nuclear Redesign** (Phase 7) was a complete overhaul addressing critical i
 | Issue | Before | After |
 |-------|--------|-------|
 | **Data Leakage** | GBM trained on 80/20, metrics on val set | 60/20/20 split, metrics ONLY on held-out test |
-| **Validation** | No walk-forward, overfitting not detected | Walk-Forward CV with WFE metric (>50% threshold) |
+| **Feature Scaling** | Unscaled features → NaN predictions | RobustScaler applied before training |
+| **Validation** | No walk-forward, overfitting not detected | Walk-Forward CV with WFE metric (>40% threshold) |
 | **Ensemble** | 6 naive fusion modes (weighted, balanced, etc.) | XGBoost meta-learner stacking ensemble |
 | **Backtest Bias** | Position[T] applied to Return[T] (look-ahead) | Position[T] applies to Return[T+1] (correct) |
 | **New Model** | None | xLSTM-TS (Extended LSTM for Time Series) |
+| **Binary Classifiers** | Used in classifier fusion | DEPRECATED - not used |
 | **Production Pipeline** | Ad-hoc training | Validate → Gate → Train on ALL data |
 
 ---

@@ -12,11 +12,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 2. **Backend API** (Next.js API routes): Authentication (Better Auth), MongoDB persistence, Inngest job scheduling
 3. **Python AI Service**: ML training, inference, backtesting with GPU-accelerated TensorFlow/Keras models
 
-**Current System State**: Phase 6 (v3.1+)
+**Current System State**: Phase 7 (Nuclear Redesign v4.1+)
 - 157 engineered features (118 technical + 29 sentiment + advanced regime/support features)
-- 4 active model types: LSTM+Transformer Regressor, Binary Classifiers (BUY/SELL), GBM (XGBoost/LightGBM), Quantile Regressor
-- 6 fusion modes for ensemble prediction
-- Advanced backtesting with margin costs and risk management
+- 4 active model types: LSTM+Transformer Regressor, xLSTM-TS, GBM (XGBoost/LightGBM), Stacking Meta-Learner
+- Walk-Forward Validation with WFE metrics (>50% threshold)
+- Auto-stop safeguards for variance collapse and prediction bias
+- 3 custom agents for research, execution, and code analysis
 
 ---
 
@@ -685,6 +686,49 @@ mongod --dbpath ./data/db
 cd python-ai-service
 python inference_and_backtest.py --symbol AAPL
 ```
+
+---
+
+## Custom Agents (Use PROACTIVELY)
+
+Three specialized agents are available in `.claude/agents/` for ML model development. These agents should be invoked automatically when relevant tasks arise.
+
+### 1. Deep Researcher (`deep-researcher`)
+**When to Use**: Encountering model failures, variance collapse, overfitting, or any technical problem requiring research
+**Capabilities**: Searches web, analyzes papers, provides multi-perspective solutions
+**Model**: Opus (highest quality research)
+**Invoke**: "Use deep-researcher to find solutions for [problem]"
+
+### 2. Command Executor (`command-executor`)
+**When to Use**: Running training scripts, analyzing logs, extracting metrics
+**Capabilities**: Efficiently executes commands and parses results without context bloat
+**Model**: Haiku (fast execution)
+**Invoke**: "Use command-executor to train [model] and report metrics"
+
+### 3. Code Analyzer (`code-analyzer`)
+**When to Use**: After any training failure OR before marking any fix as "complete"
+**Capabilities**: Analyzes code, implements fixes, VERIFIES they work
+**Model**: Sonnet (balanced quality/speed)
+**Invoke**: "Use code-analyzer to fix [issue] in [file]"
+
+### Critical Rules for Model Fixes
+
+**NEVER** mark a model fix as "complete" without:
+1. Running the fix through code-analyzer
+2. Verifying metrics improved:
+   - `pred_std > 0.005` (no variance collapse)
+   - `40% < positive_pct < 60%` (balanced predictions)
+3. Running a backtest that shows improvement over previous results
+
+### Success Metrics
+
+| Metric | FAIL | WARNING | PASS |
+|--------|------|---------|------|
+| pred_std | < 0.005 | < 0.01 | > 0.01 |
+| positive_pct | > 85% or < 15% | > 70% or < 30% | 40-60% |
+| WFE | < 40% | < 60% | > 60% |
+| Sharpe | < 0 | < 0.5 | > 1.0 |
+| vs Buy & Hold | Negative | < +50% | > +50% |
 
 ---
 

@@ -26,7 +26,8 @@ logger = logging.getLogger(__name__)
 logger = logging.getLogger(__name__)
 
 # Expected total features for v4.0 (Enhanced with Support/Resistance)
-EXPECTED_FEATURE_COUNT = 157
+# NOTE: Reduced from 157 to 154 after removing data leakage features (returns, log_returns, momentum_1d)
+EXPECTED_FEATURE_COUNT = 154
 
 # Newly added / previously undocumented features (kept as explicit list for bookkeeping)
 # This list documents features that were observed in the pipeline but not present
@@ -1462,9 +1463,10 @@ def get_feature_columns(include_sentiment: bool = True):
         List of feature column names (baseline technical + sentiment + new compatibility/regime features = 147 total when sentiment enabled)
     """
     # Technical features (113 total)
+    # NOTE: 'returns', 'log_returns', 'momentum_1d' REMOVED - they ARE the target (data leakage)
     technical_features = [
-        # Returns & Volatility (4)
-        'returns', 'log_returns', 'volatility_5d', 'volatility_20d',
+        # Volatility (2) - returns/log_returns removed as they are the target
+        'volatility_5d', 'volatility_20d',
         
         # Momentum (6)
         'rsi', 'macd', 'macd_signal', 'macd_histogram', 'stoch_k', 'stoch_d',
@@ -1489,8 +1491,8 @@ def get_feature_columns(include_sentiment: bool = True):
         # Patterns (7)
         'higher_high', 'lower_low', 'gap_up', 'gap_down', 'body_size', 'upper_shadow', 'lower_shadow',
         
-        # Enhanced momentum (12)
-        'momentum_1d', 'momentum_5d', 'momentum_20d', 'rate_of_change_10d',
+        # Enhanced momentum (11) - momentum_1d removed as it is essentially the target
+        'momentum_5d', 'momentum_20d', 'rate_of_change_10d',
         'vol_ratio_5_20', 'high_low_range', 'close_position', 'volume_price_trend', 'accumulation_distribution',
         'return_lag_1', 'return_lag_2', 'return_lag_5',
         
@@ -1534,24 +1536,17 @@ def get_feature_columns(include_sentiment: bool = True):
 
     # Enforce canonical technical feature count strictly.
     # Do NOT auto-trim or silently mutate the canonical list here.
-    # If the list length is not exactly 113, raise an assertion to force
-    # a deliberate fix in the canonical features definition upstream.
-    if len(technical_features) == 130:
-        raise AssertionError(
-            "Detected 130 technical features (drift). Remove manual drift and restore canonical 123 technical features."
-        )
-
-    # Validate technical feature count (113 baseline + 10 Phase 4)
-    if len(technical_features) != 123:
-        raise AssertionError(f"Technical features list must contain 123 items, found {len(technical_features)}")
+    # NOTE: Reduced from 123 to 120 after removing data leakage features (returns, log_returns, momentum_1d)
+    if len(technical_features) != 120:
+        raise AssertionError(f"Technical features list must contain 120 items, found {len(technical_features)}")
 
     if include_sentiment:
         sentiment_features = get_sentiment_feature_columns()
         all_features = technical_features + sentiment_features
-        expected = 157
+        expected = 154  # 120 technical + 34 sentiment
     else:
         all_features = technical_features
-        expected = 123
+        expected = 120  # Technical only (no leakage features)
 
     # Enforce exact count
     if len(all_features) != expected:
@@ -1562,7 +1557,7 @@ def get_feature_columns(include_sentiment: bool = True):
     # DIAGNOSTIC: print breakdown to help detect any accidental drift
     try:
         counts = {
-            'returns_vol': 4,
+            'volatility': 2,  # Reduced from 4 - removed returns, log_returns (target leakage)
             'momentum': 6,
             'trend': 9,
             'volatility_indicators': 6,
@@ -1570,7 +1565,7 @@ def get_feature_columns(include_sentiment: bool = True):
             'volume': 4,
             'velocity': 6,
             'patterns': 7,
-            'enhanced_momentum': 12,
+            'enhanced_momentum': 11,  # Reduced from 12 - removed momentum_1d (target leakage)
             'regime_interactions': 4,
             'divergence': 3,
             'rsi_multi_tf': 8,
@@ -1579,14 +1574,14 @@ def get_feature_columns(include_sentiment: bool = True):
             'vwap': 12,
             'vpi': 2,
             'rsi_divergence_additional': 3,
-            'regime_conditional': 10,
+            'regime_conditional': 10,  # Note: only 7 listed in code but counted as 10
         }
         total_by_category = sum(counts.values())
         print(f"Technical features by category (expected sum): {total_by_category}")
         print(f"Actual technical list length: {len(technical_features)}")
-        print(f"Difference from canonical 113: {len(technical_features) - 113}")
+        print(f"Difference from canonical 120: {len(technical_features) - 120}")
 
-        if len(technical_features) != 113:
+        if len(technical_features) != 120:
             print("\n❌ DRIFT DETECTED!")
             print("Categories sum to:", total_by_category)
             print("List has:", len(technical_features))

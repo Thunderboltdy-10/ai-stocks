@@ -169,7 +169,20 @@ def validate_sequences(X_seq: np.ndarray, expected_shape_msg: str, expected_feat
 
 
 def create_binary_classifier(sequence_length, n_features, name='binary_classifier', arch: dict | None = None):
-    """Create binary classifier with LSTMTransformerPaper backbone - OLD architecture for existing weights"""
+    """DEPRECATED (December 2025): Binary classifiers have been removed from the inference pipeline.
+
+    This function is kept for backward compatibility but should not be used.
+    Use the stacking ensemble instead: python train_all.py --symbol <SYMBOL>
+
+    Create binary classifier with LSTMTransformerPaper backbone - OLD architecture for existing weights.
+    """
+    import warnings
+    warnings.warn(
+        "create_binary_classifier is deprecated. Binary classifiers were removed December 2025. "
+        "Use the stacking ensemble instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
     import tensorflow as tf
     from tensorflow import keras
     from keras import layers

@@ -1,22 +1,22 @@
 {
-  "timestamp": "2025-12-18T22:48:10.255437",
+  "timestamp": "2025-12-29T13:10:36.361144",
   "symbol": "SPY",
   "raw_shape": [
-    8280,
+    8285,
     8
   ],
   "engineered_shape": [
-    8280,
-    152
+    8285,
+    159
   ],
   "prepared_shape": [
-    8278,
-    155
+    8283,
+    162
   ],
-  "feature_count": 147,
-  "expected_feature_count": 147,
-  "raw_hash": "8180f7a303ba80968d31115cc10b7d08",
-  "engineered_hash": "92b004e94950b2507a37d0d99612aa47",
-  "prepared_hash": "d8f70e7582f2b601f226fd9fc1c378a6",
+  "feature_count": 154,
+  "expected_feature_count": 154,
+  "raw_hash": "879d377fd20d4e29291ab78b8164aef6",
+  "engineered_hash": "cde4c5309613e0d6a87d265d161766d2",
+  "prepared_hash": "1858894cc751bcd33451c87aba3c3133",
   "version": "3.1"
 }

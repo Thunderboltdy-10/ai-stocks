@@ -570,20 +570,77 @@ class StackingEnsembleTrainer:
 
 
 def main():
-    """CLI entry point for training stacking ensemble."""
+    """CLI entry point for training stacking ensemble.
+
+    December 2025: Made functional by integrating with ProductionPipeline.
+    Previously was a placeholder that just logged messages.
+    """
     parser = argparse.ArgumentParser(description='Train stacking ensemble')
     parser.add_argument('--symbol', type=str, required=True, help='Stock symbol')
-    parser.add_argument('--production', action='store_true', help='Production mode')
+    parser.add_argument('--skip-wfe-check', action='store_true',
+                        help='Skip WFE validation gate')
     parser.add_argument('--output-dir', type=str, default='saved_models',
                         help='Output directory')
+    parser.add_argument('--epochs', type=int, default=30,
+                        help='Epochs for base model validation training')
+    parser.add_argument('--batch-size', type=int, default=512,
+                        help='Batch size for training')
 
     args = parser.parse_args()
 
-    # This is a placeholder - actual training requires loading data and base models
-    logger.info(f"Would train stacking ensemble for {args.symbol}")
-    logger.info("Note: Full training requires base model factories and data loading")
-    logger.info("Use the ProductionPipeline class for complete workflow")
+    logger.info(f"Training stacking ensemble for {args.symbol}")
+    logger.info(f"Skip WFE check: {args.skip_wfe_check}")
+
+    try:
+        # Import ProductionPipeline
+        from pipeline.production_pipeline import ProductionPipeline, PipelineConfig
+
+        # Configure pipeline
+        config = PipelineConfig(
+            skip_wfe_check=args.skip_wfe_check,
+            wfe_threshold=40.0,
+            epochs_validation=args.epochs,
+            epochs_production=args.epochs,
+            batch_size=args.batch_size,
+        )
+
+        # Create pipeline
+        pipeline = ProductionPipeline(args.symbol, config)
+
+        # Run validation to generate OOF predictions
+        logger.info("Phase 1: Running walk-forward validation to generate OOF predictions...")
+        report = pipeline.run_validation()
+
+        if report.passed or args.skip_wfe_check:
+            wfe_status = "PASSED" if report.passed else "SKIPPED (--skip-wfe-check)"
+            logger.info(f"Validation {wfe_status} (WFE={report.aggregate_wfe:.1f}%)")
+
+            # Train production models including stacking
+            logger.info("Phase 2: Training production models and stacking ensemble...")
+            success = pipeline.train_production(force=True)
+
+            if success:
+                logger.info(f"Stacking ensemble trained and saved for {args.symbol}")
+                logger.info(f"Output: {args.output_dir}/{args.symbol}/stacking/")
+                return 0
+            else:
+                logger.error("Production training failed")
+                return 1
+        else:
+            logger.error(f"Validation failed: WFE={report.aggregate_wfe:.1f}% < 40%")
+            logger.info("Use --skip-wfe-check to train anyway (not recommended)")
+            return 1
+
+    except ImportError as e:
+        logger.error(f"Import error: {e}")
+        logger.error("Make sure ProductionPipeline is available")
+        return 1
+    except Exception as e:
+        logger.error(f"Training failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return 1
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main() or 0)

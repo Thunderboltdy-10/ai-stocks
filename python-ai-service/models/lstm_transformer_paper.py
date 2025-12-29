@@ -63,43 +63,43 @@ def get_backend():
 class DirectionalHuberLoss(keras.losses.Loss):
     """
     Custom Huber loss that heavily penalizes wrong-direction predictions.
-    
+
     This loss function combines the robustness of Huber loss with a penalty
     for predictions that have the wrong sign (direction) compared to the
     true value. This is particularly important for trading applications
     where predicting the correct direction is more important than the
     exact magnitude.
-    
+
     The loss is computed as:
         loss = huber_loss * (1.0 + direction_penalty)
-    
+
     Where direction_penalty = direction_weight when signs don't match, else 0.
-    
+
     Args:
         delta: Huber delta parameter. Controls transition between linear
             and quadratic regimes. Default 1.0.
         direction_weight: Multiplier for wrong-direction errors. Higher values
-            penalize directional mistakes more heavily. Default 2.0 means
-            wrong-direction predictions have 3x the loss (1 + 2).
+            penalize directional mistakes more heavily. Default 0.1 (reduced from 2.0
+            to prevent multi-task gradient conflicts).
         name: Name for the loss function.
-    
+
     Example:
-        >>> loss_fn = DirectionalHuberLoss(delta=1.0, direction_weight=2.0)
+        >>> loss_fn = DirectionalHuberLoss(delta=1.0, direction_weight=0.1)
         >>> model.compile(optimizer='adam', loss=loss_fn)
-        
+
         # If y_true=+0.02 and y_pred=-0.01 (wrong direction):
         #   base_loss = huber(0.02, -0.01)
-        #   final_loss = base_loss * (1.0 + 2.0) = base_loss * 3.0
-        
+        #   final_loss = base_loss * (1.0 + 0.1) = base_loss * 1.1
+
         # If y_true=+0.02 and y_pred=+0.05 (correct direction):
         #   base_loss = huber(0.02, 0.05)
         #   final_loss = base_loss * (1.0 + 0.0) = base_loss * 1.0
     """
-    
+
     def __init__(
         self,
         delta: float = 1.0,
-        direction_weight: float = 2.0,
+        direction_weight: float = 0.1,  # REDUCED from 2.0 to prevent gradient conflicts
         reduction: str = 'sum_over_batch_size',
         name: str = 'directional_huber',
     ):
@@ -168,57 +168,22 @@ class DirectionalHuberLoss(keras.losses.Loss):
 
 
 @keras.saving.register_keras_serializable(package="models.lstm_transformer_paper")
+@keras.saving.register_keras_serializable(package="models.lstm_transformer_paper")
 class AntiCollapseDirectionalLoss(keras.losses.Loss):
     """
-    Anti-collapse loss that prevents variance collapse while maintaining direction sensitivity.
+    SIMPLIFIED Anti-collapse loss (v6) - No log operations, just Huber + penalties
     
-    This loss function is specifically designed to prevent the common failure mode
-    where neural networks predict near-constant values (variance collapse) on
-    financial time series. It combines:
-    
-    1. **Huber base loss** - Robust to outliers
-    2. **Direction penalty** - Penalizes wrong-sign predictions  
-    3. **Variance penalty** - Inverse penalty when prediction variance is too low
-    4. **Sign diversity penalty** - Encourages predictions to span both positive and negative
-    
-    The loss formula is:
-        total_loss = huber * (1 + direction_penalty) + variance_penalty + sign_diversity_penalty
-    
-    Where:
-        - variance_penalty = λ / (σ_pred² + ε) when σ_pred < min_std, else 0
-        - sign_diversity_penalty = β * max(0.5 - sign_variance, 0)
-    
-    Args:
-        delta: Huber delta parameter (default: 1.0)
-        direction_weight: Multiplier for wrong-direction errors (default: 0.2)
-        variance_penalty_weight: Weight for inverse variance penalty (default: 0.3)
-        min_variance_target: Minimum target prediction std (default: 0.008)
-        sign_diversity_weight: Weight for sign diversity penalty (default: 0.15)
-        name: Name for the loss function
-    
-    Example:
-        >>> loss_fn = AntiCollapseDirectionalLoss(
-        ...     delta=1.0,
-        ...     direction_weight=0.2,
-        ...     variance_penalty_weight=0.3,
-        ...     min_variance_target=0.008
-        ... )
-        >>> model.compile(optimizer='adam', loss=loss_fn)
-    
-    Note:
-        This loss function requires batch sizes >= 32 to compute meaningful
-        variance statistics. For smaller batches, the variance penalty may
-        be noisy and destabilize training.
+    This is a super simple, numerically stable version that avoids -inf issues.
     """
     
     def __init__(
         self,
         delta: float = 1.0,
-        direction_weight: float = 0.2,        # Reduced from 2.0 - less interference
-        variance_penalty_weight: float = 0.3,  # Reduced from 0.05 but balanced
-        min_variance_target: float = 0.008,    # More realistic target (0.8% daily vol)
-        sign_diversity_weight: float = 0.15,   # Reduced from 0.1 - gentler enforcement
-        name: str = 'anti_collapse_directional',
+        direction_weight: float = 0.1,
+        variance_penalty_weight: float = 2.0,  # INCREASED from 1.0 for stronger variance enforcement
+        min_variance_target: float = 0.008,   # INCREASED from 0.005 for more realistic targets
+        sign_diversity_weight: float = 5.0,   # INCREASED from 0.3 to STRONGLY prevent prediction bias
+        name: str = 'anti_collapse_directional_v6',
         reduction: str = 'sum_over_batch_size',
     ):
         super().__init__(name=name, reduction=reduction)
@@ -230,112 +195,58 @@ class AntiCollapseDirectionalLoss(keras.losses.Loss):
         self.huber = keras.losses.Huber(delta=delta, reduction='none')
     
     def call(self, y_true, y_pred):
-        """
-        Compute anti-collapse directional loss (v3 - mixed precision safe).
-
-        Args:
-            y_true: True target values [batch_size, 1] or [batch_size]
-            y_pred: Predicted values [batch_size, 1] or [batch_size]
-
-        Returns:
-            Scalar loss tensor
-        """
-        # Flatten inputs for consistent processing
+        """Compute loss with ZERO log operations to avoid NaN."""
+        # Flatten to 1D
         y_true = ops.reshape(y_true, [-1])
         y_pred = ops.reshape(y_pred, [-1])
-
-        # CRITICAL: Cast to float32 for numerical stability in mixed precision training
-        # float16 can't handle small variance calculations (produces inf/NaN)
-        y_true_fp32 = ops.cast(y_true, 'float32')
-        y_pred_fp32 = ops.cast(y_pred, 'float32')
-
-        # 1. BASE HUBER LOSS (can use original dtype)
+        
+        # Cast to float32 for numerical stability
+        y_true = ops.cast(y_true, 'float32')
+        y_pred = ops.cast(y_pred, 'float32')
+        
+        # 1. BASE HUBER LOSS
         base_loss = self.huber(y_true, y_pred)
-
-        # 2. DIRECTION PENALTY (FIXED v4 - magnitude-independent)
-        # CRITICAL FIX: Removed magnitude scaling that caused variance collapse
-        # Old bug: Small predictions got small penalties even when wrong direction
-        # New approach: Separate direction penalty from confidence penalty
-        y_true_sign = ops.sign(y_true_fp32)
-        y_pred_sign = ops.sign(y_pred_fp32)
+        
+        # 2. DIRECTION PENALTY - penalize wrong-sign predictions
         wrong_direction = ops.cast(
-            ops.not_equal(y_true_sign, y_pred_sign),
+            ops.not_equal(ops.sign(y_true), ops.sign(y_pred)),
             'float32'
         )
-
-        # A. Direction penalty (independent of magnitude)
-        direction_penalty = wrong_direction * self.direction_weight
-
-        # B. Confidence penalty (encourage non-zero predictions)
-        # Penalize predictions too close to zero (low confidence)
-        # Use exponential decay: exp(-|pred| * 5) → high penalty near zero, low penalty for confident predictions
-        pred_magnitude = ops.abs(y_pred_fp32)
-        confidence_penalty = ops.mean(ops.exp(-pred_magnitude * 5.0)) * 0.5
-
-        # Weighted base loss with both penalties
-        weighted_base_loss = base_loss * (1.0 + ops.cast(direction_penalty, base_loss.dtype)) + ops.cast(confidence_penalty, base_loss.dtype)
-
-        # 3. VARIANCE PENALTY (v3 - mixed precision safe with robust epsilon)
-        # Use float32 for variance calculation to prevent underflow
-        pred_variance = ops.var(y_pred_fp32)
-        # Add larger epsilon for float16 safety (1e-6 instead of 1e-8)
-        pred_std = ops.sqrt(ops.maximum(pred_variance, 1e-6))
-
-        # SMOOTH variance penalty using log with SAFE clamping
-        # Only activates when std drops below threshold
-        std_ratio = pred_std / (self.min_variance_target + 1e-6)
-        # Clamp std_ratio to prevent log(-inf) when std is very small
-        std_ratio = ops.maximum(std_ratio, 1e-6)
-        # Penalty: log(1/ratio) when ratio < 1, else 0
-        # Use safe log: clamp input to prevent extreme values
-        log_input = ops.maximum(std_ratio, 1e-6)
-        variance_penalty = self.variance_penalty_weight * ops.maximum(-ops.log(log_input), 0.0)
-        # Cap the variance penalty to prevent training instability
-        variance_penalty = ops.minimum(variance_penalty, 2.0)
-
-        # 4. SIGN DIVERSITY PENALTY (v2 - FIXED)
-        # Encourage predictions to span both positive and negative values
-        # OLD BUG: Used variance of signs, which is ~0.25 for ANY imbalance
-        # NEW FIX: Use positive fraction to directly measure imbalance
-        positive_frac = ops.mean(ops.cast(ops.greater(y_pred_fp32, 0.0), 'float32'))
-        # Penalize deviation from 50/50 balance (ideal = 0.5)
-        # Square the deviation and scale by 4 to get range [0, 1]
+        base_loss = base_loss * (1.0 + wrong_direction * self.direction_weight)
+        
+        # 3. VARIANCE PENALTY - only when std is too small (no log!)
+        pred_std = ops.sqrt(ops.maximum(ops.var(y_pred), 1e-7))
+        # Penalize only when pred_std < min_variance_target
+        # Use simple quadratic: if std < target, penalty = (target - std)^2
+        variance_gap = ops.maximum(self.min_variance_target - pred_std, 0.0)
+        variance_penalty = self.variance_penalty_weight * ops.square(variance_gap)
+        
+        # 4. SIGN DIVERSITY PENALTY - encourage 50/50 positive/negative
+        positive_frac = ops.mean(ops.cast(ops.greater(y_pred, 0.0), 'float32'))
         sign_diversity_penalty = self.sign_diversity_weight * ops.square(positive_frac - 0.5) * 4.0
-
-        # TOTAL LOSS - cast penalties back to base loss dtype
-        variance_penalty_casted = ops.cast(variance_penalty, base_loss.dtype)
-        sign_penalty_casted = ops.cast(sign_diversity_penalty, base_loss.dtype)
-        total_loss = ops.mean(weighted_base_loss) + variance_penalty_casted + sign_penalty_casted
-
-        # Final safety check: replace NaN/inf with large finite value
-        total_loss = ops.where(
-            ops.logical_or(ops.isnan(total_loss), ops.isinf(total_loss)),
-            ops.cast(1000.0, total_loss.dtype),  # Large but finite penalty
-            total_loss
-        )
-
+        
+        # TOTAL LOSS
+        total_loss = ops.mean(base_loss) + variance_penalty + sign_diversity_penalty
+        
+        # Safety: if NaN, return fallback (MSE only)
+        is_nan = ops.isnan(total_loss)
+        fallback = ops.mean(ops.square(y_true - y_pred))
+        total_loss = ops.where(is_nan, fallback, total_loss)
+        
         return total_loss
     
     def get_config(self) -> dict:
-        """Return config for serialization."""
         config = super().get_config()
-        
-        # Handle tf.Variable for curriculum learning
-        vp_weight = self.variance_penalty_weight
-        if hasattr(vp_weight, 'numpy'):
-            vp_weight = float(vp_weight.numpy())
-            
         config.update({
             'delta': self.delta,
             'direction_weight': self.direction_weight,
-            'variance_penalty_weight': vp_weight,
+            'variance_penalty_weight': self.variance_penalty_weight,
             'min_variance_target': self.min_variance_target,
             'sign_diversity_weight': self.sign_diversity_weight,
         })
         return config
 
 
-@keras.saving.register_keras_serializable(package="models.lstm_transformer_paper")
 class AsymmetricDirectionalLoss(keras.losses.Loss):
     """
     Asymmetric loss that can penalize false positives vs false negatives differently.
@@ -531,6 +442,16 @@ class LSTMTransformerPaper(Model):
         self.dropout_out = layers.Dropout(dropout, name="dropout_output")
         self.output_dense = layers.Dense(1, name="prediction_output")
 
+    @property
+    def pos_encoding(self):
+        """Backward-compatible property for accessing positional encoding.
+
+        Some functions (create_binary_classifier, create_multitask_regressor in
+        model_validation_suite.py) access base.pos_encoding instead of base._pe_numpy.
+        This property provides backward compatibility.
+        """
+        return self._pe_numpy
+
     @staticmethod
     def _create_positional_encoding_np(max_len: int, d_model: int) -> np.ndarray:
         """Sinusoidal positional encoding as numpy array."""
@@ -567,7 +488,7 @@ class LSTMTransformerPaper(Model):
         """Forward pass: LSTM → Project → Add PE → Transform → Pool → Predict."""
         x = self.lstm_layer(inputs, training=training)
         x = self.projection(x)
-        
+
         # Get sequence length dynamically and slice positional encoding
         seq_len = ops.shape(x)[1]
         pe = ops.convert_to_tensor(self._pe_numpy[:, :seq_len, :])
@@ -587,6 +508,22 @@ class LSTMTransformerPaper(Model):
         x = self.global_pool(x)
         x = self.dropout_out(x, training=training)
         output = self.output_dense(x)
+
+        # NUCLEAR FIX: Anti-collapse noise injection during training
+        # If variance is too low, add small random noise to prevent gradient death
+        if training:
+            import tensorflow as tf  # Use TensorFlow for random ops
+            output_fp32 = ops.cast(output, 'float32')
+            output_std = ops.std(output_fp32)
+            # Target minimum std is 0.01 (1%)
+            # If std is below this, inject noise proportional to the gap
+            target_std = 0.01
+            noise_scale = ops.maximum(target_std - output_std, 0.0) * 0.5
+            # Only add noise if variance is collapsing
+            # Use TensorFlow's random.normal since Keras ops doesn't have random
+            noise = tf.random.normal(tf.shape(output), dtype=tf.float32) * noise_scale
+            output = output + ops.cast(noise, output.dtype)
+
         return output
 
     def get_config(self) -> dict[str, int | float]:

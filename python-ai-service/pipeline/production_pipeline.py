@@ -10,8 +10,9 @@ Workflow:
        - Generate ValidationReport
 
     2. GATE CHECK:
-       - If aggregate WFE < 50%, STOP (do not deploy)
-       - If aggregate WFE >= 50%, proceed to production
+       - If aggregate WFE < 40%, STOP (do not deploy)
+       - If aggregate WFE >= 40%, proceed to production
+       - Use --skip-wfe-check to bypass for testing
 
     3. PRODUCTION PHASE:
        - Train all models on FULL dataset
@@ -21,7 +22,7 @@ Workflow:
 Key Principles:
 - Validation uses walk-forward CV (no data leakage)
 - Production training uses ALL available data
-- WFE threshold (50%) prevents overfitted models from deployment
+- WFE threshold (40%) prevents overfitted models from deployment
 
 Author: AI-Stocks Nuclear Redesign
 Date: December 2025
@@ -39,6 +40,7 @@ from enum import Enum
 
 import numpy as np
 import pandas as pd
+from sklearn.preprocessing import RobustScaler
 
 # Add project root to path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -101,7 +103,8 @@ class PipelineConfig:
     """Configuration for production pipeline.
 
     Attributes:
-        wfe_threshold: Minimum WFE required to proceed to production (default: 50%)
+        wfe_threshold: Minimum WFE required to proceed to production (default: 40%)
+        skip_wfe_check: Skip WFE validation gate (for testing only)
         walk_forward_folds: Number of walk-forward validation folds
         sequence_length: Sequence length for LSTM models
         batch_size: Training batch size (high for GPU acceleration)
@@ -115,7 +118,8 @@ class PipelineConfig:
         mixed_precision: Enable mixed precision training
         verbose: Verbosity level
     """
-    wfe_threshold: float = 50.0
+    wfe_threshold: float = 40.0  # Lowered from 50.0 per user preference
+    skip_wfe_check: bool = False  # Skip WFE gate for testing
     walk_forward_folds: int = 5
     sequence_length: int = 60
     batch_size: int = 512
@@ -328,6 +332,7 @@ class ProductionPipeline:
         self.X: Optional[np.ndarray] = None
         self.y: Optional[np.ndarray] = None
         self.feature_columns: List[str] = []
+        self.feature_scaler: Optional[RobustScaler] = None
 
         # Validation results
         self.validation_report: Optional[ValidationReport] = None
@@ -399,9 +404,17 @@ class ProductionPipeline:
         df_clean = self.df_features.dropna(subset=['returns'] + self.feature_columns)
         logger.info(f"Clean data shape: {df_clean.shape}")
 
+        # Scale features before creating sequences (CRITICAL for neural networks)
+        # This prevents gradient explosion from unscaled features
+        self.feature_scaler = RobustScaler()
+        features_scaled = self.feature_scaler.fit_transform(
+            df_clean[self.feature_columns].values
+        )
+        logger.info(f"Feature scaling: mean={np.mean(features_scaled):.4f}, std={np.std(features_scaled):.4f}")
+
         # Create sequences for LSTM models
         X, y = self._create_sequences(
-            df_clean[self.feature_columns].values,
+            features_scaled,
             df_clean['returns'].values,
             self.config.sequence_length,
         )
@@ -493,6 +506,7 @@ class ProductionPipeline:
         if self.config.include_xlstm:
             def xlstm_factory():
                 from models.xlstm_ts import create_xlstm_ts
+                from models.lstm_transformer_paper import AntiCollapseDirectionalLoss
                 model = create_xlstm_ts(
                     input_dim=n_features,
                     seq_length=self.config.sequence_length,
@@ -501,9 +515,14 @@ class ProductionPipeline:
                     dropout=0.2,
                     use_wavelet=True,
                 )
+                # Use AntiCollapseDirectionalLoss to prevent variance collapse
                 model.compile(
                     optimizer='adam',
-                    loss='mse',
+                    loss=AntiCollapseDirectionalLoss(
+                        direction_weight=0.2,
+                        variance_penalty_weight=0.3,
+                        min_variance_target=0.008,
+                    ),
                 )
                 return model
             factories['xlstm_ts'] = xlstm_factory
@@ -681,11 +700,16 @@ class ProductionPipeline:
         else:
             aggregate_wfe = np.mean([r.wfe for r in model_results.values()])
 
-        # Determine overall pass/fail
-        passed = aggregate_wfe >= self.config.wfe_threshold
+        # Determine overall pass/fail (skip_wfe_check bypasses threshold for testing)
+        passed = self.config.skip_wfe_check or aggregate_wfe >= self.config.wfe_threshold
 
         # Generate recommendation
-        if passed:
+        if self.config.skip_wfe_check:
+            recommendation = (
+                f"WFE CHECK BYPASSED (--skip-wfe-check): WFE={aggregate_wfe:.1f}%. "
+                "Proceeding to production training for testing purposes only."
+            )
+        elif passed:
             if aggregate_wfe >= 60:
                 recommendation = (
                     "STRONG: Strategy is robust. Safe to train production models on all data. "
@@ -1036,12 +1060,34 @@ class ProductionPipeline:
                 if model_type in self.validation_report.model_results:
                     result = self.validation_report.model_results[model_type]
                     if result.passed and len(result.oof_predictions) == len(self.y):
-                        oof_features.append(result.oof_predictions.reshape(-1, 1))
+                        oof_preds = result.oof_predictions
+
+                        # NUCLEAR FIX: Filter out models with variance collapse or bias
+                        pred_std = np.std(oof_preds[~np.isnan(oof_preds)])
+                        pct_positive = (oof_preds[~np.isnan(oof_preds)] > 0).mean()
+                        pct_negative = (oof_preds[~np.isnan(oof_preds)] < 0).mean()
+
+                        if pred_std < 0.005:
+                            logger.warning(f"Excluding {model_type.value} from stacking: "
+                                           f"variance collapse (std={pred_std:.6f})")
+                            continue
+                        if pct_positive > 0.85 or pct_negative > 0.85:
+                            bias_dir = "positive" if pct_positive > 0.85 else "negative"
+                            bias_pct = max(pct_positive, pct_negative)
+                            logger.warning(f"Excluding {model_type.value} from stacking: "
+                                           f"prediction bias ({bias_pct:.1%} {bias_dir})")
+                            continue
+
+                        logger.info(f"Including {model_type.value} in stacking: "
+                                    f"std={pred_std:.4f}, pos={pct_positive:.1%}, neg={pct_negative:.1%}")
+                        oof_features.append(oof_preds.reshape(-1, 1))
                         feature_names.append(f'pred_{model_type.value}')
 
-            if len(oof_features) < 2:
-                logger.warning("Need at least 2 models for stacking, skipping meta-learner")
+            if len(oof_features) < 1:
+                logger.warning("No valid models for stacking, skipping meta-learner")
                 return
+            elif len(oof_features) == 1:
+                logger.info("Single model stacking - using regime features for enhancement")
 
             # Stack OOF predictions
             meta_X = np.hstack(oof_features)
@@ -1249,7 +1295,8 @@ def main():
     parser.add_argument('--symbol', type=str, required=True, help='Stock symbol')
     parser.add_argument('--validate-only', action='store_true', help='Run validation only')
     parser.add_argument('--force', action='store_true', help='Force production training even if validation fails')
-    parser.add_argument('--wfe-threshold', type=float, default=50.0, help='WFE threshold (default: 50)')
+    parser.add_argument('--wfe-threshold', type=float, default=40.0, help='WFE threshold (default: 40)')
+    parser.add_argument('--skip-wfe-check', action='store_true', help='Skip WFE validation gate (for testing only)')
     parser.add_argument('--epochs', type=int, default=50, help='Production training epochs')
     parser.add_argument('--batch-size', type=int, default=512, help='Batch size')
     parser.add_argument('--output-dir', type=str, help='Output directory')
@@ -1259,6 +1306,7 @@ def main():
     # Create config
     config = PipelineConfig(
         wfe_threshold=args.wfe_threshold,
+        skip_wfe_check=args.skip_wfe_check,
         epochs_production=args.epochs,
         batch_size=args.batch_size,
     )

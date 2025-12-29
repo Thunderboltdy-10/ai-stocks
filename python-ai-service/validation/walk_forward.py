@@ -368,16 +368,26 @@ class WalkForwardValidator:
             # Create and train model
             model = model_factory()
 
-            # Handle different fit signatures
-            try:
-                # Try with validation_data (Keras-style)
+            # Detect model type and use appropriate fit method
+            model_class_name = type(model).__name__
+
+            if 'XGB' in model_class_name or 'xgb' in str(type(model).__module__):
+                # XGBoost - use eval_set for early stopping
+                # Remove early_stopping_rounds if no eval set provided
+                model.set_params(early_stopping_rounds=None)
+                model.fit(X_train, y_train)
+            elif 'LGB' in model_class_name or 'lightgbm' in str(type(model).__module__):
+                # LightGBM - use eval_set
+                model.fit(X_train, y_train)
+            elif hasattr(model, 'fit_generator') or 'keras' in str(type(model).__module__).lower():
+                # Keras model - use validation_data
                 model.fit(
                     X_train, y_train,
                     validation_data=(X_val, y_val),
                     **fit_kwargs
                 )
-            except TypeError:
-                # Fall back to simple fit (sklearn-style)
+            else:
+                # Generic sklearn-style fit
                 try:
                     model.fit(X_train, y_train, **fit_kwargs)
                 except TypeError:
@@ -401,6 +411,15 @@ class WalkForwardValidator:
             val_dir_acc = float(np.mean(np.sign(y_val) == np.sign(y_pred_val)))
             test_dir_acc = float(np.mean(np.sign(y_test) == np.sign(y_pred_test)))
 
+            # NaN detection: direction accuracy of exactly 0.0 is impossible with real data
+            if train_dir_acc == 0.0 or val_dir_acc == 0.0 or test_dir_acc == 0.0:
+                logger.warning(
+                    f"Fold {split.fold}: Direction accuracy is exactly 0.0 - "
+                    f"this indicates NaN predictions or empty data. "
+                    f"Shapes: train={len(y_pred_train)}, val={len(y_pred_val)}, test={len(y_pred_test)}. "
+                    f"Pred stats: train_std={np.std(y_pred_train):.6f}, val_std={np.std(y_pred_val):.6f}, test_std={np.std(y_pred_test):.6f}"
+                )
+
             # Compute Sharpe if requested
             val_sharpe = 0.0
             test_sharpe = 0.0
@@ -408,12 +427,17 @@ class WalkForwardValidator:
                 val_sharpe = sharpe_fn(y_val, y_pred_val)
                 test_sharpe = sharpe_fn(y_test, y_pred_test)
 
-            # Calculate WFE (Walk Forward Efficiency)
-            # WFE = (Test Performance / Validation Performance) * 100
-            if val_dir_acc > 0.5:
-                wfe = (test_dir_acc / val_dir_acc) * 100
+            # Calculate WFE (Walk Forward Efficiency) using baseline-adjusted formula
+            # WFE = ((Test - Baseline) / (Val - Baseline)) * 100
+            # For direction accuracy, baseline is 0.5 (random chance)
+            val_above_baseline = val_dir_acc - 0.5
+            test_above_baseline = test_dir_acc - 0.5
+
+            if val_above_baseline > 0.001:  # Small epsilon to avoid division issues
+                wfe = (test_above_baseline / val_above_baseline) * 100
+                wfe = max(0.0, wfe)  # Clamp negative WFE to 0
             else:
-                wfe = 0.0
+                wfe = 0.0  # Model at baseline = no predictive power
 
             fold_metrics.append(FoldMetrics(
                 fold=split.fold,
@@ -461,10 +485,15 @@ class WalkForwardValidator:
         return results
 
 
-def calculate_wfe(val_performance: float, test_performance: float) -> float:
-    """Calculate Walk Forward Efficiency.
+def calculate_wfe(val_performance: float, test_performance: float, baseline: float = 0.5) -> float:
+    """Calculate Walk Forward Efficiency using baseline-adjusted formula.
 
-    WFE = (Test Performance / Validation Performance) * 100
+    WFE = ((Test - Baseline) / (Val - Baseline)) * 100
+
+    For direction accuracy (baseline=0.5):
+    - If val=0.55, test=0.52: WFE = (0.02/0.05)*100 = 40%
+    - If val=0.55, test=0.55: WFE = (0.05/0.05)*100 = 100%
+    - If val=0.55, test=0.58: WFE = (0.08/0.05)*100 = 160% (test beat val)
 
     Interpretation:
     - WFE > 60%: Good - strategy is likely robust
@@ -474,13 +503,19 @@ def calculate_wfe(val_performance: float, test_performance: float) -> float:
     Args:
         val_performance: Validation metric (e.g., direction accuracy, Sharpe)
         test_performance: Test metric (same as validation)
+        baseline: Baseline value for the metric (0.5 for direction accuracy, 0 for Sharpe)
 
     Returns:
         WFE percentage (0-100+)
     """
-    if val_performance <= 0 or val_performance <= 0.5:
+    val_above = val_performance - baseline
+    test_above = test_performance - baseline
+
+    if val_above <= 0.001:  # Model at or below baseline
         return 0.0
-    return (test_performance / val_performance) * 100
+
+    wfe = (test_above / val_above) * 100
+    return max(0.0, wfe)  # Clamp negative WFE to 0
 
 
 # Create __init__.py for the validation package

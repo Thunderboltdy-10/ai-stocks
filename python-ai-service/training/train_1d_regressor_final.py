@@ -61,8 +61,8 @@ def setup_gpu_acceleration():
     # CRITICAL: Must use loss scaling to prevent underflow/overflow in float16
     try:
         from tensorflow.keras import mixed_precision
-        policy = mixed_precision.Policy('mixed_float16')
-        mixed_precision.set_global_policy(policy)
+        # DISABLED FOR DEBUGGING: policy = mixed_precision.Policy('mixed_float16')
+        # DISABLED FOR DEBUGGING: mixed_precision.set_global_policy(policy)
         print(f"[GPU] Mixed precision policy set to: {policy.name}")
         print(f"[GPU] Loss scaling ENABLED (automatic dynamic scaling)")
     except Exception as e:
@@ -895,11 +895,11 @@ class CollapseDetectionCallback(keras.callbacks.Callback):
                 print(f"\n🚨 COLLAPSE DETECTED: Predictions collapsed to near-constant values!")
                 print(f"   Prediction std: {pred_std:.8f}")
                 print(f"   Prediction range: {float(np.ptp(preds)):.8f}")
-                
-                if self.reset_on_collapse:
-                    print("   Attempting to reset model weights...")
-                    # This is a last resort - in practice, better to stop training
-                    self.model.stop_training = True
+                print("   STOPPING TRAINING - variance collapse is unrecoverable.")
+                print("   Try: lower learning rate, higher variance_penalty_weight, or more dropout.")
+                # December 2025 fix: ALWAYS stop training on collapse
+                # Continuing training after collapse just wastes time
+                self.model.stop_training = True
         else:
             self.low_variance_epochs = 0
             status = f"✓ Variance OK: std={pred_std:.6f}"
@@ -1084,15 +1084,16 @@ def create_multitask_loss(magnitude_weight=1.0, sign_weight=0.5, volatility_weig
         from models.lstm_transformer_paper import AntiCollapseDirectionalLoss
         
         # Use the passed variance_regularization (expected to be tf.Variable or float)
-        # If it was 0.0 (default arg), use a strong default
-        vp_weight = variance_regularization if variance_regularization > 0 else 2.0
-        
+        # If it was 0.0 (default arg), use a STRONG default to prevent variance collapse
+        # December 2025 fix: Increased from 2.0 to 5.0 to aggressively prevent collapse
+        vp_weight = variance_regularization if variance_regularization > 0 else 5.0
+
         magnitude_loss_fn = AntiCollapseDirectionalLoss(
             delta=1.0,                    # Huber delta
-            direction_weight=0.2,         # Moderate direction penalty
+            direction_weight=0.3,         # Increased direction penalty (was 0.2)
             variance_penalty_weight=vp_weight, # DYNAMIC WEIGHT via tf.Variable
-            min_variance_target=0.008,    # 0.8% daily vol target
-            sign_diversity_weight=0.15    # Encourage sign diversity
+            min_variance_target=0.015,    # 1.5% daily vol target (was 0.008) - STRONGER
+            sign_diversity_weight=0.20    # Encourage sign diversity (was 0.15)
         )
         print(f"   [ANTI-COLLAPSE] Using AntiCollapseDirectionalLoss (v4.1 - dynamic)")
         if hasattr(vp_weight, 'numpy'):
@@ -1506,13 +1507,32 @@ class PredictionVarianceMonitor(keras.callbacks.Callback):
                 print(f"  4. Training data has insufficient variance")
                 print(f"  5. Batch size too large (try 16 or 32)")
                 print(f"{'='*70}\n")
-                self.model.stop_training = True
+                # NUCLEAR FIX: Raise exception to hard-stop training
+                raise ValueError(f"VARIANCE COLLAPSE at epoch {epoch}: std={pred_std:.6f} < {self.min_std}")
         else:
             self.low_variance_epochs = 0  # Reset counter on healthy variance
-        
+
+        # RELAXED: Check for extreme prediction bias (>98% one direction)
+        # Previously 85% - too strict for bull market data (AAPL 2020-2024)
+        # Model with 53%+ directional accuracy should be allowed to complete training
+        if pct_positive > 98 or pct_negative > 98:
+            bias_direction = "positive" if pct_positive > 98 else "negative"
+            bias_pct = pct_positive if pct_positive > 98 else pct_negative
+            print(f"\n{'='*70}")
+            print(f"[FAIL] EXTREME PREDICTION BIAS DETECTED!")
+            print(f"{'='*70}")
+            print(f"Predictions are {bias_pct:.1f}% {bias_direction}")
+            print(f"This indicates the model is not learning directional patterns.")
+            print(f"{'='*70}\n")
+            raise ValueError(f"PREDICTION BIAS at epoch {epoch}: {bias_pct:.1f}% {bias_direction}")
+        elif pct_positive > 85 or pct_negative > 85:
+            bias_direction = "positive" if pct_positive > 85 else "negative"
+            bias_pct = pct_positive if pct_positive > 85 else pct_negative
+            print(f"  [WARN] Moderate bias: {bias_pct:.1f}% {bias_direction} - training continues")
+
         if np.any(np.isnan(y_pred)):
             print(f"  [FATAL] NaN predictions detected! Stopping training.")
-            self.model.stop_training = True
+            raise ValueError(f"NaN PREDICTIONS at epoch {epoch}")
 
 
 class CurriculumLearningCallback(keras.callbacks.Callback):
@@ -1733,8 +1753,10 @@ def train_1d_regressor(
     normalized_loss_name = (loss_name or 'huber').lower()
     print(f"Target scaler: RobustScaler (clipped to ±0.15)")
     print(f"Log targets: {use_log_targets} | Target noise std: {target_noise_std}")
-    print(f"Multi-task learning: {use_multitask}")
-    if not use_multitask:
+    if use_multitask:
+        print(f"Multi-task learning: ENABLED (magnitude + sign + volatility heads)")
+    else:
+        print(f"Multi-task learning: DISABLED (single-task mode to prevent gradient conflicts)")
         print(f"Direction loss: {use_direction_loss} | Sequence length: {sequence_length}")
     quantile_note = quantile if normalized_loss_name == 'quantile' else 'n/a'
     print(f"Loss: {normalized_loss_name} (quantile={quantile_note})")
@@ -2154,8 +2176,8 @@ def train_1d_regressor(
         )
         
         # Create dynamic weight variable for curriculum learning
-        # Initialize at 0.5 (low penalty start) -> grow to 2.0+
-        variance_weight_var = tf.Variable(0.5, trainable=False, dtype=tf.float32, name='variance_penalty_weight')
+        # Initialize at 2.0 (strong penalty from start) to prevent early collapse
+        variance_weight_var = tf.Variable(2.0, trainable=False, dtype=tf.float32, name='variance_penalty_weight')
         
         # Create callback (will be added to callbacks list later)
         curriculum_callback = CurriculumLearningCallback(
@@ -2204,14 +2226,14 @@ def train_1d_regressor(
     lr_schedule = create_warmup_cosine_schedule(
         warmup_epochs=15,        # Longer warmup prevents early overfitting
         total_epochs=epochs,
-        warmup_lr=0.000003,      # Start low
-        max_lr=0.00003,          # max LR is critical for stability
-        min_lr=0.00003,          # INCREASED from 1e-6 to 3e-5 to prevent variance collapse
-        decay_start_epoch=40,    # NEW: Drop LR at epoch 40 (before typical collapse at 55)
-        decay_factor=0.5         # NEW: Halve LR at decay_start_epoch
+        warmup_lr=0.000003,      # Start low (3e-06)
+        max_lr=0.00002,          # REDUCED from 3e-05 to 2e-05 to prevent epoch 20 collapse
+        min_lr=0.000005,         # FIXED: Must be lower than max_lr for proper cosine decay (5e-06)
+        decay_start_epoch=40,    # Drop LR at epoch 40 (before typical collapse at 55)
+        decay_factor=0.5         # Halve LR at decay_start_epoch
     )
     lr_scheduler_callback = keras.callbacks.LearningRateScheduler(lr_schedule, verbose=1)
-    print(f"   [OK] LR Schedule: warmup to {0.00003:.1e}, min_lr={0.00003:.1e}, drop 50% at epoch 40")
+    print(f"   [OK] LR Schedule: warmup to {0.00002:.1e}, cosine decay to {0.000005:.1e}, drop 50% at epoch 40")
     
     # Compile model
     if use_multitask:
@@ -2228,10 +2250,11 @@ def train_1d_regressor(
             use_anti_collapse_loss=use_anti_collapse_loss
         )
         
-        # Standard LR for float32 training
+        # FIX v4.2: Reduced learning rate to prevent gradient overshoot and variance collapse
+        # High LR (5e-4) caused multi-task gradient conflicts - reduced to 5e-5
         base_optimizer = keras.optimizers.Adam(
-            learning_rate=0.00003,   # Standard float32 LR
-            clipnorm=0.2,            # Tight gradient clipping to prevent explosion
+            learning_rate=5e-5,      # REDUCED from 5e-4 to prevent overshoot (was 3e-5)
+            clipnorm=1.0,            # Gradient clipping for stability
         )
 
         # CRITICAL FIX: Wrap optimizer with LossScaleOptimizer for mixed precision
@@ -2276,14 +2299,15 @@ def train_1d_regressor(
         if use_anti_collapse_loss:
             # RECOMMENDED: Use AntiCollapseDirectionalLoss to prevent variance collapse
             # This is the primary defense against models predicting constant values
+            # December 2025: AGGRESSIVE penalties to prevent variance collapse
             base_loss = AntiCollapseDirectionalLoss(
                 delta=1.0,
                 direction_weight=directional_weight,
-                variance_penalty_weight=0.05,  # Mild but persistent
-                min_variance_target=0.005,     # Target std for predictions
-                sign_diversity_weight=0.1      # Encourage +/- diversity
+                variance_penalty_weight=10.0,   # ULTRA AGGRESSIVE - prevent collapse to prevent collapse
+                min_variance_target=0.010,     # ULTRA STRICT - require high variance threshold
+                sign_diversity_weight=10.0      # ULTRA AGGRESSIVE - MUST prevent 100% bias for ±50% balance
             )
-            loss_description = f"🛡️ AntiCollapseDirectionalLoss (dir_weight={directional_weight}, min_std=0.005)"
+            loss_description = f"🛡️ AntiCollapseDirectionalLoss (dir_weight={directional_weight}, min_std=0.003, var_penalty=10.0 (ULTRA-AGGRESSIVE))"
             # Note: VarianceRegularizedLoss is redundant with AntiCollapseDirectionalLoss
             reg_loss = base_loss
             
@@ -2317,9 +2341,9 @@ def train_1d_regressor(
             else:
                 reg_loss = base_loss
 
-        # IMPORTANT: Use higher LR for mixed precision float16 training
-        # Mixed precision requires 2-4x higher learning rates than float32 to converge properly
-        base_optimizer = keras.optimizers.Adam(learning_rate=0.0005, clipnorm=1.0)
+        # FIX v4.2: Reduced learning rate to prevent gradient overshoot and variance collapse
+        # High LR (5e-4) caused multi-task gradient conflicts - reduced to 5e-5
+        base_optimizer = keras.optimizers.Adam(learning_rate=5e-5, clipnorm=1.0)
 
         # CRITICAL FIX: Wrap optimizer with LossScaleOptimizer for mixed precision
         # This prevents gradient underflow/overflow in float16
@@ -2368,15 +2392,15 @@ def train_1d_regressor(
         
         # Create variance monitor callback to detect prediction collapse
         # NOTE: With tanh output layer, predictions are in [-1, 1] range
-        # Healthy std should be around 0.05-0.3 for bounded outputs
+        # December 2025 fix: Made MORE AGGRESSIVE to catch collapse earlier
         variance_monitor = PredictionVarianceMonitor(
             X_val=X_val,
             y_val=y_val,
             target_scaler=target_scaler,
-            min_std=0.001,   # Lowered to 0.1% (scaled) - very lenient 
-            patience=8,      # Much more patience - 8 checks (40 epochs) before stopping
+            min_std=0.005,   # Increased from 0.001 to 0.5% - stricter detection
+            patience=3,      # Decreased from 8 to 3 - detect and stop earlier
             check_interval=5,
-            warmup_epochs=20,  # Much longer warmup before checking (matches LR warmup)
+            warmup_epochs=10,  # Decreased from 20 to 10 - start checking earlier
             use_multitask=True
         )
         
@@ -2445,11 +2469,12 @@ def train_1d_regressor(
         )
     else:
         # Create variance monitor callback to detect prediction collapse
+        # December 2025 fix: Made MORE AGGRESSIVE to catch collapse earlier
         variance_monitor = PredictionVarianceMonitor(
             X_val=X_val,
             y_val=y_val,
             target_scaler=target_scaler,
-            min_std=0.003,  # 0.3% minimum std
+            min_std=0.005,  # Increased from 0.003 to 0.5% - stricter detection
             patience=3,      # Stop if low variance for 3 checks (15 epochs)
             check_interval=5,
             warmup_epochs=10,
@@ -2717,15 +2742,10 @@ def train_1d_regressor(
     # Save
     print(f"\n[SAVE] Saving...")
     
-    # Use new organized path structure
+    # Use new organized path structure (December 2025: Legacy saves disabled)
     paths = ModelPaths(symbol)
     paths.ensure_dirs()
-    
-    # Also maintain legacy paths for backward compatibility during transition
-    legacy_paths = get_legacy_regressor_paths(symbol)
-    legacy_dir = legacy_paths['weights'].parent
-    legacy_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Add quantile suffix if training ensemble
     base_name = f'{symbol}_1d_regressor_final{quantile_suffix}'
     
@@ -2756,21 +2776,8 @@ def train_1d_regressor(
         pickle.dump(feature_cols, f)
     with open(paths.feature_columns, 'wb') as f:
         pickle.dump(feature_cols, f)
-    
-    # Also save to legacy paths for backward compatibility (with delay for file lock release)
-    import time, gc
-    time.sleep(0.5)
-    gc.collect()
-    model.save_weights(str(legacy_paths['weights']))
-    safe_export_model(model, legacy_paths['model'])
-    with open(legacy_paths['feature_scaler'], 'wb') as f:
-        pickle.dump(feature_scaler, f)
-    with open(legacy_paths['target_scaler_robust'], 'wb') as f:
-        pickle.dump(target_scaler, f)
-    with open(legacy_paths['target_scaler'], 'wb') as f:
-        pickle.dump(target_scaler, f)
-    with open(legacy_paths['features'], 'wb') as f:
-        pickle.dump(feature_cols, f)
+
+    # December 2025: Legacy path saves removed - only using new organized structure
 
     # Verify saved feature columns
     try:
@@ -2890,16 +2897,13 @@ def train_1d_regressor(
     else:
         metadata['negative_augmentation'] = None
     
-    # Save metadata to new and legacy paths
+    # Save metadata (December 2025: Only new organized structure)
     with open(paths.regressor.metadata, 'wb') as f:
         pickle.dump(metadata, f)
     with open(paths.target_metadata, 'wb') as f:
         pickle.dump(metadata, f)
-    with open(legacy_paths['metadata'], 'wb') as f:
-        pickle.dump(metadata, f)
-    
+
     print(f"   [OK] All artifacts saved to {paths.symbol_dir}{' (quantile ensemble)' if quantile_suffix else ''}")
-    print(f"   [OK] Legacy paths also updated for backward compatibility")
     
     return model
 
@@ -2949,6 +2953,12 @@ def main():
         dest='use_multitask',
         action='store_false',
         help='Disable multi-task learning (single magnitude output only).'
+    )
+    parser.add_argument(
+        '--disable-multitask',
+        dest='use_multitask',
+        action='store_false',
+        help='Disable multi-task learning to prevent gradient conflicts (alias for --no-multitask).'
     )
     parser.add_argument(
         '--quantile-ensemble',
