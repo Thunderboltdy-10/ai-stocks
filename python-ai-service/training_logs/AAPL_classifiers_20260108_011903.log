@@ -1,0 +1,11 @@
+2026-01-08 01:19:03 | INFO     | training.AAPL.classifiers | Training log initialized: /home/thunderboltdy/ai-stocks/python-ai-service/training_logs/AAPL_classifiers_20260108_011903.log
+2026-01-08 01:19:03 | DEBUG    | training.AAPL.classifiers | Symbol: AAPL, Model Type: classifiers
+2026-01-08 01:19:03 | DEBUG    | training.AAPL.classifiers | Python version: 3.10.19 (main, Oct 21 2025, 16:43:05) [GCC 11.2.0]
+2026-01-08 01:19:03 | INFO     | training.AAPL.classifiers | Starting binary classifiers training for AAPL
+2026-01-08 01:19:03 | INFO     | training.AAPL.classifiers | Arguments: epochs=30, batch_size=512, buy_percentile=60, sell_percentile=40
+2026-01-08 01:19:03 | INFO     | training.AAPL.classifiers | Training ensemble member 1/1
+2026-01-08 01:19:14 | INFO     | training.AAPL.classifiers | [OK] Training with 154 features (93 technical + 20 new + 34 sentiment)
+2026-01-08 01:19:14 | INFO     | training.AAPL.classifiers |   Input shape: (10688, 60, 154) = (samples=10688, seq_len=60, features=154)
+2026-01-08 01:20:52 | INFO     | training.AAPL.classifiers | [OK] Training with 154 features (93 technical + 20 new + 34 sentiment)
+2026-01-08 01:20:52 | INFO     | training.AAPL.classifiers |   Input shape: (10564, 60, 154) = (samples=10564, seq_len=60, features=154)
+2026-01-08 01:24:04 | INFO     | training.AAPL.classifiers | Binary classifiers training complete!

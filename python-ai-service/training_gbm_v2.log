@@ -1,0 +1,303 @@
+2026-01-08 00:33:55,485 - __main__ - WARNING - CatBoost not available. Install with: pip install catboost
+2026-01-08 00:33:55,488 - __main__ - INFO - Using seed: 42
+2026-01-08 00:33:55,488 - __main__ - INFO - Preparing GBM data for AAPL...
+2026-01-08 00:33:55,488 - data.cache_manager - INFO - DataCacheManager initialized: cache
+2026-01-08 00:33:55,536 - data.cache_manager - INFO - ✓ Loaded cached data for AAPL: (11357, 162)
+2026-01-08 00:33:55,536 - __main__ - INFO - Using cached data: (11357, 162)
+2026-01-08 00:33:55,536 - __main__ - INFO - Found 14 sentiment features - ensure they are properly lagged
+2026-01-08 00:33:55,536 - __main__ - INFO - ✓ No look-ahead leakage detected in feature names
+2026-01-08 00:33:55,539 - __main__ - INFO - Target range after clipping: [-0.1000, 0.1000]
+2026-01-08 00:33:55,540 - __main__ - INFO - Applied log-transform: mean 0.000791 -> 0.000455, std 0.025883 -> 0.025893
+2026-01-08 00:33:55,553 - __main__ - INFO - Data shape: X=(11357, 154), y=(11357,)
+2026-01-08 00:33:55,553 - __main__ - INFO - 
+============================================================
+2026-01-08 00:33:55,553 - __main__ - INFO - Training XGBoost...
+2026-01-08 00:33:55,554 - __main__ - INFO - ============================================================
+2026-01-08 00:33:55,554 - __main__ - INFO - Walk-forward CV: 5 splits, test_size=60, gap=1
+2026-01-08 00:33:55,554 - __main__ - INFO - Total samples: 11357, min train size: 1892
+2026-01-08 00:33:55,554 - __main__ - INFO - 
+--- Fold 1/5 ---
+2026-01-08 00:33:55,554 - __main__ - INFO - Train: 11056 samples (indices 0-11055)
+2026-01-08 00:33:55,554 - __main__ - INFO - Val: 60 samples (indices 11057-11116)
+2026-01-08 00:33:55,637 - __main__ - INFO - Sample weights: positive=0.986, negative=1.051
+2026-01-08 00:33:57,740 - __main__ - INFO -   XGBoost early stopped at iteration 182
+2026-01-08 00:33:57,745 - __main__ - INFO -   MSE: 0.000164, MAE: 0.009486, R²: -0.0158
+2026-01-08 00:33:57,745 - __main__ - INFO -   Direction Acc: 0.5667, IC: 0.0668
+2026-01-08 00:33:57,745 - __main__ - INFO -   Prediction std: 0.002197
+2026-01-08 00:33:58,027 - __main__ - INFO - ✓ Training curve saved: logs/xgb_training_curve_AAPL_fold1.png
+2026-01-08 00:33:58,028 - __main__ - INFO - 
+--- Fold 2/5 ---
+2026-01-08 00:33:58,029 - __main__ - INFO - Train: 11116 samples (indices 0-11115)
+2026-01-08 00:33:58,029 - __main__ - INFO - Val: 60 samples (indices 11117-11176)
+2026-01-08 00:33:58,106 - __main__ - INFO - Sample weights: positive=0.985, negative=1.052
+2026-01-08 00:34:04,458 - __main__ - INFO -   MSE: 0.001006, MAE: 0.022666, R²: -0.1901
+2026-01-08 00:34:04,459 - __main__ - INFO -   Direction Acc: 0.5167, IC: -0.1658
+2026-01-08 00:34:04,459 - __main__ - INFO -   Prediction std: 0.008274
+2026-01-08 00:34:04,899 - __main__ - INFO - ✓ Training curve saved: logs/xgb_training_curve_AAPL_fold2.png
+2026-01-08 00:34:04,899 - __main__ - INFO - 
+--- Fold 3/5 ---
+2026-01-08 00:34:04,899 - __main__ - INFO - Train: 11176 samples (indices 0-11175)
+2026-01-08 00:34:04,899 - __main__ - INFO - Val: 60 samples (indices 11177-11236)
+2026-01-08 00:34:04,973 - __main__ - INFO - Sample weights: positive=0.986, negative=1.051
+2026-01-08 00:34:13,656 - __main__ - INFO -   MSE: 0.000266, MAE: 0.011808, R²: -0.0930
+2026-01-08 00:34:13,656 - __main__ - INFO -   Direction Acc: 0.4833, IC: 0.1290
+2026-01-08 00:34:13,656 - __main__ - INFO -   Prediction std: 0.006215
+2026-01-08 00:34:13,954 - __main__ - INFO - ✓ Training curve saved: logs/xgb_training_curve_AAPL_fold3.png
+2026-01-08 00:34:13,954 - __main__ - INFO - 
+--- Fold 4/5 ---
+2026-01-08 00:34:13,954 - __main__ - INFO - Train: 11236 samples (indices 0-11235)
+2026-01-08 00:34:13,954 - __main__ - INFO - Val: 60 samples (indices 11237-11296)
+2026-01-08 00:34:14,009 - __main__ - INFO - Sample weights: positive=0.985, negative=1.052
+2026-01-08 00:34:20,172 - __main__ - INFO -   MSE: 0.000306, MAE: 0.012282, R²: -0.1897
+2026-01-08 00:34:20,172 - __main__ - INFO -   Direction Acc: 0.4333, IC: -0.0639
+2026-01-08 00:34:20,172 - __main__ - INFO -   Prediction std: 0.004891
+2026-01-08 00:34:20,466 - __main__ - INFO - ✓ Training curve saved: logs/xgb_training_curve_AAPL_fold4.png
+2026-01-08 00:34:20,467 - __main__ - INFO - 
+--- Fold 5/5 ---
+2026-01-08 00:34:20,467 - __main__ - INFO - Train: 11296 samples (indices 0-11295)
+2026-01-08 00:34:20,467 - __main__ - INFO - Val: 60 samples (indices 11297-11356)
+2026-01-08 00:34:20,524 - __main__ - INFO - Sample weights: positive=0.985, negative=1.052
+2026-01-08 00:34:26,973 - __main__ - INFO -   MSE: 0.000134, MAE: 0.008365, R²: -0.2394
+2026-01-08 00:34:26,974 - __main__ - INFO -   Direction Acc: 0.5667, IC: 0.0447
+2026-01-08 00:34:26,974 - __main__ - INFO -   Prediction std: 0.004140
+2026-01-08 00:34:27,379 - __main__ - INFO - ✓ Training curve saved: logs/xgb_training_curve_AAPL_fold5.png
+2026-01-08 00:34:27,386 - __main__ - INFO - 
+=== XGB CV Summary ===
+2026-01-08 00:34:27,386 - __main__ - INFO - MSE: 0.000375 ± 0.000360
+2026-01-08 00:34:27,386 - __main__ - INFO - MAE: 0.012921 ± 0.005683
+2026-01-08 00:34:27,386 - __main__ - INFO - R²: -0.1456 ± 0.0899
+2026-01-08 00:34:27,386 - __main__ - INFO - Direction Acc: 0.5133 ± 0.0570
+2026-01-08 00:34:27,387 - __main__ - INFO - IC: 0.0022 ± 0.1169
+2026-01-08 00:34:27,387 - __main__ - INFO - Avg prediction std: 0.005143
+2026-01-08 00:34:27,388 - __main__ - INFO - Training final XGB model on 11357 samples...
+2026-01-08 00:34:27,440 - __main__ - INFO - 3-way split: Train=6814, Val=2271, Test=2272
+2026-01-08 00:34:27,440 - __main__ - INFO - NOTE: Test set is HELD-OUT - metrics computed ONLY on test set
+2026-01-08 00:34:27,441 - __main__ - INFO - Sample weights: positive=1.014, negative=1.041
+2026-01-08 00:34:27,441 - __main__ - INFO - Sample weights computed for final model training (positive/negative balancing)
+2026-01-08 00:34:28,023 - __main__ - INFO - Phase 1: CV best_iter=0, using 500 trees for final model
+2026-01-08 00:34:30,623 - __main__ - INFO - Phase 2: Final XGBoost model trained 500 trees
+2026-01-08 00:34:30,900 - __main__ - INFO - ✓ Training curve saved: logs/xgb_training_curve_AAPL_final.png
+2026-01-08 00:34:30,906 - __main__ - INFO - 
+=== HELD-OUT TEST SET METRICS (NO LEAKAGE) ===
+2026-01-08 00:34:30,906 - __main__ - INFO - Test samples: 2272 (last 20% of data)
+2026-01-08 00:34:30,906 - __main__ - INFO - Test IC: 0.0025
+2026-01-08 00:34:30,906 - __main__ - INFO - Test Direction Accuracy: 0.4793
+2026-01-08 00:34:30,906 - __main__ - INFO - Test Prediction std: 0.008480
+2026-01-08 00:34:30,906 - __main__ - INFO - Test Prediction distribution: 19.1% positive, 80.9% negative
+2026-01-08 00:34:30,909 - __main__ - INFO - Val IC: 0.0003, Val Direction Acc: 0.4888
+2026-01-08 00:34:30,909 - __main__ - INFO - Walk Forward Efficiency (WFE): 0.0%
+2026-01-08 00:34:30,909 - __main__ - WARNING - ⚠️ LOW WFE (0.0%): Significant overfitting detected
+2026-01-08 00:34:30,909 - __main__ - WARNING - ⚠️ Predictions are biased: 19.1% positive, 80.9% negative
+2026-01-08 00:34:30,938 - __main__ - INFO - XGBoost model saved to saved_models/AAPL/gbm/xgb_reg.joblib
+2026-01-08 00:34:30,938 - __main__ - INFO - 
+============================================================
+2026-01-08 00:34:30,938 - __main__ - INFO - Training LightGBM...
+2026-01-08 00:34:30,938 - __main__ - INFO - ============================================================
+2026-01-08 00:34:30,938 - __main__ - INFO - Walk-forward CV: 5 splits, test_size=60, gap=1
+2026-01-08 00:34:30,938 - __main__ - INFO - Total samples: 11357, min train size: 1892
+2026-01-08 00:34:30,939 - __main__ - INFO - 
+--- Fold 1/5 ---
+2026-01-08 00:34:30,939 - __main__ - INFO - Train: 11056 samples (indices 0-11055)
+2026-01-08 00:34:30,939 - __main__ - INFO - Val: 60 samples (indices 11057-11116)
+2026-01-08 00:34:30,996 - __main__ - INFO - Sample weights: positive=0.986, negative=1.051
+2026-01-08 00:34:32,112 - __main__ - INFO -   LightGBM trained 6 trees
+/home/thunderboltdy/miniconda3/envs/ai-stocks/lib/python3.10/site-packages/sklearn/utils/validation.py:2749: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+2026-01-08 00:34:32,116 - __main__ - INFO -   LightGBM Diagnostics (Fold 1):
+2026-01-08 00:34:32,116 - __main__ - INFO -     Prediction std: 0.000169
+2026-01-08 00:34:32,116 - __main__ - INFO -     Positive predictions: 91.7%
+2026-01-08 00:34:32,116 - __main__ - INFO -     Mean prediction: 0.000030
+2026-01-08 00:34:32,116 - __main__ - WARNING -   ⚠️ Fold 1 VARIANCE COLLAPSE: pred_std=0.000169
+2026-01-08 00:34:32,116 - __main__ - ERROR -   Current config: reg_lambda=0.0100, reg_alpha=0.0100, objective='regression'
+2026-01-08 00:34:32,116 - __main__ - ERROR -   Recommended: reg_lambda < 0.005, reg_alpha < 0.005, objective='regression'
+2026-01-08 00:34:32,116 - __main__ - ERROR -   LightGBM-specific: Consider increasing num_leaves to 63, max_depth to 7
+2026-01-08 00:34:32,116 - __main__ - WARNING -   ⚠️ Fold 1 SEVERE BIAS: 91.7% positive
+2026-01-08 00:34:32,118 - __main__ - INFO -   MSE: 0.000161, MAE: 0.009535, R²: 0.0005
+2026-01-08 00:34:32,118 - __main__ - INFO -   Direction Acc: 0.5833, IC: 0.1104
+2026-01-08 00:34:32,118 - __main__ - INFO -   Prediction std: 0.000169
+/home/thunderboltdy/ai-stocks/python-ai-service/training/train_gbm_baseline.py:199: UserWarning: No artists with labels found to put in legend.  Note that artists whose label start with an underscore are ignored when legend() is called with no argument.
+  axes[1].legend()
+2026-01-08 00:34:32,366 - __main__ - INFO - ✓ Training curve saved: logs/lgb_training_curve_AAPL_fold1.png
+2026-01-08 00:34:32,366 - __main__ - INFO - 
+--- Fold 2/5 ---
+2026-01-08 00:34:32,366 - __main__ - INFO - Train: 11116 samples (indices 0-11115)
+2026-01-08 00:34:32,366 - __main__ - INFO - Val: 60 samples (indices 11117-11176)
+2026-01-08 00:34:32,421 - __main__ - INFO - Sample weights: positive=0.985, negative=1.052
+2026-01-08 00:34:43,059 - __main__ - INFO -   LightGBM trained 1000 trees
+/home/thunderboltdy/miniconda3/envs/ai-stocks/lib/python3.10/site-packages/sklearn/utils/validation.py:2749: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+2026-01-08 00:34:43,063 - __main__ - INFO -   LightGBM Diagnostics (Fold 2):
+2026-01-08 00:34:43,063 - __main__ - INFO -     Prediction std: 0.008590
+2026-01-08 00:34:43,063 - __main__ - INFO -     Positive predictions: 31.7%
+2026-01-08 00:34:43,063 - __main__ - INFO -     Mean prediction: -0.002210
+2026-01-08 00:34:43,065 - __main__ - INFO -   MSE: 0.001020, MAE: 0.022200, R²: -0.2057
+2026-01-08 00:34:43,065 - __main__ - INFO -   Direction Acc: 0.5000, IC: -0.1968
+2026-01-08 00:34:43,065 - __main__ - INFO -   Prediction std: 0.008590
+/home/thunderboltdy/ai-stocks/python-ai-service/training/train_gbm_baseline.py:199: UserWarning: No artists with labels found to put in legend.  Note that artists whose label start with an underscore are ignored when legend() is called with no argument.
+  axes[1].legend()
+2026-01-08 00:34:43,318 - __main__ - INFO - ✓ Training curve saved: logs/lgb_training_curve_AAPL_fold2.png
+2026-01-08 00:34:43,318 - __main__ - INFO - 
+--- Fold 3/5 ---
+2026-01-08 00:34:43,318 - __main__ - INFO - Train: 11176 samples (indices 0-11175)
+2026-01-08 00:34:43,319 - __main__ - INFO - Val: 60 samples (indices 11177-11236)
+2026-01-08 00:34:43,380 - __main__ - INFO - Sample weights: positive=0.986, negative=1.051
+2026-01-08 00:34:56,911 - __main__ - INFO -   LightGBM trained 1000 trees
+/home/thunderboltdy/miniconda3/envs/ai-stocks/lib/python3.10/site-packages/sklearn/utils/validation.py:2749: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+2026-01-08 00:34:56,919 - __main__ - INFO -   LightGBM Diagnostics (Fold 3):
+2026-01-08 00:34:56,919 - __main__ - INFO -     Prediction std: 0.005795
+2026-01-08 00:34:56,919 - __main__ - INFO -     Positive predictions: 26.7%
+2026-01-08 00:34:56,919 - __main__ - INFO -     Mean prediction: -0.004276
+2026-01-08 00:34:56,920 - __main__ - INFO -   MSE: 0.000305, MAE: 0.012770, R²: -0.2538
+2026-01-08 00:34:56,921 - __main__ - INFO -   Direction Acc: 0.5167, IC: 0.0162
+2026-01-08 00:34:56,921 - __main__ - INFO -   Prediction std: 0.005795
+/home/thunderboltdy/ai-stocks/python-ai-service/training/train_gbm_baseline.py:199: UserWarning: No artists with labels found to put in legend.  Note that artists whose label start with an underscore are ignored when legend() is called with no argument.
+  axes[1].legend()
+2026-01-08 00:34:57,193 - __main__ - INFO - ✓ Training curve saved: logs/lgb_training_curve_AAPL_fold3.png
+2026-01-08 00:34:57,194 - __main__ - INFO - 
+--- Fold 4/5 ---
+2026-01-08 00:34:57,194 - __main__ - INFO - Train: 11236 samples (indices 0-11235)
+2026-01-08 00:34:57,194 - __main__ - INFO - Val: 60 samples (indices 11237-11296)
+2026-01-08 00:34:57,253 - __main__ - INFO - Sample weights: positive=0.985, negative=1.052
+2026-01-08 00:35:14,543 - __main__ - INFO -   LightGBM trained 1000 trees
+/home/thunderboltdy/miniconda3/envs/ai-stocks/lib/python3.10/site-packages/sklearn/utils/validation.py:2749: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+2026-01-08 00:35:14,547 - __main__ - INFO -   LightGBM Diagnostics (Fold 4):
+2026-01-08 00:35:14,547 - __main__ - INFO -     Prediction std: 0.005062
+2026-01-08 00:35:14,547 - __main__ - INFO -     Positive predictions: 43.3%
+2026-01-08 00:35:14,547 - __main__ - INFO -     Mean prediction: -0.000748
+2026-01-08 00:35:14,550 - __main__ - INFO -   MSE: 0.000296, MAE: 0.012110, R²: -0.1544
+2026-01-08 00:35:14,550 - __main__ - INFO -   Direction Acc: 0.5000, IC: -0.0226
+2026-01-08 00:35:14,550 - __main__ - INFO -   Prediction std: 0.005062
+/home/thunderboltdy/ai-stocks/python-ai-service/training/train_gbm_baseline.py:199: UserWarning: No artists with labels found to put in legend.  Note that artists whose label start with an underscore are ignored when legend() is called with no argument.
+  axes[1].legend()
+2026-01-08 00:35:14,818 - __main__ - INFO - ✓ Training curve saved: logs/lgb_training_curve_AAPL_fold4.png
+2026-01-08 00:35:14,819 - __main__ - INFO - 
+--- Fold 5/5 ---
+2026-01-08 00:35:14,819 - __main__ - INFO - Train: 11296 samples (indices 0-11295)
+2026-01-08 00:35:14,819 - __main__ - INFO - Val: 60 samples (indices 11297-11356)
+2026-01-08 00:35:14,898 - __main__ - INFO - Sample weights: positive=0.985, negative=1.052
+2026-01-08 00:35:25,181 - __main__ - INFO -   LightGBM trained 1000 trees
+/home/thunderboltdy/miniconda3/envs/ai-stocks/lib/python3.10/site-packages/sklearn/utils/validation.py:2749: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+2026-01-08 00:35:25,183 - __main__ - INFO -   LightGBM Diagnostics (Fold 5):
+2026-01-08 00:35:25,183 - __main__ - INFO -     Prediction std: 0.005048
+2026-01-08 00:35:25,183 - __main__ - INFO -     Positive predictions: 5.0%
+2026-01-08 00:35:25,183 - __main__ - INFO -     Mean prediction: -0.008295
+2026-01-08 00:35:25,183 - __main__ - WARNING -   ⚠️ Fold 5 SEVERE BIAS: 5.0% positive
+2026-01-08 00:35:25,184 - __main__ - INFO -   MSE: 0.000222, MAE: 0.011152, R²: -1.0606
+2026-01-08 00:35:25,184 - __main__ - INFO -   Direction Acc: 0.5167, IC: -0.0306
+2026-01-08 00:35:25,185 - __main__ - INFO -   Prediction std: 0.005048
+/home/thunderboltdy/ai-stocks/python-ai-service/training/train_gbm_baseline.py:199: UserWarning: No artists with labels found to put in legend.  Note that artists whose label start with an underscore are ignored when legend() is called with no argument.
+  axes[1].legend()
+2026-01-08 00:35:25,448 - __main__ - INFO - ✓ Training curve saved: logs/lgb_training_curve_AAPL_fold5.png
+2026-01-08 00:35:25,452 - __main__ - WARNING - ⚠️ 1/5 folds have variance collapse (pred_std < 0.001)
+2026-01-08 00:35:25,453 - __main__ - INFO - 
+=== LGB CV Summary ===
+2026-01-08 00:35:25,453 - __main__ - INFO - MSE: 0.000401 ± 0.000351
+2026-01-08 00:35:25,453 - __main__ - INFO - MAE: 0.013553 ± 0.004984
+2026-01-08 00:35:25,453 - __main__ - INFO - R²: -0.3348 ± 0.4169
+2026-01-08 00:35:25,453 - __main__ - INFO - Direction Acc: 0.5233 ± 0.0346
+2026-01-08 00:35:25,453 - __main__ - INFO - IC: -0.0247 ± 0.1114
+2026-01-08 00:35:25,453 - __main__ - INFO - Avg prediction std: 0.004933
+2026-01-08 00:35:25,454 - __main__ - INFO - Training final LGB model on 11357 samples...
+2026-01-08 00:35:25,495 - __main__ - INFO - 3-way split: Train=6814, Val=2271, Test=2272
+2026-01-08 00:35:25,495 - __main__ - INFO - NOTE: Test set is HELD-OUT - metrics computed ONLY on test set
+2026-01-08 00:35:25,495 - __main__ - INFO - Sample weights: positive=1.014, negative=1.041
+2026-01-08 00:35:25,496 - __main__ - INFO - Sample weights computed for final model training (positive/negative balancing)
+2026-01-08 00:35:26,133 - __main__ - INFO - Phase 1 complete: best_iter=1, using 500 trees for final model
+2026-01-08 00:35:26,133 - __main__ - INFO - Phase 2 config: {'n_estimators': 500, 'learning_rate': 0.05, 'max_depth': 6, 'num_leaves': 31, 'subsample': 0.8, 'colsample_bytree': 0.8, 'min_child_samples': 20, 'reg_alpha': 0.01, 'reg_lambda': 0.01, 'min_split_gain': 0.0, 'random_state': 42, 'n_jobs': -1, 'objective': 'regression', 'metric': ['rmse', 'mae'], 'verbosity': -1, 'force_col_wise': True, 'deterministic': True}
+2026-01-08 00:35:26,134 - __main__ - INFO - Training final model on 6814 samples (excluding 2271 validation samples to prevent data leakage)
+2026-01-08 00:35:30,888 - __main__ - INFO - Phase 2 complete: Final LightGBM model trained 500 trees
+/home/thunderboltdy/ai-stocks/python-ai-service/training/train_gbm_baseline.py:199: UserWarning: No artists with labels found to put in legend.  Note that artists whose label start with an underscore are ignored when legend() is called with no argument.
+  axes[1].legend()
+2026-01-08 00:35:31,375 - __main__ - INFO - ✓ Training curve saved: logs/lgb_training_curve_AAPL_final.png
+/home/thunderboltdy/miniconda3/envs/ai-stocks/lib/python3.10/site-packages/sklearn/utils/validation.py:2749: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+2026-01-08 00:35:31,394 - __main__ - INFO - 
+=== HELD-OUT TEST SET METRICS (NO LEAKAGE) ===
+2026-01-08 00:35:31,395 - __main__ - INFO - Test samples: 2272 (last 20% of data)
+2026-01-08 00:35:31,395 - __main__ - INFO - Test IC: 0.0266
+2026-01-08 00:35:31,395 - __main__ - INFO - Test Direction Accuracy: 0.5312
+2026-01-08 00:35:31,395 - __main__ - INFO - Test Prediction std: 0.008295
+2026-01-08 00:35:31,395 - __main__ - INFO - Test Prediction distribution: 85.1% positive, 14.9% negative
+/home/thunderboltdy/miniconda3/envs/ai-stocks/lib/python3.10/site-packages/sklearn/utils/validation.py:2749: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+2026-01-08 00:35:31,407 - __main__ - INFO - Val IC: 0.0145, Val Direction Acc: 0.5187
+2026-01-08 00:35:31,407 - __main__ - INFO - Walk Forward Efficiency (WFE): 102.4%
+2026-01-08 00:35:31,407 - __main__ - INFO - WFE 102.4%: Good - strategy is likely robust
+2026-01-08 00:35:31,407 - __main__ - WARNING - ⚠️ Predictions are biased: 85.1% positive, 14.9% negative
+2026-01-08 00:35:31,407 - __main__ - WARNING - ⚠️ MODERATE BIAS: 85.1% positive - model will be saved but may underperform
+2026-01-08 00:35:31,445 - __main__ - INFO - LightGBM model saved to saved_models/AAPL/gbm/lgb_reg.joblib
+2026-01-08 00:35:31,447 - __main__ - INFO - 
+✓ GBM training complete for AAPL
+2026-01-08 00:35:31,447 - __main__ - INFO -   Models saved to: saved_models/AAPL/gbm
+Technical features by category (expected sum): 113
+Actual technical list length: 120
+Difference from canonical 120: 0
+Training until validation scores don't improve for 100 rounds
+[100]	training's rmse: 0.0233623	training's l1: 0.0172586	validation's rmse: 0.0133749	validation's l1: 0.00968529
+Early stopping, best iteration is:
+[6]	training's rmse: 0.0260592	training's l1: 0.0189829	validation's rmse: 0.0127016	validation's l1: 0.0095353
+[100]	training's rmse: 0.0232776	training's l1: 0.0171763	validation's rmse: 0.0300481	validation's l1: 0.0206183
+[200]	training's rmse: 0.0211611	training's l1: 0.0157259	validation's rmse: 0.0306861	validation's l1: 0.0213081
+[300]	training's rmse: 0.0193953	training's l1: 0.0144606	validation's rmse: 0.0310016	validation's l1: 0.0214384
+[400]	training's rmse: 0.017792	training's l1: 0.0132853	validation's rmse: 0.0312346	validation's l1: 0.0215655
+[500]	training's rmse: 0.0162907	training's l1: 0.0121955	validation's rmse: 0.0314073	validation's l1: 0.021739
+[600]	training's rmse: 0.0149781	training's l1: 0.0112168	validation's rmse: 0.0317384	validation's l1: 0.0218726
+[700]	training's rmse: 0.0138069	training's l1: 0.010328	validation's rmse: 0.0317128	validation's l1: 0.0218806
+[800]	training's rmse: 0.0127831	training's l1: 0.00954596	validation's rmse: 0.0315837	validation's l1: 0.0218029
+[900]	training's rmse: 0.0118146	training's l1: 0.00881634	validation's rmse: 0.0318439	validation's l1: 0.0221698
+[1000]	training's rmse: 0.0110049	training's l1: 0.00820002	validation's rmse: 0.0319302	validation's l1: 0.0222002
+[100]	training's rmse: 0.0233766	training's l1: 0.0172642	validation's rmse: 0.0164864	validation's l1: 0.011783
+[200]	training's rmse: 0.0211656	training's l1: 0.0157305	validation's rmse: 0.0168227	validation's l1: 0.0122192
+[300]	training's rmse: 0.0193046	training's l1: 0.0143797	validation's rmse: 0.0168679	validation's l1: 0.0124352
+[400]	training's rmse: 0.0176769	training's l1: 0.0132063	validation's rmse: 0.0170165	validation's l1: 0.0127595
+[500]	training's rmse: 0.0163065	training's l1: 0.0121997	validation's rmse: 0.0169862	validation's l1: 0.0126507
+[600]	training's rmse: 0.015003	training's l1: 0.0112438	validation's rmse: 0.0171121	validation's l1: 0.0126983
+[700]	training's rmse: 0.0138034	training's l1: 0.0103352	validation's rmse: 0.0171136	validation's l1: 0.0125831
+[800]	training's rmse: 0.0127304	training's l1: 0.0095312	validation's rmse: 0.0171651	validation's l1: 0.0126275
+[900]	training's rmse: 0.0117946	training's l1: 0.00882601	validation's rmse: 0.0172641	validation's l1: 0.0125615
+[1000]	training's rmse: 0.0109013	training's l1: 0.00815134	validation's rmse: 0.0174556	validation's l1: 0.0127703
+[100]	training's rmse: 0.0233918	training's l1: 0.0172446	validation's rmse: 0.0162263	validation's l1: 0.0114136
+[200]	training's rmse: 0.0210241	training's l1: 0.0156273	validation's rmse: 0.0163477	validation's l1: 0.0115181
+[300]	training's rmse: 0.019149	training's l1: 0.0142796	validation's rmse: 0.0166633	validation's l1: 0.0117932
+[400]	training's rmse: 0.0176174	training's l1: 0.0131602	validation's rmse: 0.0165828	validation's l1: 0.0118095
+[500]	training's rmse: 0.0161952	training's l1: 0.0121231	validation's rmse: 0.0168027	validation's l1: 0.0118777
+[600]	training's rmse: 0.0149142	training's l1: 0.0111692	validation's rmse: 0.016969	validation's l1: 0.0119177
+[700]	training's rmse: 0.0137387	training's l1: 0.0102864	validation's rmse: 0.017051	validation's l1: 0.0119677
+[800]	training's rmse: 0.0126393	training's l1: 0.00946654	validation's rmse: 0.017062	validation's l1: 0.0119434
+[900]	training's rmse: 0.011663	training's l1: 0.00873602	validation's rmse: 0.0170773	validation's l1: 0.01196
+[1000]	training's rmse: 0.0108265	training's l1: 0.00810357	validation's rmse: 0.0172188	validation's l1: 0.0121097
+[100]	training's rmse: 0.0233652	training's l1: 0.0172106	validation's rmse: 0.0108258	validation's l1: 0.00781541
+[200]	training's rmse: 0.0210393	training's l1: 0.015628	validation's rmse: 0.0122922	validation's l1: 0.00904475
+[300]	training's rmse: 0.0192366	training's l1: 0.0143308	validation's rmse: 0.0133873	validation's l1: 0.0100831
+[400]	training's rmse: 0.0175553	training's l1: 0.0131056	validation's rmse: 0.0135347	validation's l1: 0.0101161
+[500]	training's rmse: 0.0160584	training's l1: 0.0120207	validation's rmse: 0.0144552	validation's l1: 0.0110026
+[600]	training's rmse: 0.0148683	training's l1: 0.011127	validation's rmse: 0.0144384	validation's l1: 0.0110016
+[700]	training's rmse: 0.013664	training's l1: 0.0102297	validation's rmse: 0.0145125	validation's l1: 0.0109418
+[800]	training's rmse: 0.0126628	training's l1: 0.00946997	validation's rmse: 0.0144323	validation's l1: 0.010724
+[900]	training's rmse: 0.0117601	training's l1: 0.00878681	validation's rmse: 0.0146246	validation's l1: 0.0109439
+[1000]	training's rmse: 0.0109051	training's l1: 0.00814516	validation's rmse: 0.0148987	validation's l1: 0.0111517
+Training until validation scores don't improve for 100 rounds
+[100]	training's rmse: 0.0255222	training's l1: 0.0193075	validation's rmse: 0.0204117	validation's l1: 0.0145184
+Early stopping, best iteration is:
+[1]	training's rmse: 0.0294703	training's l1: 0.022015	validation's rmse: 0.019926	validation's l1: 0.0141215
+
+============================================================
+TRAINING SUMMARY
+============================================================
+
+XGB:
+  MSE:  0.000375 ± 0.000360
+  MAE:  0.012921 ± 0.005683
+  R²:   -0.1456 ± 0.0899
+  Dir:  0.5133 ± 0.0570
+  IC:   0.0022 ± 0.1169
+
+LGB:
+  MSE:  0.000401 ± 0.000351
+  MAE:  0.013553 ± 0.004984
+  R²:   -0.3348 ± 0.4169
+  Dir:  0.5233 ± 0.0346
+  IC:   -0.0247 ± 0.1114

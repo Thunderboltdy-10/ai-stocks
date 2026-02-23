@@ -1,0 +1,20 @@
+Traceback (most recent call last):
+  File "/home/thunderboltdy/ai-stocks/python-ai-service/training/train_1d_regressor_final.py", line 38, in <module>
+    import tensorflow as tf
+ModuleNotFoundError: No module named 'tensorflow'
+2026-01-02 22:07:23,035 - ERROR - Step 1/4: LSTM+Transformer Regressor (AAPL) failed with exit code 1
+2026-01-02 22:07:23,035 - ERROR - Training pipeline failed: Command '['/home/thunderboltdy/miniconda3/bin/python', '/home/thunderboltdy/ai-stocks/python-ai-service/training/train_1d_regressor_final.py', 'AAPL', '--epochs', '50', '--batch-size', '512']' returned non-zero exit status 1.
+
+======================================================================
+  UNIFIED TRAINING PIPELINE - AAPL
+======================================================================
+Epochs: 50
+Batch size: 512
+Skip WFE: False
+Force overwrite: True
+
+======================================================================
+  Step 1/4: LSTM+Transformer Regressor (AAPL)
+======================================================================
+Command: /home/thunderboltdy/miniconda3/bin/python /home/thunderboltdy/ai-stocks/python-ai-service/training/train_1d_regressor_final.py AAPL --epochs 50 --batch-size 512
+

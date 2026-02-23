@@ -1,22 +1,22 @@
 {
-  "timestamp": "2025-12-29T12:26:10.374108",
+  "timestamp": "2026-01-27T10:05:38.508656",
   "symbol": "AAPL",
   "raw_shape": [
-    11352,
+    11371,
     7
   ],
   "engineered_shape": [
-    11352,
+    11371,
     159
   ],
   "prepared_shape": [
-    11350,
+    11369,
     162
   ],
   "feature_count": 154,
   "expected_feature_count": 154,
-  "raw_hash": "b02b90703ea09c5cdb1376bf96c76473",
-  "engineered_hash": "815556e372c321ace4411348e771ff72",
-  "prepared_hash": "753983fc01c9536e62b8650512819d9f",
+  "raw_hash": "b97626bffc259ca49fa16fb16ed73117",
+  "engineered_hash": "1c14b85baf9145e27a566b3742222bab",
+  "prepared_hash": "0cd83034056a1add7064cfc01325a0af",
   "version": "3.1"
 }

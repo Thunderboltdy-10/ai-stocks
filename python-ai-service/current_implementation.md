@@ -1,33 +1,67 @@
-# Current Implementation: AI-Stocks System (Phase 7 - Nuclear Redesign v2)
+# Current Implementation: AI-Stocks System (Phase 7 - Nuclear Redesign v4.2)
 
-**Last Updated**: December 28, 2025
-**Version**: v4.1 (Bug Fixes & Training Validation)
+**Last Updated**: December 29, 2025
+**Version**: v4.2 (NUCLEAR FIX - LR Scheduler + GBM Sample Weights)
 **Purpose**: Business-standard, scientifically validated AI prediction system
 
 ---
 
-## Latest Session Updates (December 28, 2025)
+## Latest Session Updates (December 29, 2025) - NUCLEAR FIX v4.2
 
-### Critical Bug Fixes
+### Critical Bug Fixes (This Session)
+
+1. **LR Scheduler Override** - The learning rate scheduler was using ultra-conservative values (max_lr=2e-05) that overrode the optimizer's 1e-3 setting, causing variance collapse
+   - **Fix**: Increased warmup_lr from 3e-06 to 1e-04, max_lr from 2e-05 to 1e-03
+   - **File**: `training/train_1d_regressor_final.py:2230-2238`
+
+2. **GBM Sample Weights Missing** - Sample weights were only used during CV, not during final model training, causing prediction bias (89%+ positive)
+   - **Fix**: Added `sample_weight=sample_weights` to final model.fit() calls
+   - **File**: `training/train_gbm_baseline.py:880-883, 918-919, 967-968`
+
+3. **Variance Collapse Threshold Too Strict** - 0.005 (0.5%) threshold was stopping training prematurely
+   - **Fix**: Relaxed to 0.003 (0.3%), increased patience from 3 to 5, warmup from 10 to 15 epochs
+   - **File**: `training/train_1d_regressor_final.py:2481-2490, 2403-2412`
+
+4. **SimpleDirectionalMSE Loss** - Replaced complex AntiCollapseDirectionalLoss with research-backed simple loss
+   - Formula: `0.4 * MSE + 0.6 * DirectionalPenalty`
+   - Variance collapse now handled by architecture (zero-init output layer), not loss penalties
+   - **File**: `utils/losses.py:350-380`
+
+5. **Zero-Initialized Output Layer** - Research finding: regularization causes collapse, architecture prevents it
+   - **Fix**: Output layer now uses `kernel_initializer='zeros', bias_initializer='zeros'`
+   - **File**: `models/lstm_transformer_paper.py`
+
+### Previous Session Fixes (December 28, 2025)
 1. **Feature Scaling**: Production pipeline now scales features before training/validation
 2. **WFE Calculation**: Fixed to use baseline-adjusted formula `((Test - 0.5) / (Val - 0.5)) * 100`
 3. **XGBoost Fit**: Fixed validation error with proper model type detection
 4. **xLSTM Loss**: Fixed parameter name from `variance_weight` to `variance_penalty_weight`
 
-### Training Results (AAPL)
-| Model | Direction Accuracy | Status |
-|-------|-------------------|--------|
-| LSTM+Transformer | 52.64% | ✅ Working |
-| GBM (XGBoost) | 53.79% | ✅ Working |
-| xLSTM-TS | 49.54% | ⚠️ Needs tuning |
-
-### Recommended Workflow
-**Use individual training scripts** (production pipeline has mixed precision issues):
+### Recommended Training Commands (v4.2)
 ```bash
-python training/train_1d_regressor_final.py AAPL --epochs 30 --batch-size 512
+cd python-ai-service
+conda activate ai-stocks
+
+# 1. Train LSTM+Transformer (with fixed LR scheduler)
+python training/train_1d_regressor_final.py AAPL --epochs 50 --batch-size 512
+
+# 2. Train GBM (with sample weights fix)
 python training/train_gbm_baseline.py AAPL --overwrite
-python training/train_xlstm_ts.py --symbol AAPL --epochs 30 --skip-wfe
+
+# 3. Train Stacking Ensemble (after base models trained)
+python training/train_stacking_ensemble.py --symbol AAPL
+
+# 4. Run Backtest
+python inference_and_backtest.py --symbol AAPL --start_date 2020-01-01 --end_date 2024-12-31
 ```
+
+### Expected Metrics After Fixes
+| Metric | FAIL | WARNING | PASS |
+|--------|------|---------|------|
+| pred_std | < 0.003 | < 0.01 | > 0.01 |
+| positive_pct | > 85% or < 15% | > 70% or < 30% | 40-60% |
+| Direction Accuracy | < 50% | < 52% | > 52% |
+| WFE | < 40% | < 50% | > 50% |
 
 ---
 

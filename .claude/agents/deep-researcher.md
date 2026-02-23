@@ -78,3 +78,83 @@ You have expertise in:
 - Gradient flow and vanishing/exploding gradients
 - Loss function design for regression
 - Backtest design and look-ahead bias prevention
+
+---
+
+## AI-Stocks Codebase Context (December 2025)
+
+### Current System State
+
+**Feature Engineering**:
+- 154 features (after data leakage fix)
+- Removed: `returns`, `log_returns`, `momentum_1d` (they ARE the target)
+- Technical + sentiment + regime features
+
+**Models**:
+- LSTM+Transformer: `models/lstm_transformer_paper.py`
+- xLSTM-TS: `models/xlstm_ts.py`
+- GBM (XGBoost + LightGBM): `training/train_gbm_baseline.py`
+- Stacking Meta-Learner: `training/train_stacking_ensemble.py`
+
+**Current Issues (December 2025)**:
+1. LSTM variance collapse (pred_std < 0.005)
+2. GBM directional bias (89%+ positive predictions)
+3. xLSTM poor performance (WFE < 50%)
+4. Stacking fails because base models fail
+
+### Critical Research Finding
+
+**Root Cause of Variance Collapse**:
+Regularization (weight decay) directly causes Neural Regression Collapse.
+- Solution is ARCHITECTURE-BASED, not loss function penalties
+- Proven fixes: Residual connections, difference prediction, zero init output layer
+- Loss function anti-collapse penalties create competing objectives
+
+**Loss Functions that Work**:
+- Custom asymmetric losses outperform MSE AND beat buy-and-hold
+- MSE alone never beats buy-and-hold
+- Recommended: `0.6 * DirectionalLoss + 0.4 * MSE`
+
+**GBM Findings**:
+- LightGBM doesn't capture trend (bad when data exceeds historical range)
+- CatBoost's Ordered Boosting prevents prediction bias
+- Use log-returns as target for more stationary distribution
+
+### Thresholds for Success
+
+| Metric | FAIL | WARNING | PASS |
+|--------|------|---------|------|
+| pred_std | < 0.005 | < 0.01 | > 0.01 |
+| positive_pct | > 85% or < 15% | > 70% or < 30% | 35-65% |
+| WFE | < 40% | < 50% | > 60% |
+| Sharpe | < 0 | < 0.6 | > 1.0 |
+| Beat B&H | Negative | < 10% | > 15% |
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `models/lstm_transformer_paper.py` | LSTM+Transformer + custom losses |
+| `utils/losses.py` | Loss functions (DirectionalHuber, AntiCollapse) |
+| `training/train_1d_regressor_final.py` | LSTM training |
+| `training/train_gbm_baseline.py` | XGBoost/LightGBM training |
+| `validation/walk_forward.py` | Walk-forward validation |
+| `validation/wfe_metrics.py` | WFE calculation |
+
+### Research Search Templates (Updated for This Codebase)
+
+**For Variance Collapse**:
+1. "neural network regression residual connection difference prediction"
+2. "LSTM output layer zero initialization constant predictions fix"
+3. "regularization causes neural collapse regression"
+4. "TensorFlow Keras mixed precision NaN predictions"
+
+**For GBM Bias**:
+1. "CatBoost ordered boosting target leakage"
+2. "XGBoost regression log returns transformation"
+3. "gradient boosting positive bias stock returns"
+
+**For Ensemble**:
+1. "stacking ensemble walk-forward out-of-fold predictions"
+2. "ElasticNet positive weights meta-learner"
+3. "ensemble non-negative weight constraint"

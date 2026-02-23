@@ -78,12 +78,16 @@ class StackingConfig:
 
     Attributes:
         walk_forward: Walk-forward validation config
-        meta_learner_type: 'xgboost' or 'lightgbm' or 'ridge'
+        meta_learner_type: 'elasticnet' (RECOMMENDED), 'xgboost', 'lightgbm', or 'ridge'
         meta_learner_params: Parameters for meta-learner
         include_regime_features: Whether to include regime features
         include_agreement_features: Whether to include model agreement features
         include_recent_errors: Whether to include recent error features
         production_mode: If True, train on all data (after validation)
+
+    NUCLEAR FIX (December 2025): Default changed to 'elasticnet' with positive=True
+    constraint. Research shows non-negative weights prevent overfitting and produce
+    more stable ensemble predictions.
     """
     walk_forward: WalkForwardConfig = field(
         default_factory=lambda: WalkForwardConfig(
@@ -91,8 +95,15 @@ class StackingConfig:
             n_iterations=5,
         )
     )
-    meta_learner_type: str = 'xgboost'
+    # NUCLEAR FIX: Changed default from 'xgboost' to 'elasticnet'
+    # ElasticNet with positive=True enforces non-negative weights (research-backed)
+    meta_learner_type: str = 'elasticnet'
     meta_learner_params: Dict = field(default_factory=lambda: {
+        # ElasticNet params (default)
+        'alpha': 0.01,
+        'l1_ratio': 0.5,
+        'positive': True,  # CRITICAL: Force non-negative weights
+        # XGBoost params (if using xgboost)
         'n_estimators': 200,
         'learning_rate': 0.05,
         'max_depth': 4,
@@ -443,8 +454,11 @@ class StackingEnsembleTrainer:
         meta_X: np.ndarray,
         y: np.ndarray,
     ) -> Any:
-        """Train XGBoost meta-learner."""
-        if self.config.meta_learner_type == 'xgboost' and XGB_AVAILABLE:
+        """Train meta-learner based on configuration."""
+        if self.config.meta_learner_type == 'elasticnet':
+            # NUCLEAR FIX: ElasticNet with positive weights (RECOMMENDED)
+            return self._train_elasticnet_meta_learner(meta_X, y)
+        elif self.config.meta_learner_type == 'xgboost' and XGB_AVAILABLE:
             return self._train_xgb_meta_learner(meta_X, y)
         elif self.config.meta_learner_type == 'lightgbm' and LGB_AVAILABLE:
             return self._train_lgb_meta_learner(meta_X, y)
@@ -501,6 +515,40 @@ class StackingEnsembleTrainer:
         model.fit(meta_X, y)
 
         logger.info("Ridge meta-learner trained")
+
+        return model
+
+    def _train_elasticnet_meta_learner(self, meta_X: np.ndarray, y: np.ndarray):
+        """
+        NUCLEAR FIX: Train ElasticNet meta-learner with non-negative weight constraint.
+
+        Research finding (December 2025): Non-negative weights prevent the meta-learner
+        from assigning negative weights to base models, which can cause instability
+        and overfitting to noise in OOF predictions.
+
+        Using ElasticNet with positive=True ensures:
+        1. All model weights are >= 0
+        2. No "shorting" of base model predictions
+        3. More interpretable ensemble weights
+        """
+        from sklearn.linear_model import ElasticNet
+
+        model = ElasticNet(
+            alpha=0.01,        # Regularization strength
+            l1_ratio=0.5,      # Balance L1/L2 (0.5 = elastic net)
+            positive=True,     # CRITICAL: Force non-negative weights
+            max_iter=1000,
+            random_state=42,
+        )
+        model.fit(meta_X, y)
+
+        # Log weights for interpretability
+        if hasattr(model, 'coef_'):
+            weights = model.coef_
+            logger.info(f"ElasticNet meta-learner weights: {weights}")
+            logger.info(f"Sum of weights: {weights.sum():.4f}")
+
+        logger.info("ElasticNet meta-learner trained (positive weights enforced)")
 
         return model
 

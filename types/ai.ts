@@ -13,16 +13,52 @@ export interface ModelMeta {
 
 export type FusionMode = "classifier" | "weighted" | "hybrid" | "regressor";
 
+export type ModelType = "lstm_transformer" | "gbm" | "stacking";
+export type LossFunction = "huber" | "mae" | "balanced" | "quantile";
+
 export interface TrainingParams {
   symbol: string;
   epochs: number;
   batchSize: number;
-  loss: "huber" | "mae" | "combined" | "quantile";
+  loss: LossFunction;
   sequenceLength: number;
   featureToggles: Record<string, boolean>;
   ensembleSize: number;
   baseSeed: number;
   overwriteExisting?: boolean;
+  modelType?: ModelType;
+  dropout?: number;
+  learningRate?: number;
+}
+
+export interface TrainingJob {
+  id: string;
+  symbol: string;
+  status: "queued" | "running" | "completed" | "failed" | "cancelled";
+  progress: number;
+  currentEpoch: number;
+  totalEpochs: number;
+  startedAt: string;
+  completedAt?: string;
+  error?: string;
+  metrics?: TrainingMetrics;
+}
+
+export interface TrainingMetrics {
+  trainLoss: number;
+  valLoss: number;
+  directionalAccuracy: number;
+  varianceScore: number;
+}
+
+export interface EpochUpdate {
+  epoch: number;
+  totalEpochs: number;
+  trainLoss: number;
+  valLoss: number;
+  learningRate: number;
+  timestamp: string;
+  directionalAccuracy?: number;
 }
 
 export interface TrainingJobResponse {

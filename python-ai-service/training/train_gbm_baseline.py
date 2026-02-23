@@ -99,6 +99,14 @@ except ImportError:
     LGB_AVAILABLE = False
     logger.warning("LightGBM not available. Install with: pip install lightgbm")
 
+# NUCLEAR FIX: Add CatBoost support (better for capturing trends)
+try:
+    from catboost import CatBoostRegressor
+    CATBOOST_AVAILABLE = True
+except ImportError:
+    CATBOOST_AVAILABLE = False
+    logger.warning("CatBoost not available. Install with: pip install catboost")
+
 # P0.2: Import matplotlib for training curve plotting
 try:
     import matplotlib
@@ -214,37 +222,39 @@ def plot_training_curve(eval_result: dict, model_class: str, symbol: str, fold: 
 # ============================================================================
 
 DEFAULT_CONFIG = {
-    # Model hyperparameters - P0.2f: Back to basics with moderate settings
+    # NUCLEAR FIX (December 2025): Regularization RESTORED to 0.01
+    # Research finding: Low regularization (0.0001) caused overfitting and prediction bias
+    # The issue was that we reduced reg trying to fix variance collapse, but for GBM:
+    # - Variance collapse is NOT caused by regularization (that's for neural networks)
+    # - Low regularization caused overfitting → 89%+ positive predictions
+    # Solution: RESTORE regularization to prevent overfitting
+
     'xgb': {
-        # v4.2: AGGRESSIVE anti-collapse settings
-        # Previous 0.005 reg still collapsed - reduce further
-        'n_estimators': 2000,              # INCREASED for more learning capacity
-        'learning_rate': 0.01,             # DECREASED for smoother learning
-        'max_depth': 8,                    # INCREASED for more complexity
-        'subsample': 0.9,                  # INCREASED for more variance
-        'colsample_bytree': 0.9,           # INCREASED for more feature coverage
-        'min_child_weight': 1,             # DECREASED to allow finer splits
-        'reg_alpha': 0.0001,               # REDUCED 50x from 0.005
-        'reg_lambda': 0.0001,              # REDUCED 50x from 0.005 **CRITICAL FIX**
-        'early_stopping_rounds': 300,      # INCREASED to allow more exploration
+        'n_estimators': 1000,              # Reasonable default
+        'learning_rate': 0.05,             # Balanced learning rate
+        'max_depth': 6,                    # Moderate depth (prevents overfitting)
+        'subsample': 0.8,                  # Standard subsampling
+        'colsample_bytree': 0.8,           # Standard feature sampling
+        'min_child_weight': 3,             # Moderate to prevent overfitting
+        'reg_alpha': 0.01,                 # RESTORED from 0.0001 (L1 regularization)
+        'reg_lambda': 0.01,                # RESTORED from 0.0001 (L2 regularization)
+        'early_stopping_rounds': 100,      # Reasonable early stopping
         'random_state': 42,
         'n_jobs': -1,
         'objective': 'reg:squarederror',
         'eval_metric': ['rmse', 'mae'],
     },
     'lgb': {
-        # v4.2: AGGRESSIVE anti-collapse settings
-        # Previous 0.003 reg still collapsed - reduce further
-        'n_estimators': 2000,              # INCREASED for more learning capacity
-        'learning_rate': 0.01,             # DECREASED for smoother learning
-        'max_depth': 10,                   # INCREASED for more complexity
-        'num_leaves': 127,                 # INCREASED (2^7-1) for more splits
-        'subsample': 0.9,                  # INCREASED for more variance
-        'colsample_bytree': 0.9,           # INCREASED for more feature coverage
-        'min_child_samples': 10,           # DECREASED to allow finer splits
-        'reg_alpha': 0.0001,               # REDUCED 30x from 0.003
-        'reg_lambda': 0.0001,              # REDUCED 30x from 0.003 **CRITICAL FIX**
-        'early_stopping_rounds': 300,      # INCREASED to allow more exploration
+        'n_estimators': 1000,              # Reasonable default
+        'learning_rate': 0.05,             # Balanced learning rate
+        'max_depth': 6,                    # Moderate depth (prevents overfitting)
+        'num_leaves': 31,                  # 2^5-1 (conservative, prevents overfitting)
+        'subsample': 0.8,                  # Standard subsampling
+        'colsample_bytree': 0.8,           # Standard feature sampling
+        'min_child_samples': 20,           # Moderate to prevent overfitting
+        'reg_alpha': 0.01,                 # RESTORED from 0.0001 (L1 regularization)
+        'reg_lambda': 0.01,                # RESTORED from 0.0001 (L2 regularization)
+        'early_stopping_rounds': 100,      # Reasonable early stopping
         'min_split_gain': 0.0,
         'random_state': 42,
         'n_jobs': -1,
@@ -253,6 +263,19 @@ DEFAULT_CONFIG = {
         'verbosity': -1,
         'force_col_wise': True,
         'deterministic': True,
+    },
+    # NUCLEAR FIX: CatBoost config (Ordered Boosting prevents target leakage and bias)
+    'catboost': {
+        'iterations': 1000,
+        'learning_rate': 0.03,             # Slightly lower for stability
+        'depth': 6,                        # Moderate depth
+        'l2_leaf_reg': 3.0,                # L2 regularization
+        'loss_function': 'RMSE',
+        'eval_metric': 'RMSE',
+        'early_stopping_rounds': 100,
+        'random_seed': 42,
+        'verbose': 100,
+        'thread_count': -1,
     },
     # Cross-validation settings
     'cv': {
@@ -264,7 +287,7 @@ DEFAULT_CONFIG = {
     'target': {
         'clip_min': -0.10,  # -10% max loss per day
         'clip_max': 0.10,   # +10% max gain per day
-        'log_transform': False,
+        'log_transform': True,  # NUCLEAR FIX: Use log-returns (more stationary)
     }
 }
 
@@ -273,15 +296,19 @@ DEFAULT_CONFIG = {
 # SAMPLE WEIGHT COMPUTATION (December 2025 - Fix for 89.3% positive bias)
 # ============================================================================
 
-def compute_regression_sample_weights(y: np.ndarray) -> np.ndarray:
+def compute_regression_sample_weights(y: np.ndarray, max_weight: float = 2.0) -> np.ndarray:
     """
     Compute sample weights to balance positive/negative returns.
 
     This addresses the issue where GBM models were predicting 89.3% positive
     because stock returns are naturally right-skewed.
 
+    January 2026 Fix: CAPPED weights at 2.0x to prevent overcompensation.
+    Previous uncapped weights (5-10x) caused the opposite bias problem.
+
     Args:
         y: Target values (returns)
+        max_weight: Maximum weight multiplier (default 2.0, prevents extreme bias)
 
     Returns:
         Sample weights array (normalized to mean=1)
@@ -293,13 +320,21 @@ def compute_regression_sample_weights(y: np.ndarray) -> np.ndarray:
     weights = np.ones(len(y))
 
     if n_positive > 0 and n_negative > 0:
-        # Weight minority class more heavily
+        # Weight minority class more heavily, but CAP to prevent overcompensation
         if n_positive > n_negative:
-            weights[y < 0] = n_positive / n_negative
+            raw_weight = n_positive / n_negative
+            capped_weight = min(raw_weight, max_weight)  # CAP at max_weight
+            weights[y < 0] = capped_weight
             weights[y == 0] = 0.5  # Neutral samples get lower weight
+            if raw_weight > max_weight:
+                logger.info(f"  Weight capped: {raw_weight:.2f}x -> {capped_weight:.2f}x (max={max_weight})")
         else:
-            weights[y > 0] = n_negative / n_positive
+            raw_weight = n_negative / n_positive
+            capped_weight = min(raw_weight, max_weight)  # CAP at max_weight
+            weights[y > 0] = capped_weight
             weights[y == 0] = 0.5
+            if raw_weight > max_weight:
+                logger.info(f"  Weight capped: {raw_weight:.2f}x -> {capped_weight:.2f}x (max={max_weight})")
 
     # Normalize to mean 1
     weights = weights / weights.mean()
@@ -474,10 +509,22 @@ def prepare_gbm_data(
     target_config = config.get('target', {})
     clip_min = target_config.get('clip_min', -0.10)
     clip_max = target_config.get('clip_max', 0.10)
-    
+
     prepared_df[target_col] = prepared_df[target_col].clip(clip_min, clip_max)
-    
+
     logger.info(f"Target range after clipping: [{prepared_df[target_col].min():.4f}, {prepared_df[target_col].max():.4f}]")
+
+    # NUCLEAR FIX: Apply log-returns transformation if configured
+    # Log-returns are more stationary and better for GBM models
+    log_transform = target_config.get('log_transform', False)
+    if log_transform:
+        # Use log1p for numerical stability: log(1 + x) for small x
+        original_mean = prepared_df[target_col].mean()
+        original_std = prepared_df[target_col].std()
+        prepared_df[target_col] = np.log1p(prepared_df[target_col])
+        new_mean = prepared_df[target_col].mean()
+        new_std = prepared_df[target_col].std()
+        logger.info(f"Applied log-transform: mean {original_mean:.6f} -> {new_mean:.6f}, std {original_std:.6f} -> {new_std:.6f}")
     
     # Build metadata
     metadata = {
@@ -841,7 +888,12 @@ def train_final_model(
 
         logger.info(f"3-way split: Train={len(X_train)}, Val={len(X_val)}, Test={len(X_test) if X_test is not None else 0}")
         logger.info("NOTE: Test set is HELD-OUT - metrics computed ONLY on test set")
-    
+
+    # NUCLEAR FIX (December 2025): Compute sample weights for final model training
+    # This was missing before - sample weights were only used in CV, causing bias in final model
+    sample_weights = compute_regression_sample_weights(y_train)
+    logger.info(f"Sample weights computed for final model training (positive/negative balancing)")
+
     # P0.2: Training curve storage for final model
     eval_result = {}
     
@@ -875,7 +927,8 @@ def train_final_model(
         model_config_final['n_estimators'] = final_n_estimators
 
         model = xgb.XGBRegressor(**model_config_final)  # NO early_stopping_rounds
-        model.fit(X_train, y_train)  # No eval_set, no early stopping
+        # NUCLEAR FIX: Use sample weights to balance positive/negative predictions
+        model.fit(X_train, y_train, sample_weight=sample_weights)  # With sample weights!
 
         best_iteration = final_n_estimators
         logger.info(f"Phase 2: Final XGBoost model trained {final_n_estimators} trees")
@@ -922,8 +975,9 @@ def train_final_model(
         # FIXED: Train on training data ONLY to prevent data leakage
         # The validation set (last 20%) must remain unseen for honest backtesting
         logger.info(f"Training final model on {len(X_train)} samples (excluding {len(X_val)} validation samples to prevent data leakage)")
-        
-        model.fit(X_train, y_train)  # No callbacks, no early stopping, NO VALIDATION DATA
+
+        # NUCLEAR FIX: Use sample weights to balance positive/negative predictions
+        model.fit(X_train, y_train, sample_weight=sample_weights)  # With sample weights!
         
         n_trees = model.n_estimators_ if hasattr(model, 'n_estimators_') else final_n_estimators
         best_iteration = final_n_estimators  # Set best_iteration for metadata
