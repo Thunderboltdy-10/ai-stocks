@@ -1,0 +1,20 @@
+{
+  "symbol": "AAPL",
+  "start": "2015-01-01",
+  "end": "2019-12-31",
+  "mode": "gbm_only",
+  "n_days": 1258,
+  "strategy_return": 5.464970434874717,
+  "buy_hold_return": 1.9232206436668364,
+  "alpha": 3.5417497912078804,
+  "sharpe_ratio": 1.3174138667990907,
+  "max_drawdown": -0.32798821295441866,
+  "win_rate": 0.5302066772655007,
+  "direction_accuracy": 0.5823389021479713,
+  "prediction_std": 0.0055789052921306325,
+  "pred_positive_pct": 0.670906200317965,
+  "turnover": 0.09321223177697081,
+  "total_transaction_costs": 18350.98215074255,
+  "cost_adjusted_sharpe": 1.3174138667990907,
+  "vol_target_annual": 0.25
+}
