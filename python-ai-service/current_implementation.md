@@ -1,5 +1,54 @@
 # Current Implementation: AI-Stocks System (Phase 7 - Nuclear Redesign v4.2)
 
+## 2026-02-23 State Snapshot (Authoritative)
+
+This section is the current source of truth. Older sections below are legacy context.
+
+### Active production path
+
+1. Training:
+   - `training/train_gbm.py`
+   - GPU-first XGBoost (`device=cuda`)
+   - Purged CV + Optuna + SHAP feature selection
+   - LightGBM is currently disabled in practice (`--no-lgb`) due unavailable GPU backend
+
+2. Inference:
+   - `inference/load_gbm_models.py` + `service/prediction_service.py`
+   - Strict model quality gate (`inference/regime_ensemble.py`)
+   - If gate fails, strategy falls back to model-agnostic regime exposure (long-only)
+   - If gate passes, ML overlay is blended on top of regime exposure
+
+3. Backtesting:
+   - `evaluation/execution_backtester.py`
+   - Long-only inventory-aware execution constraints:
+     - no impossible sells,
+     - commission/slippage/margin-interest accounted explicitly
+   - `run_backtest.py` supports:
+     - warmup-aware short windows (`warmup_days`, `min_eval_days`),
+     - long + short window evaluation
+
+4. API:
+   - `app.py` + `service/prediction_service.py`
+   - `/api/predict`: prediction payload + markers + forecast + metadata
+   - `/api/backtest`: equity, trade log, metrics, buy/hold curve, optional forward simulation
+
+5. Frontend:
+   - `/ai` page rebuilt as a single workbench in `app/(root)/ai/page.tsx`
+   - shows prediction chart + markers, backtest equity, forward simulation, trade log
+
+### Current known constraints
+
+- Cross-symbol performance is improved vs earlier baseline but still uneven:
+  - strong: AAPL/JPM/TSLA long windows,
+  - weaker: XOM/KO mid/short windows.
+- This is actively tracked in `python-ai-service/experiments/*multiwindow*.csv`.
+
+### Manual workflow docs
+
+- `TRAINING_COMMAND_REFERENCE.md`
+- `RALPH_LOOP_RUNBOOK.md`
+- `MANUAL_TRAIN_TEST_PLAYBOOK.md`
+
 **Last Updated**: December 29, 2025
 **Version**: v4.2 (NUCLEAR FIX - LR Scheduler + GBM Sample Weights)
 **Purpose**: Business-standard, scientifically validated AI prediction system
