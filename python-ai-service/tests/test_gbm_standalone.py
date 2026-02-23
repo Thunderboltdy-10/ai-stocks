@@ -128,14 +128,23 @@ def test_prediction_generation(gbm_bundle):
         # Prepare data (GBM uses flattened features, not sequences)
         # Take last 100 days for testing
         X_test = df_features[feature_cols].iloc[-100:].values
-        y_test = df_features['return_1d'].iloc[-100:].values
+
+        # Calculate 1-day forward returns from Close prices
+        # (Close[t+1] - Close[t]) / Close[t]
+        close_prices = df_features['Close'].values if 'Close' in df_features.columns else df['Close'].values[-len(df_features):]
+        returns = np.diff(close_prices) / close_prices[:-1]
+        # Align returns with features (each return corresponds to the day of the features)
+        # Shift by 1 to get forward returns (return we want to predict based on features at time t)
+        y_test = returns[-99:]  # Last 99 returns for 100 samples (shifted)
 
         print(f"   ✅ Created {len(X_test)} test samples")
         print(f"   Test data shape: {X_test.shape}")
+        print(f"   Y_test shape: {len(y_test)}")
 
-        # Generate predictions
+        # Generate predictions - use only the samples that have corresponding forward returns
         print(f"   Generating predictions...")
-        predictions = predict_with_gbm(gbm_bundle, X_test)
+        X_test_aligned = X_test[:len(y_test)]  # First 99 samples to match y_test length
+        predictions = predict_with_gbm(gbm_bundle, X_test_aligned)
 
         print(f"   ✅ Generated {len(predictions)} predictions")
         print(f"   Prediction shape: {predictions.shape}")
@@ -217,10 +226,11 @@ def test_basic_backtest(predictions, actuals):
 
     try:
         # Simple strategy: long if predicted return > 0, short if < 0
+        predictions = predictions[:len(actuals)]  # Align lengths
         positions = np.sign(predictions)  # +1, 0, or -1
 
-        # Calculate returns
-        strategy_returns = positions[:-1] * actuals[1:]  # Shift by 1 for forward returns
+        # Calculate returns - predictions are for next-day return, so actuals are already the forward returns
+        strategy_returns = positions * actuals
 
         # Basic metrics
         total_return = np.sum(strategy_returns)
@@ -229,7 +239,7 @@ def test_basic_backtest(predictions, actuals):
         sharpe_ratio = (mean_return / std_return) * np.sqrt(252) if std_return > 0 else 0
 
         # Directional accuracy
-        correct_direction = np.sum((predictions[:-1] * actuals[1:]) > 0)
+        correct_direction = np.sum((predictions * actuals) > 0)
         directional_accuracy = correct_direction / len(strategy_returns)
 
         print(f"   Total Return: {total_return:.4f} ({total_return*100:.2f}%)")

@@ -33,6 +33,56 @@ export function trainModel(params: TrainingParams): Promise<TrainingJobResponse>
   });
 }
 
+// Training API methods
+export function startTraining(params: TrainingParams): Promise<{ jobId: string }> {
+  return fetchJson<{ jobId: string }>(`${API_BASE}/api/training/start`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(params),
+  });
+}
+
+export function getTrainingJob(jobId: string): Promise<{
+  id: string;
+  symbol: string;
+  status: "queued" | "running" | "completed" | "failed" | "cancelled";
+  progress: number;
+  currentEpoch: number;
+  totalEpochs: number;
+  startedAt: string;
+  completedAt?: string;
+  error?: string;
+}> {
+  return fetchJson(`${API_BASE}/api/training/${jobId}`);
+}
+
+export function cancelTrainingJob(jobId: string): Promise<void> {
+  return fetchJson(`${API_BASE}/api/training/${jobId}`, {
+    method: "DELETE",
+  });
+}
+
+export function subscribeToTrainingEvents(jobId: string): EventSource {
+  return new EventSource(`${API_BASE}/api/training/${jobId}/events`);
+}
+
+export function listTrainingJobs(): Promise<Array<{
+  id: string;
+  symbol: string;
+  status: string;
+  progress: number;
+  startedAt: string;
+}>> {
+  return fetchJson(`${API_BASE}/api/training`);
+}
+
+// Model management
+export function deleteModel(modelId: string): Promise<void> {
+  return fetchJson(`${API_BASE}/api/models/${modelId}`, {
+    method: "DELETE",
+  });
+}
+
 export function loadModel(modelId: string): Promise<ModelMeta> {
   return fetchJson<ModelMeta>(`${API_BASE}/api/models/${modelId}`);
 }

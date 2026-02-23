@@ -40,17 +40,40 @@ You are a precision code analysis agent that identifies bugs, implements fixes, 
 - Check metrics improved
 - Confirm no new issues introduced
 
-## Common Issues & Proven Fixes
+## Common Issues & Proven Fixes (Updated December 2025)
 
 ### Issue 1: Variance Collapse (pred_std < 0.005)
 
-**Root Causes** (ranked by likelihood):
-1. Loss penalty too weak (needs 5-10x increase)
-2. Learning rate too high (gradients explode then collapse)
-3. Mixed precision causing underflow (float16 can't represent small gradients)
-4. Batch normalization resetting variance
-5. Output activation limiting range
-6. Dead ReLU problem in hidden layers
+**CRITICAL RESEARCH FINDING**: Variance collapse is caused by REGULARIZATION (weight decay), NOT weak loss penalties. Loss-based anti-collapse penalties create competing objectives and don't work.
+
+**Root Causes** (ranked by likelihood - UPDATED):
+1. **Missing residual connection** (model doesn't predict difference from previous value)
+2. **Output layer not zero-initialized** (predictions start biased)
+3. **Regularization/weight decay** (research-proven to cause neural regression collapse)
+4. Learning rate too low (gradients too small to learn variance)
+5. Loss function has competing objectives (anti-collapse + directional + variance penalties)
+6. Mixed precision underflow (float16 edge cases)
+
+**PROVEN FIX (Architecture-Based)**:
+```python
+# 1. Add residual connection to model
+def call(self, inputs, training=False):
+    last_value = inputs[:, -1, 0:1]  # Previous return
+    x = self.lstm(inputs)
+    # ... transformer blocks ...
+    prediction_delta = self.output_dense(x)  # Predict CHANGE
+    return last_value + prediction_delta  # Residual connection
+
+# 2. Zero-initialize output layer
+self.output_dense = layers.Dense(
+    1,
+    kernel_initializer='zeros',
+    bias_initializer='zeros'
+)
+
+# 3. Use simple directional loss (no anti-collapse penalties)
+loss = DirectionalMSELoss(direction_weight=0.5)
+```
 
 **Diagnostic Code**:
 ```python
@@ -62,27 +85,42 @@ if pred_std < 0.005:
     print("WARNING: Variance collapse detected!")
 ```
 
-**Verification**: `grep "pred_std" log.txt` should show > 0.01
+**Verification**: `grep "pred_std" training_logs/*.log` should show > 0.01
 
 ### Issue 2: Prediction Bias (>70% one direction)
 
-**Root Causes**:
-1. Target distribution imbalanced (more positive returns in training data)
-2. Sample weights not applied correctly
-3. Loss function not direction-aware
-4. Model capacity too low (predicts mean)
-5. Early stopping triggered before learning negative patterns
+**CRITICAL RESEARCH FINDING**: LightGBM doesn't capture trend well. CatBoost's Ordered Boosting prevents bias. Use log-returns as target.
 
-**Fix Pattern**:
+**Root Causes** (ranked by likelihood - UPDATED):
+1. **LightGBM trend issue** (predictions poor when data exceeds historical range)
+2. **Regularization too weak** (was reduced to 0.0001 trying to fix variance - backfired!)
+3. **Sample weights insufficient** for natural positive bias in stock returns
+4. Target distribution imbalanced (more positive returns in training data)
+5. Early stopping before learning negative patterns
+
+**PROVEN FIX**:
 ```python
-# Add output calibration
-def calibrate(y_pred, y_true):
-    pred_mean = np.mean(y_pred)
-    true_mean = np.mean(y_true)
-    return y_pred - pred_mean + true_mean
+# 1. Use CatBoost instead of LightGBM
+from catboost import CatBoostRegressor
+model = CatBoostRegressor(
+    iterations=1000,
+    learning_rate=0.03,
+    l2_leaf_reg=3.0,
+    early_stopping_rounds=100
+)
+
+# 2. Use log-returns as target (more stationary)
+y_train = np.log1p(y_train)  # log(1 + return)
+y_pred = np.expm1(model.predict(X))  # Transform back
+
+# 3. Restore regularization
+params = {
+    'reg_alpha': 0.01,   # Was 0.0001 - too weak
+    'reg_lambda': 0.01,  # Was 0.0001 - too weak
+}
 ```
 
-**Verification**: `grep "positive\|negative" log.txt` should show 40-60% split
+**Verification**: `grep "Positive %" training_logs/*.log` should show 35-65%
 
 ### Issue 3: High WFE but Negative Returns
 
@@ -124,16 +162,39 @@ class AutoStopOnCollapse(keras.callbacks.Callback):
 logger.info(f"Epoch {epoch}: pred_std={pred_std:.6f}, pos_pct={pos_pct:.1%}")
 ```
 
-## Key Files in This Codebase
+## Key Files in This Codebase (December 2025)
 
-| File | Purpose | Common Issues |
-|------|---------|---------------|
-| `models/lstm_transformer_paper.py` | LSTM+Transformer model + losses | Variance collapse in AntiCollapseDirectionalLoss |
-| `training/train_1d_regressor_final.py` | LSTM training script | Weak variance penalties, missing callbacks |
-| `training/train_gbm_baseline.py` | GBM training | Prediction bias, sample weights |
-| `training/train_xlstm_ts.py` | xLSTM training | Same issues as LSTM |
-| `pipeline/production_pipeline.py` | Ensemble orchestration | Model validation gates |
-| `utils/losses.py` | Custom loss functions | Variance regularization |
+| File | Purpose | Current Issues |
+|------|---------|----------------|
+| `models/lstm_transformer_paper.py` | LSTM+Transformer model + losses | Needs residual connection + zero init |
+| `utils/losses.py` | Custom loss functions | AntiCollapseDirectionalLoss has competing objectives - needs simplification |
+| `training/train_1d_regressor_final.py` | LSTM training script | LR too low (3e-6), needs 1e-3 + ReduceLROnPlateau |
+| `training/train_gbm_baseline.py` | GBM training | Regularization too weak (0.0001 → 0.01), add CatBoost |
+| `training/train_stacking_ensemble.py` | Stacking meta-learner | Needs walk-forward OOF + non-negative weight constraint |
+| `utils/standardized_logger.py` | Training log output | NEW - use for structured logs |
+
+## Current System State (December 2025)
+
+**Feature Count**: 154 (after data leakage fix removed returns, log_returns, momentum_1d)
+
+**Known Safeguards Already in Place**:
+- AutoStopOnCollapse callback (but thresholds may be wrong)
+- WFE validation (>50% threshold)
+- Target distribution logging
+
+**Current Training Logs Location**:
+```
+python-ai-service/training_logs/{SYMBOL}_{MODEL}_{TIMESTAMP}.log
+```
+
+**Thresholds for Success**:
+| Metric | FAIL | WARNING | PASS |
+|--------|------|---------|------|
+| pred_std | < 0.005 | < 0.01 | > 0.01 |
+| positive_pct | > 85% or < 15% | > 70% or < 30% | 35-65% |
+| WFE | < 40% | < 50% | > 60% |
+| Sharpe | < 0 | < 0.6 | > 1.0 |
+| Beat B&H | Negative | < 10% | > 15% |
 
 ## Output Format
 

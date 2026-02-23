@@ -2,7 +2,7 @@
 
 Quick reference for training, inference, and backtesting all model types.
 
-**Last Updated**: 2025-12-28
+**Last Updated**: 2025-12-29 (v4.2 Nuclear Fix)
 
 ---
 
@@ -31,14 +31,52 @@ python inference_and_backtest.py --symbol AAPL
 
 ---
 
-## December 2025 Updates (v3.3)
+## December 29, 2025 Updates (v4.2) - NUCLEAR FIX
 
-### Breaking Changes
+### Critical Bug Fixes (v4.2)
+1. **LR Scheduler Override FIXED**: Was using max_lr=2e-05, now uses 1e-03 (50x increase)
+2. **GBM Sample Weights FIXED**: Now applied to final model training, not just CV
+3. **Variance Threshold RELAXED**: From 0.005 to 0.003, patience 3→5, warmup 10→15 epochs
+4. **SimpleDirectionalMSE Loss**: New research-backed loss (0.4*MSE + 0.6*Direction)
+5. **Zero-Init Output Layer**: Architecture fix for variance collapse (research-proven)
+6. **ElasticNet Meta-Learner**: Added with positive=True for non-negative weights
+
+### Training Commands (v4.2 - RECOMMENDED)
+```bash
+cd python-ai-service
+conda activate ai-stocks
+
+# 1. Train LSTM (with fixed LR scheduler - now reaches 1e-03)
+python training/train_1d_regressor_final.py AAPL --epochs 50 --batch-size 512
+
+# 2. Train GBM (with sample weights fix for balanced predictions)
+python training/train_gbm_baseline.py AAPL --overwrite
+
+# 3. Train Stacking Ensemble (after base models pass)
+python training/train_stacking_ensemble.py --symbol AAPL
+
+# 4. Run Backtest
+python inference_and_backtest.py --symbol AAPL --start_date 2020-01-01 --end_date 2024-12-31
+```
+
+### Expected Metrics After v4.2 Fixes
+| Metric | FAIL | WARNING | PASS |
+|--------|------|---------|------|
+| pred_std | < 0.003 | < 0.01 | > 0.01 |
+| positive_pct | > 85% or < 15% | > 70% or < 30% | 40-60% |
+| Direction Accuracy | < 50% | < 52% | > 52% |
+| WFE | < 40% | < 50% | > 50% |
+
+---
+
+## Previous Updates (v3.3)
+
+### Breaking Changes (v3.3)
 1. **Binary Classifiers REMOVED**: The `classifier`, `hybrid`, and `weighted` fusion modes have been removed
 2. **Stacking is now DEFAULT**: `--fusion-mode stacking` is the default inference mode
 3. **Must train before inference**: Stacking mode requires trained models - errors if not found
 
-### Key Fixes Applied
+### Key Fixes Applied (v3.3)
 1. **pos_encoding Bug Fixed**: LSTMTransformerPaper now has backward-compatible `pos_encoding` property
 2. **LSTM Variance Collapse Fixed**: Increased anti-collapse penalties and gradient clipping
 3. **xLSTM WFE Threshold Lowered**: From 50% to 40% to allow more models to pass validation

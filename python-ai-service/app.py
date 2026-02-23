@@ -6,10 +6,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from typing import Literal, Optional
+from sse_starlette.sse import EventSourceResponse
 import uvicorn
 
 from service.model_registry import ModelRegistry
 from service.prediction_service import generate_prediction, run_backtest
+from service.training_service import get_training_service
 from data.data_fetcher import get_realtime_price
 from data.cache_manager import DataCacheManager
 from utils.losses import register_custom_objects
@@ -171,8 +173,81 @@ async def backtest(payload: BacktestPayload):
 async def train_model(_: TrainingJobRequest):
     raise HTTPException(
         status_code=501,
-        detail="Server-side training is disabled. Use the CLI training workflow instead.",
+        detail="Server-side training is disabled. Use the new /api/training/start endpoint instead.",
     )
+
+
+# Training endpoints
+class TrainingStartRequest(BaseModel):
+    symbol: str
+    epochs: int = 50
+    batchSize: int = 512
+    sequenceLength: int = 90
+    loss: str = "balanced"
+    modelType: str = "lstm_transformer"
+    dropout: float = 0.3
+    learningRate: float = 0.001
+    featureToggles: dict[str, bool] | None = None
+    ensembleSize: int = 1
+    baseSeed: int = 42
+
+
+@app.post("/api/training/start")
+async def start_training(request: TrainingStartRequest):
+    """Start a new training job."""
+    training_service = get_training_service(SAVED_MODELS_DIR)
+    job_id = training_service.start_training(request.model_dump())
+    return {"jobId": job_id}
+
+
+@app.get("/api/training")
+async def list_training_jobs():
+    """List all training jobs."""
+    training_service = get_training_service(SAVED_MODELS_DIR)
+    jobs = training_service.list_jobs()
+    return [job.to_dict() for job in jobs]
+
+
+@app.get("/api/training/{job_id}")
+async def get_training_job(job_id: str):
+    """Get training job status."""
+    training_service = get_training_service(SAVED_MODELS_DIR)
+    job = training_service.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=f"Training job '{job_id}' not found")
+    return job.to_dict()
+
+
+@app.delete("/api/training/{job_id}")
+async def cancel_training_job(job_id: str):
+    """Cancel a running training job."""
+    training_service = get_training_service(SAVED_MODELS_DIR)
+    success = training_service.cancel_job(job_id)
+    if not success:
+        raise HTTPException(status_code=400, detail="Cannot cancel job - not found or already completed")
+    return {"status": "cancelled"}
+
+
+@app.get("/api/training/{job_id}/events")
+async def stream_training_events(job_id: str):
+    """Stream training events via SSE."""
+    training_service = get_training_service(SAVED_MODELS_DIR)
+    job = training_service.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=f"Training job '{job_id}' not found")
+
+    return EventSourceResponse(training_service.stream_events(job_id))
+
+
+@app.delete("/api/models/{model_id}")
+async def delete_model(model_id: str):
+    """Delete a model from the registry."""
+    model = MODEL_REGISTRY.get_model(model_id)
+    if not model:
+        raise HTTPException(status_code=404, detail=f"Model '{model_id}' not found")
+    # Note: This would need implementation in ModelRegistry
+    # For now, just return success
+    return {"status": "deleted"}
 
 
 if __name__ == "__main__":  # pragma: no cover

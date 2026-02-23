@@ -1,0 +1,20 @@
+{
+  "strategy": "hybrid",
+  "original_counts": {
+    "positive": 5500,
+    "negative": 5768,
+    "zero": 0,
+    "total": 11268
+  },
+  "balanced_counts": {
+    "positive": 5500,
+    "negative": 5070,
+    "zero": 0,
+    "total": 10570
+  },
+  "samples_removed": 698,
+  "samples_added": 0,
+  "original_ratio": 0.9535367545076283,
+  "balanced_ratio": 1.0848126232741617,
+  "random_state": 42
+}

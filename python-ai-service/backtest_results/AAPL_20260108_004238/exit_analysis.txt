@@ -1,0 +1,36 @@
+Exit Analysis Report - AAPL
+Generated: 2026-01-08 00:42:43
+
+Total trades analyzed: 248
+
+Profit targets hit counts:
+  T1 (mult 2.0xATR): 0
+  T2 (mult 3.5xATR): 0
+  T3 (mult 5.0xATR): 0
+  T4 (mult 8.0xATR): 0
+
+Average return when exiting at target level:
+  T1: N/A
+  T2: N/A
+  T3: N/A
+  T4: N/A
+
+Time-to-target averages (days):
+  T1: N/A
+  T2: N/A
+  T3: N/A
+  T4: N/A
+
+Resistance-aware exits:
+  Trades using resistance-aware early exit: 0
+  Insufficient data to evaluate resistance effectiveness.
+
+Alternative exit strategy summary (only computed where price_path available):
+  Trades skipped due to missing price_path: 248
+  fixed_5pct: N/A (insufficient data)
+  hold_t4: N/A (insufficient data)
+  exit_first_target: N/A (insufficient data)
+
+Notes:
+ - This analysis requires per-trade 'price_path' and/or 'target_prices' for precise time-to-target and alternative-exit simulation.
+ - If profit_targets_hit_history is not provided, the function attempts a best-effort reconstruction from trade_log but detailed flags (time_degraded, resistance) may be unavailable.
