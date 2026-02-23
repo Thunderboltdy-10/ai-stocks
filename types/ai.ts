@@ -11,9 +11,16 @@ export interface ModelMeta {
   notes?: string;
 }
 
-export type FusionMode = "classifier" | "weighted" | "hybrid" | "regressor";
+export type FusionMode =
+  | "gbm_only"
+  | "lstm_only"
+  | "ensemble"
+  | "classifier"
+  | "weighted"
+  | "hybrid"
+  | "regressor";
 
-export type ModelType = "lstm_transformer" | "gbm" | "stacking";
+export type ModelType = "gbm" | "lstm" | "ensemble" | "lstm_transformer" | "stacking";
 export type LossFunction = "huber" | "mae" | "balanced" | "quantile";
 
 export interface TrainingParams {

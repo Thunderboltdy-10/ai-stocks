@@ -219,25 +219,37 @@ class TrainingService:
             # Determine script based on model type
             model_type = config.get("modelType", "lstm_transformer")
             if model_type == "gbm":
-                script = "training/train_gbm_baseline.py"
+                module_name = "training.train_gbm"
             elif model_type == "stacking":
-                script = "training/train_stacking_ensemble.py"
+                module_name = "training.train_stacking_ensemble"
             else:
-                script = "training/train_1d_regressor_final.py"
-
-            script_path = Path(__file__).parent.parent / script
+                module_name = "training.train_1d_regressor_final"
 
             # Build command
-            cmd = [
-                sys.executable,
-                str(script_path),
-                "--symbol", job.symbol,
-                "--epochs", str(job.epochs),
-                "--batch-size", str(job.batch_size),
-                "--sequence-length", str(job.sequence_length),
-            ]
-
-            if model_type != "gbm":
+            if model_type == "gbm":
+                cmd = [
+                    sys.executable,
+                    "-m",
+                    module_name,
+                    job.symbol,
+                    "--overwrite",
+                    "--n-trials",
+                    str(max(10, min(50, int(config.get("nTrials", 20))))),
+                ]
+            else:
+                cmd = [
+                    sys.executable,
+                    "-m",
+                    module_name,
+                    "--symbol",
+                    job.symbol,
+                    "--epochs",
+                    str(job.epochs),
+                    "--batch-size",
+                    str(job.batch_size),
+                    "--sequence-length",
+                    str(job.sequence_length),
+                ]
                 cmd.extend(["--loss", job.loss])
 
             # Run process

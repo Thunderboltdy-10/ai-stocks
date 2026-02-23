@@ -49,7 +49,7 @@ class ConfidenceFloors(BaseModel):
 
 
 class FusionSettingsModel(BaseModel):
-    mode: Literal["classifier", "weighted", "hybrid", "regressor"] = "weighted"
+    mode: Literal["gbm_only", "lstm_only", "ensemble", "classifier", "weighted", "hybrid", "regressor"] = "gbm_only"
     regressorScale: float = Field(default=15.0, gt=0.0)
     buyThreshold: float = Field(default=0.3, ge=0.0, le=1.0)
     sellThreshold: float = Field(default=0.45, ge=0.0, le=1.0)
@@ -69,8 +69,8 @@ class PredictionPayload(BaseModel):
 class BacktestParamsModel(BaseModel):
     backtestWindow: int = Field(default=60, ge=10)
     initialCapital: float = Field(default=10_000, gt=0.0)
-    maxLong: float = Field(default=1.0, gt=0.0)
-    maxShort: float = Field(default=0.5, ge=0.0)
+    maxLong: float = Field(default=1.8, gt=0.0)
+    maxShort: float = Field(default=0.2, ge=0.0)
     commission: float = 0.0
     slippage: float = 0.0
     enableForwardSim: bool = False
