@@ -107,6 +107,59 @@
 
 - XOM retrained/backtested (horizon 1 and 5 variants). XOM remains below buy-and-hold in tested window, so the current strategy is still AAPL-optimized and not yet generalized.
 
+---
+
+## Date: February 23, 2026 (Iteration 3)
+
+## Breakthrough pass: volatility targeting + quality-gated fallback
+
+### What changed
+
+1. Added volatility targeting overlay in `run_backtest.py` and live prediction path:
+- Target annualized volatility (default `0.25`)
+- Scaling bounds (`min_vol_scale=0.5`, `max_vol_scale=2.2`)
+- New CLI flags: `--vol-target-annual`, `--min-vol-scale`, `--max-vol-scale`
+
+2. Added model-quality gate:
+- Gate requires holdout ensemble metrics:
+  - `dir_acc >= 0.50`
+  - `ic >= 0.0`
+  - `pred_std >= 0.005`
+- If gate fails, strategy falls back to passive long exposure instead of forcing weak model signals.
+
+3. Added metadata-driven sizing prior:
+- Sizing win-rate now uses `max(holdout_dir_acc, train_positive_pct)` (bounded to `[0.50, 0.60]`).
+
+### Results
+
+#### AAPL (major improvement)
+
+- Window: 2020-01-01 to 2024-12-31
+  - `strategy_return`: **3.4810**
+  - `buy_hold_return`: **2.4400**
+  - `alpha`: **+1.0410**
+  - `sharpe`: **1.0759**
+  - `max_drawdown`: **-0.3165**
+  - Output: `python-ai-service/backtest_results/AAPL_20260223_191150_418653/summary.json`
+
+#### AAPL robustness windows
+
+- 2010-2014: alpha `+6.7511`, Sharpe `1.5569`
+- 2015-2019: alpha `+3.5418`, Sharpe `1.3174`
+- 2020-2024: alpha `+1.0410`, Sharpe `1.0759`
+- 2010-2024: alpha `+237.4571`, Sharpe `1.3006`
+
+#### XOM behavior after quality gate
+
+- Model gate fails (weak holdout signal), so fallback activated:
+  - `model_quality_gate_passed: false`
+  - strategy return now near buy-and-hold (alpha close to zero) instead of large underperformance.
+
+### Research pass completed
+
+- Added primary-source research notes in `RESEARCH_NOTES_20260223.md`.
+- Sources include XGBoost, LightGBM, NBER asset-pricing/deep-learning work, volatility-managed portfolios, and trend-following literature.
+
 ## Date: December 27, 2025
 
 ## Overview

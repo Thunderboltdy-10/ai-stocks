@@ -57,6 +57,10 @@ PY
 python run_backtest.py --symbol AAPL --start 2020-01-01 --end 2024-12-31
 ```
 
+Notes:
+- Vol targeting is enabled by default (`--vol-target-annual 0.25`).
+- If model holdout diagnostics are weak, the engine automatically falls back to passive long exposure.
+
 ### Step D: Robustness check
 
 Use the sweep command in `TRAINING_COMMAND_REFERENCE.md`.
@@ -72,13 +76,14 @@ Use the sweep command in `TRAINING_COMMAND_REFERENCE.md`.
 ## Current baseline (2026-02-23, latest)
 
 - AAPL, 2020-01-01 to 2024-12-31:
-  - `strategy_return`: 2.8408
+  - `strategy_return`: 3.4810
   - `buy_hold_return`: 2.4400
-  - `alpha`: +0.4007
-  - `sharpe`: 0.9149
+  - `alpha`: +1.0410
+  - `sharpe`: 1.0759
+  - `max_drawdown`: -0.3165
 
 - AAPL robustness sweep also recorded strong outperformance in older windows; see
-  recent `python-ai-service/backtest_results/AAPL_20260223_190734_791858/summary.json`,
-  `python-ai-service/backtest_results/AAPL_20260223_190735_011651/summary.json`,
-  `python-ai-service/backtest_results/AAPL_20260223_190735_627113/summary.json`,
-  and `python-ai-service/backtest_results/AAPL_20260223_190735_878992/summary.json`.
+  recent `python-ai-service/backtest_results/AAPL_20260223_191050_134367/summary.json`,
+  `python-ai-service/backtest_results/AAPL_20260223_191050_734922/summary.json`,
+  `python-ai-service/backtest_results/AAPL_20260223_191050_996974/summary.json`,
+  and `python-ai-service/backtest_results/AAPL_20260223_191051_509501/summary.json`.

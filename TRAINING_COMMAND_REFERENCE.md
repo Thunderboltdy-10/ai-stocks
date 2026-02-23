@@ -43,6 +43,14 @@ python -m training.train_gbm AAPL --overwrite --n-trials 10 --no-lgb --target-ho
 python run_backtest.py --symbol AAPL --start 2020-01-01 --end 2024-12-31
 ```
 
+Volatility-targeted mode is on by default (`--vol-target-annual 0.25`).
+You can tune it explicitly:
+
+```bash
+python run_backtest.py --symbol AAPL --start 2020-01-01 --end 2024-12-31 --vol-target-annual 0.25
+python run_backtest.py --symbol AAPL --start 2020-01-01 --end 2024-12-31 --vol-target-annual 0.0   # disable
+```
+
 ## 5) Train/Backtest second symbol (robustness)
 
 Example with XOM:
@@ -94,3 +102,8 @@ curl -X POST http://localhost:8000/api/predict -H "Content-Type: application/jso
 - Models: `python-ai-service/saved_models/{SYMBOL}/gbm/`
 - Backtests: `python-ai-service/backtest_results/`
 - Metadata: `python-ai-service/saved_models/{SYMBOL}/gbm/training_metadata.json`
+
+## 9) Safety behavior
+
+- Backtest/prediction pipeline applies a model-quality gate using holdout diagnostics.
+- If diagnostics are below minimum thresholds, positions fall back to passive long exposure instead of forcing weak signals.

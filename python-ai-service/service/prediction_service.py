@@ -72,6 +72,34 @@ def _sizing_win_rate(bundle: GBMModelBundle) -> float:
     return float(np.clip(max(holdout_dir, train_pos), 0.50, 0.60))
 
 
+def _apply_volatility_targeting(
+    positions: np.ndarray,
+    close_series: pd.Series,
+    vol_target_annual: float = 0.25,
+    min_scale: float = 0.5,
+    max_scale: float = 2.2,
+    max_long: float = 1.8,
+    max_short: float = 0.2,
+) -> np.ndarray:
+    if vol_target_annual <= 0:
+        return np.asarray(positions, dtype=float)
+
+    rets = close_series.pct_change().fillna(0.0)
+    ann_vol = rets.rolling(20, min_periods=5).std() * np.sqrt(252.0)
+    scale = (vol_target_annual / (ann_vol + 1e-6)).clip(lower=min_scale, upper=max_scale).fillna(1.0)
+
+    scaled = np.asarray(positions, dtype=float) * scale.to_numpy(dtype=float)
+    return np.clip(scaled, -max_short, max_long)
+
+
+def _model_quality_gate(bundle: GBMModelBundle) -> bool:
+    holdout = bundle.metadata.get("holdout", {}).get("ensemble", {})
+    dir_acc = float(holdout.get("dir_acc", 0.0))
+    ic = float(holdout.get("ic", 0.0))
+    pred_std = float(holdout.get("pred_std", 0.0))
+    return (dir_acc >= 0.50) and (ic >= 0.0) and (pred_std >= 0.005)
+
+
 def _build_trade_markers(dates: List[str], prices: np.ndarray, positions: np.ndarray) -> List[Dict]:
     markers: List[Dict] = []
     prev = 0.0
@@ -114,14 +142,26 @@ def generate_prediction(payload: Dict) -> Dict:
     raw = fetch_stock_data(symbol=symbol, period="10y")
     preds = _predict_series(bundle, raw)
 
-    sizer = PositionSizer()
-    positions = sizer.size_batch(
-        predicted_returns=preds["pred_ens"],
-        prediction_stds=preds["pred_std"],
-        win_rate=_sizing_win_rate(bundle),
-        avg_win=0.012,
-        avg_loss=0.010,
-    )
+    if _model_quality_gate(bundle):
+        sizer = PositionSizer()
+        positions = sizer.size_batch(
+            predicted_returns=preds["pred_ens"],
+            prediction_stds=preds["pred_std"],
+            win_rate=_sizing_win_rate(bundle),
+            avg_win=0.012,
+            avg_loss=0.010,
+        )
+        positions = _apply_volatility_targeting(
+            positions=positions,
+            close_series=raw["Close"],
+            vol_target_annual=0.25,
+            min_scale=0.5,
+            max_scale=2.2,
+            max_long=1.8,
+            max_short=0.2,
+        )
+    else:
+        positions = np.ones(len(raw), dtype=float)
 
     close = raw["Close"].to_numpy(dtype=float)
     dates = [d.strftime("%Y-%m-%d") for d in pd.to_datetime(raw.index)]
@@ -192,6 +232,7 @@ def generate_prediction(payload: Dict) -> Dict:
             "buyThreshold": buy_thr,
             "sellThreshold": sell_thr,
             "horizon": horizon,
+            "modelQualityGatePassed": _model_quality_gate(bundle),
         },
     }
 
