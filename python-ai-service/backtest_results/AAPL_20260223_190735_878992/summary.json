@@ -1,0 +1,19 @@
+{
+  "symbol": "AAPL",
+  "start": "2010-01-01",
+  "end": "2024-12-31",
+  "mode": "gbm_only",
+  "n_days": 3774,
+  "strategy_return": 169.766505283385,
+  "buy_hold_return": 37.84038193764087,
+  "alpha": 131.92612334574412,
+  "sharpe_ratio": 1.1730368857005025,
+  "max_drawdown": -0.4428306243489432,
+  "win_rate": 0.527027027027027,
+  "direction_accuracy": 0.551285449244633,
+  "prediction_std": 0.005517550602058976,
+  "pred_positive_pct": 0.7005829358770536,
+  "turnover": 0.0821027747895568,
+  "total_transaction_costs": 1479383.4807388424,
+  "cost_adjusted_sharpe": 1.1730368857005025
+}

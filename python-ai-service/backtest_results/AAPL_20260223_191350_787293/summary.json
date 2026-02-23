@@ -1,0 +1,21 @@
+{
+  "symbol": "AAPL",
+  "start": "2022-01-01",
+  "end": "2022-12-31",
+  "mode": "gbm_only",
+  "n_days": 251,
+  "strategy_return": -0.22001034645353235,
+  "buy_hold_return": -0.2819950526905671,
+  "alpha": 0.06198470623703478,
+  "sharpe_ratio": -0.6738968108747342,
+  "max_drawdown": -0.25335057060833277,
+  "win_rate": 0.46215139442231074,
+  "direction_accuracy": 0.436,
+  "prediction_std": 0.007630445016072818,
+  "pred_positive_pct": 0.4262948207171315,
+  "turnover": 0.09388128207332007,
+  "total_transaction_costs": 1641.4945604557593,
+  "cost_adjusted_sharpe": -0.6738968108747342,
+  "vol_target_annual": 0.25,
+  "model_quality_gate_passed": true
+}

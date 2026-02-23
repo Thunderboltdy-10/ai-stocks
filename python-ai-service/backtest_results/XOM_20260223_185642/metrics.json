@@ -1,0 +1,22 @@
+{
+  "cum_return": 0.5722162899081789,
+  "avg_daily": 0.0006581757853540159,
+  "std_daily": 0.02438229654257551,
+  "sharpe": 0.42851651253702927,
+  "max_drawdown": -0.6587188152640506,
+  "win_rate": 0.5047694753577107,
+  "profit_factor": 1.0834194737776657,
+  "sortino_ratio": 0.5827631737670362,
+  "calmar_ratio": 0.17401234045812738,
+  "turnover": 0.07978087174004689,
+  "buy_hold_cum_return": 0.9336279623588275,
+  "buy_hold_sharpe": 0.5564056081437915,
+  "alpha": -0.36141167245064865,
+  "beta": 1.086501445963982,
+  "information_ratio": -3.3565860450687923,
+  "tracking_error": 0.10767239915735323,
+  "win_rate_vs_buy_hold_down_days": 0.30906148867313915,
+  "total_borrow_costs": 0.0,
+  "total_transaction_costs": 9253.476777313652,
+  "cost_drag_annualized": 1.8536376374269001
+}

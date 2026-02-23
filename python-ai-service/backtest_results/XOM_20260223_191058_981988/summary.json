@@ -1,0 +1,20 @@
+{
+  "symbol": "XOM",
+  "start": "2020-01-01",
+  "end": "2024-12-31",
+  "mode": "gbm_only",
+  "n_days": 1258,
+  "strategy_return": 0.3715551673157096,
+  "buy_hold_return": 0.9336283774799972,
+  "alpha": -0.5620732101642876,
+  "sharpe_ratio": 0.3603717195188345,
+  "max_drawdown": -0.5661894919590472,
+  "win_rate": 0.505564387917329,
+  "direction_accuracy": 0.47175815433572,
+  "prediction_std": 0.012381537100832205,
+  "pred_positive_pct": 0.5325914149443561,
+  "turnover": 0.08491871833946582,
+  "total_transaction_costs": 9513.465879648493,
+  "cost_adjusted_sharpe": 0.3603717195188345,
+  "vol_target_annual": 0.25
+}

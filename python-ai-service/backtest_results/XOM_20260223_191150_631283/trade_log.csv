@@ -1,0 +1,2 @@
+index,date,price,action,position,position_delta,shares,equity_before,commission,slippage,total_cost
+1,2020-01-03,52.87784194946289,BUY,1.0,1.0,1891.1513086251387,100000.0,50.0,29.999999999999996,80.0

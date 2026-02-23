@@ -7,6 +7,20 @@
 
 ---
 
+## 2026-02 Operating Mode (Current)
+
+- Active strategy is now **GBM-first (XGBoost CUDA)** with simplified deterministic features.
+- LightGBM is optional and currently auto-disabled when GPU backend is unavailable.
+- Primary training entrypoint:
+  - `python -m training.train_gbm <SYMBOL> --overwrite --n-trials <N> --no-lgb --target-horizon <H>`
+- Primary backtest entrypoint:
+  - `python run_backtest.py --symbol <SYMBOL> --start <YYYY-MM-DD> --end <YYYY-MM-DD>`
+- Manual operator workflow:
+  - `TRAINING_COMMAND_REFERENCE.md`
+  - `RALPH_LOOP_RUNBOOK.md`
+
+---
+
 ## Table of Contents
 
 1. [Project Overview](#project-overview)

@@ -1,13 +1,14 @@
-"""Model registry utilities for the AI Stocks FastAPI service."""
+"""Model registry for GBM/LSTM directory layout."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, List, Optional
 import io
-import pickle
+import json
 import zipfile
+
 
 @dataclass
 class ModelMetadata:
@@ -21,6 +22,7 @@ class ModelMetadata:
     ensembleSize: int
     notes: Optional[str]
 
+
 class ModelRegistry:
     def __init__(self, saved_models_dir: Path):
         self.saved_models_dir = saved_models_dir
@@ -29,12 +31,23 @@ class ModelRegistry:
         entries: List[ModelMetadata] = []
         if not self.saved_models_dir.exists():
             return entries
-        for meta_path in self.saved_models_dir.glob("*_regressor_final_metadata.pkl"):
-            symbol = meta_path.name.split("_")[0]
-            entry = self._build_model_entry(symbol, meta_path)
-            if entry:
-                entries.append(entry)
-        return sorted(entries, key=lambda item: (item.symbol, item.createdAt or ""))
+
+        for symbol_dir in sorted(self.saved_models_dir.glob("*")):
+            if not symbol_dir.is_dir():
+                continue
+            symbol = symbol_dir.name.upper()
+
+            gbm_meta = symbol_dir / "gbm" / "training_metadata.json"
+            lstm_meta = symbol_dir / "lstm" / "training_metadata.json"
+
+            if not gbm_meta.exists() and not lstm_meta.exists():
+                continue
+
+            model = self._build_entry(symbol, gbm_meta, lstm_meta)
+            if model is not None:
+                entries.append(model)
+
+        return entries
 
     def get_model(self, model_id: str) -> Optional[ModelMetadata]:
         for model in self.list_models():
@@ -43,98 +56,88 @@ class ModelRegistry:
         return None
 
     def package_artifacts(self, symbol: str) -> io.BytesIO:
-        artifacts = [p for p in self.saved_models_dir.iterdir() if p.name.startswith(f"{symbol}_")]
-        if not artifacts:
+        symbol = symbol.upper()
+        symbol_dir = self.saved_models_dir / symbol
+        if not symbol_dir.exists():
             raise FileNotFoundError(f"No artifacts found for {symbol}")
+
         buffer = io.BytesIO()
         with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-            for path in artifacts:
-                if path.is_file():
-                    archive.write(path, arcname=path.name)
-                else:
-                    for child in path.rglob("*"):
-                        if child.is_file():
-                            arcname = Path(path.name) / child.relative_to(path)
-                            archive.write(child, arcname=str(arcname))
+            for file in symbol_dir.rglob("*"):
+                if file.is_file():
+                    archive.write(file, arcname=str(file.relative_to(symbol_dir.parent)))
         buffer.seek(0)
         return buffer
 
-    def _build_model_entry(self, symbol: str, meta_path: Path) -> Optional[ModelMetadata]:
-        reg_meta = self._load_pickle(meta_path)
-        if not reg_meta:
+    def _build_entry(self, symbol: str, gbm_meta_path: Path, lstm_meta_path: Path) -> Optional[ModelMetadata]:
+        gbm_meta = self._load_json(gbm_meta_path) if gbm_meta_path.exists() else {}
+        lstm_meta = self._load_json(lstm_meta_path) if lstm_meta_path.exists() else {}
+
+        if not gbm_meta and not lstm_meta:
             return None
-        classifier_meta_path = self.saved_models_dir / f"{symbol}_binary_classifiers_final_metadata.pkl"
-        classifier_meta = self._load_pickle(classifier_meta_path) if classifier_meta_path.exists() else None
+
+        has_gbm = bool(gbm_meta)
+        has_lstm = bool(lstm_meta)
+
+        if has_gbm and has_lstm:
+            fusion_default = "ensemble"
+        elif has_gbm:
+            fusion_default = "gbm_only"
+        else:
+            fusion_default = "lstm_only"
+
+        holdout = gbm_meta.get("holdout", {}).get("ensemble", {}) if has_gbm else {}
+
         metrics = {
-            "cumulativeReturn": 0.0,
-            "sharpeRatio": 0.0,
-            "maxDrawdown": 0.0,
-            "winRate": 0.0,
+            "cumulativeReturn": float(holdout.get("sharpe", 0.0)),
+            "sharpeRatio": float(holdout.get("sharpe", 0.0)),
+            "maxDrawdown": float(gbm_meta.get("max_drawdown", 0.0)),
+            "winRate": float(holdout.get("dir_acc", 0.0)),
             "averageTradeProfit": 0.0,
             "totalTrades": 0.0,
-            "directionalAccuracy": float(reg_meta.get("val_dir_acc", 0.0)),
-            "correlation": 0.0,
-            "smape": float(reg_meta.get("val_smape", 0.0)),
-            "rmse": float(reg_meta.get("val_rmse", 0.0)),
+            "directionalAccuracy": float(holdout.get("dir_acc", 0.0)),
+            "correlation": float(holdout.get("ic", 0.0)),
+            "smape": 0.0,
+            "rmse": float(holdout.get("rmse", 0.0)),
         }
-        feature_scaler_path = self.saved_models_dir / f"{symbol}_1d_regressor_final_feature_scaler.pkl"
-        target_scaler_path = self.saved_models_dir / f"{symbol}_1d_regressor_final_target_scaler.pkl"
+
         scalers = None
-        if feature_scaler_path.exists() or target_scaler_path.exists():
+        gbm_dir = self.saved_models_dir / symbol / "gbm"
+        if gbm_dir.exists():
             scalers = {
-                "feature": feature_scaler_path.name if feature_scaler_path.exists() else None,
-                "target": target_scaler_path.name if target_scaler_path.exists() else None,
+                "feature": "xgb_scaler.joblib",
+                "target": "N/A",
             }
-        ensemble_size = self._infer_ensemble_size(symbol, classifier_meta)
-        fusion_mode = "hybrid" if classifier_meta else "regressor"
-        trained_date = str(reg_meta.get("trained_date") or "")
-        notes = self._build_notes(reg_meta, classifier_meta)
-        model_id = f"{symbol.lower()}-{reg_meta.get('model_type', 'regressor')}"
+
+        created_at = gbm_meta.get("trained_at") or gbm_meta.get("created_at") or ""
+        if not created_at:
+            created_at = str(Path(gbm_meta_path).stat().st_mtime)
+
+        notes_parts = []
+        if has_gbm:
+            notes_parts.append(f"gbm_features={gbm_meta.get('n_features_selected', 'n/a')}")
+            notes_parts.append(f"wfe={gbm_meta.get('wfe', 'n/a')}")
+        if has_lstm:
+            notes_parts.append("lstm_available=true")
+
+        notes = "; ".join(notes_parts) if notes_parts else None
+
         return ModelMetadata(
-            id=model_id,
+            id=f"{symbol.lower()}-{fusion_default}",
             symbol=symbol,
-            createdAt=trained_date,
-            fusionModeDefault=fusion_mode,
+            createdAt=str(created_at),
+            fusionModeDefault=fusion_default,
             metrics=metrics,
             scalers=scalers,
-            sequenceLength=int(reg_meta.get("sequence_length", 60)),
-            ensembleSize=ensemble_size,
-            notes=notes
+            sequenceLength=60,
+            ensembleSize=2 if has_gbm and has_lstm else 1,
+            notes=notes,
         )
 
-    def _infer_ensemble_size(self, symbol: str, classifier_meta: Optional[dict]) -> int:
-        if classifier_meta:
-            ensemble_info = classifier_meta.get("ensemble")
-            if isinstance(ensemble_info, dict):
-                members = ensemble_info.get("members")
-                if isinstance(members, Iterable):
-                    members_list = list(members)
-                    if members_list:
-                        return len(members_list)
-            extra_sell = list(self.saved_models_dir.glob(f"{symbol}_is_sell_classifier_final*weights.h5"))
-            extra_buy = list(self.saved_models_dir.glob(f"{symbol}_is_buy_classifier_final*weights.h5"))
-            base_count = 1
-            extra_members = max(len(extra_sell), len(extra_buy)) - 1
-            return max(base_count + max(extra_members, 0), 2)
-        return 1
-
     @staticmethod
-    def _build_notes(reg_meta: dict, classifier_meta: Optional[dict]) -> Optional[str]:
-        notes: List[str] = []
-        loss = reg_meta.get("loss_name")
-        if loss:
-            notes.append(f"loss={loss}")
-        if classifier_meta and classifier_meta.get("thresholds"):
-            thresholds = classifier_meta["thresholds"]
-            buy_thr = thresholds.get("buy_optimal", thresholds.get("default"))
-            sell_thr = thresholds.get("sell_optimal", thresholds.get("default"))
-            notes.append(f"thresholds(buy={float(buy_thr):.2f}, sell={float(sell_thr):.2f})")
-        return "; ".join(notes) if notes else None
-
-    @staticmethod
-    def _load_pickle(path: Path) -> Optional[dict]:
+    def _load_json(path: Path) -> Dict:
         try:
-            with path.open("rb") as fh:
-                return pickle.load(fh)
+            with path.open("r", encoding="utf-8") as fh:
+                return json.load(fh)
         except Exception:
-            return None
+            return {}
