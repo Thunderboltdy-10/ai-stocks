@@ -1,20 +1,18 @@
-# Training Command Reference (GBM-First, GPU)
+# Training Command Reference (GPU-First)
 
 Last updated: 2026-02-23
 
-This file replaces the old multi-architecture command set.
+This is the current, working command set for the GBM-first pipeline.
 
-## 1) Environment
-
-Always run Python commands from `python-ai-service/` and activate the env exactly:
+## 1) Environment (always first)
 
 ```bash
-eval "$(/home/thunderboltdy/miniconda3/bin/conda shell.bash hook)"
+eval "$($HOME/miniconda3/bin/conda shell.bash hook)"
 conda activate ai-stocks
 cd /home/thunderboltdy/ai-stocks/python-ai-service
 ```
 
-## 2) Verify GPU
+## 2) Verify GPU is actually used
 
 ```bash
 python - <<'PY'
@@ -29,62 +27,74 @@ PY
 nvidia-smi --query-gpu=name,utilization.gpu,memory.used --format=csv,noheader
 ```
 
-## 3) Train AAPL (recommended)
-
-GPU-only XGBoost training (LightGBM disabled if GPU backend is unavailable):
+## 3) Train one symbol (example: AAPL)
 
 ```bash
-python -m training.train_gbm AAPL --overwrite --n-trials 10 --no-lgb --target-horizon 5 --max-features 50
+python -m training.train_gbm AAPL --overwrite --n-trials 10 --no-lgb --target-horizon 1 --max-features 50
 ```
 
-## 4) Backtest AAPL
+Notes:
+- `--no-lgb` is intentional here because LightGBM GPU backend is unavailable in this environment.
+- XGBoost uses CUDA (`device=cuda`) and remains the primary model.
+
+## 4) Backtest one symbol (long + short windows)
+
+Long window:
 
 ```bash
 python run_backtest.py --symbol AAPL --start 2020-01-01 --end 2024-12-31
 ```
 
-Volatility-targeted mode is on by default (`--vol-target-annual 0.25`).
-You can tune it explicitly:
+Short window (weeks) with warmup enabled by default:
 
 ```bash
-python run_backtest.py --symbol AAPL --start 2020-01-01 --end 2024-12-31 --vol-target-annual 0.25
-python run_backtest.py --symbol AAPL --start 2020-01-01 --end 2024-12-31 --vol-target-annual 0.0   # disable
+python run_backtest.py --symbol AAPL --start 2024-11-15 --end 2024-12-31 --warmup-days 252 --min-eval-days 20
 ```
 
-## 5) Train/Backtest second symbol (robustness)
-
-Example with XOM:
+## 5) Full 5-symbol train loop
 
 ```bash
-python -m training.train_gbm XOM --overwrite --n-trials 12 --no-lgb --target-horizon 1 --max-features 50
-python run_backtest.py --symbol XOM --start 2020-01-01 --end 2024-12-31
+for s in AAPL XOM JPM KO TSLA; do
+  python -m training.train_gbm "$s" --overwrite --n-trials 10 --no-lgb --target-horizon 1 --max-features 50
+  python - <<'PY' "$s"
+import json,sys
+sym=sys.argv[1]
+p=f'saved_models/{sym}/gbm/training_metadata.json'
+with open(p) as f:m=json.load(f)
+h=m['holdout']['ensemble']
+print(sym,'dir_acc',round(h['dir_acc'],4),'pred_std',round(h['pred_std'],6),'pos',round(h['positive_pct'],3),'wfe',round(m['wfe'],1),'gpu',m['runtime']['xgb_gpu_enabled'])
+PY
+done
 ```
 
-## 6) Robustness sweep (AAPL)
-
-Runs multiple windows + cost settings and writes a CSV summary:
+## 6) Full 5-symbol multi-window backtest matrix
 
 ```bash
 python - <<'PY'
-import pandas as pd
 from pathlib import Path
+import pandas as pd
 from run_backtest import BacktestConfig, UnifiedBacktester
 
+symbols=['AAPL','XOM','JPM','KO','TSLA']
+windows=[
+  ('2020-01-01','2024-12-31','long_5y'),
+  ('2023-01-01','2024-12-31','mid_2y'),
+  ('2024-10-01','2024-12-31','short_q4_2024'),
+  ('2024-11-15','2024-12-31','short_7w_2024'),
+]
 rows=[]
-windows=[('2010-01-01','2014-12-31'),('2015-01-01','2019-12-31'),('2020-01-01','2024-12-31'),('2010-01-01','2024-12-31')]
-costs=[(0.0005,0.0003),(0.0010,0.0005)]
-for start,end in windows:
-    for com,slip in costs:
-        cfg=BacktestConfig(symbol='AAPL',start=start,end=end,commission_pct=com,slippage_pct=slip)
-        r=UnifiedBacktester(cfg).run()
-        r['commission']=com
-        r['slippage']=slip
-        rows.append(r)
+for sym in symbols:
+  for start,end,label in windows:
+    cfg=BacktestConfig(symbol=sym,start=start,end=end,warmup_days=252,min_eval_days=20)
+    r=UnifiedBacktester(cfg).run()
+    r['window']=label
+    rows.append(r)
+
 df=pd.DataFrame(rows)
-out=Path('backtest_results')/f"AAPL_robustness_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.csv"
+out=Path('experiments')/f'multiwindow_{pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")}.csv'
 df.to_csv(out,index=False)
-print(out)
-print(df[['start','end','commission','slippage','strategy_return','buy_hold_return','alpha','sharpe_ratio','max_drawdown']])
+print('saved:',out)
+print(df[['symbol','window','alpha','strategy_return','buy_hold_return','sharpe_ratio','n_days']])
 PY
 ```
 
@@ -92,18 +102,15 @@ PY
 
 ```bash
 python app.py
-# in another terminal:
+# New terminal:
 curl http://localhost:8000/api/health
-curl -X POST http://localhost:8000/api/predict -H "Content-Type: application/json" -d '{"symbol":"AAPL","horizon":5,"daysOnChart":120}'
+curl -X POST http://localhost:8000/api/predict -H "Content-Type: application/json" -d '{"symbol":"AAPL","horizon":10,"daysOnChart":180,"fusion":{"mode":"weighted","regressorScale":15,"buyThreshold":0.3,"sellThreshold":0.45,"regimeFilters":{"bull":true,"bear":true}}}'
 ```
 
-## 8) Key artifacts
+## 8) Current architecture summary
 
-- Models: `python-ai-service/saved_models/{SYMBOL}/gbm/`
-- Backtests: `python-ai-service/backtest_results/`
-- Metadata: `python-ai-service/saved_models/{SYMBOL}/gbm/training_metadata.json`
-
-## 9) Safety behavior
-
-- Backtest/prediction pipeline applies a model-quality gate using holdout diagnostics.
-- If diagnostics are below minimum thresholds, positions fall back to passive long exposure instead of forcing weak signals.
+- Training: `training/train_gbm.py` (Optuna + SHAP feature selection + purged CV)
+- Inference: GBM predictions + strict quality gate + regime fallback
+- Backtest: `evaluation/execution_backtester.py` (inventory-aware, no impossible sells)
+- CLI: `run_backtest.py` supports warmup-aware short-window evaluation
+- Service: `service/prediction_service.py` returns prediction + backtest + forward simulation

@@ -1,102 +1,43 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { useSearchParams, useRouter } from "next/navigation";
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+
 import {
   BacktestParams,
   BacktestResult,
   FusionSettings,
-  JobEvent,
   ModelMeta,
   PredictionParams,
   PredictionResult,
 } from "@/types/ai";
-import {
-  downloadModelArtifacts,
-  listModels,
-  loadModel,
-  runBacktest,
-  runPrediction,
-} from "@/lib/api-client";
-
-// Layout and Navigation
-import { AiPageLayout, useAiTabState } from "@/components/ai/AiPageLayout";
-import { AiTab } from "@/components/ai/AiTabNav";
-
-// Tab Components
-import { DashboardTab } from "@/components/ai/dashboard/DashboardTab";
-import { TrainingTab } from "@/components/ai/training/TrainingTab";
-import { RegistryTab } from "@/components/ai/registry/RegistryTab";
-
-// Existing Components
-import { ModelControlPanel } from "@/components/ai/ModelControlPanel";
+import { listModels, runBacktest, runPrediction } from "@/lib/api-client";
 import InteractiveCandlestick, {
-  CandlestickChartHandle,
   CandlestickPoint,
   ChartMarker,
 } from "@/components/charts/InteractiveCandlestick";
 import { EquityLineChart } from "@/components/charts/EquityLineChart";
-import { BacktestSummaryChart } from "@/components/charts/BacktestSummaryChart";
-import { BacktestResults } from "@/components/ai/BacktestResults";
-import { PredictionActionList } from "@/components/ai/PredictionActionList";
-import { StreamingLog } from "@/components/ai/StreamingLog";
-import { DiagnosticsPanel } from "@/components/ai/DiagnosticsPanel";
-import { ScenarioBuilder } from "@/components/ai/ScenarioBuilder";
-import { ModelComparisonPanel } from "@/components/ai/ModelComparisonPanel";
-import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
-import { useShortcuts } from "@/hooks/useShortcuts";
 import { Button } from "@/components/ui/button";
-import { formatCurrency, downloadJson } from "@/utils/formatters";
+import { formatCurrency, formatPercent } from "@/utils/formatters";
 import { cn } from "@/lib/utils";
-import { applySignalThreshold } from "@/lib/signals";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-
-const SIGNAL_CONFIDENCE_FLOOR = 0.25;
-
-const GLOSSARY_ITEMS = [
-  {
-    term: "Candle",
-    description:
-      "Each bar shows where price opened, closed, and the intraday battle between buyers and sellers.",
-  },
-  {
-    term: "Forecast",
-    description:
-      "A forward-looking price path so you can see the AI's best guess for the next few sessions.",
-  },
-  {
-    term: "Confidence",
-    description:
-      "A 0-1 score showing how sure the model is about a buy/sell call. Low confidence reverts to HOLD.",
-  },
-  {
-    term: "Backtest",
-    description:
-      "A replay of the strategy on historical data to estimate edge, drawdown, and risk before deploying.",
-  },
-  {
-    term: "Ensemble",
-    description:
-      "Multiple models voting together to smooth out noise and avoid over-relying on a single brain.",
-  },
-];
 
 const DEFAULT_PREDICTION: PredictionParams = {
   symbol: "AAPL",
   horizon: 10,
-  daysOnChart: 120,
+  daysOnChart: 180,
   smoothing: "none",
   confidenceFloors: { buy: 0.3, sell: 0.45 },
-  tradeShareFloor: 15,
+  tradeShareFloor: 10,
 };
 
 const DEFAULT_FUSION: FusionSettings = {
@@ -108,857 +49,407 @@ const DEFAULT_FUSION: FusionSettings = {
 };
 
 const DEFAULT_BACKTEST: BacktestParams = {
-  backtestWindow: 60,
+  backtestWindow: 120,
   initialCapital: 10_000,
-  maxLong: 1,
-  maxShort: 0.5,
+  maxLong: 1.6,
+  maxShort: 0,
   commission: 0.5,
   slippage: 0.2,
-  enableForwardSim: false,
-  shortCap: 0.5,
+  enableForwardSim: true,
+  shortCap: 0,
 };
 
-const QUICK_PRESETS = {
-  conservative: {
-    fusion: {
-      mode: "classifier",
-      buyThreshold: 0.35,
-      sellThreshold: 0.5,
-      regressorScale: 8,
-    },
-    confidenceFloors: { buy: 0.35, sell: 0.5 },
-  },
-  balanced: {
-    fusion: {
-      mode: "weighted",
-      buyThreshold: 0.3,
-      sellThreshold: 0.45,
-      regressorScale: 15,
-    },
-    confidenceFloors: { buy: 0.3, sell: 0.45 },
-  },
-  aggressive: {
-    fusion: {
-      mode: "regressor",
-      buyThreshold: 0.2,
-      sellThreshold: 0.35,
-      regressorScale: 20,
-    },
-    confidenceFloors: { buy: 0.2, sell: 0.35 },
-  },
-} as const;
+function MetricCard({
+  label,
+  value,
+  tone = "neutral",
+}: {
+  label: string;
+  value: string;
+  tone?: "neutral" | "good" | "bad";
+}) {
+  return (
+    <div className="rounded-xl border border-gray-700/70 bg-gray-900/70 px-4 py-3">
+      <p className="text-[11px] uppercase tracking-[0.16em] text-gray-500">{label}</p>
+      <p
+        className={cn(
+          "mt-1 text-xl font-semibold",
+          tone === "good" && "text-teal-300",
+          tone === "bad" && "text-red-300",
+          tone === "neutral" && "text-gray-100"
+        )}
+      >
+        {value}
+      </p>
+    </div>
+  );
+}
 
-function AiWorkbenchContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const queryClient = useQueryClient();
+function ForwardSimulationPanel({ backtest }: { backtest: BacktestResult | null }) {
+  const sim = backtest?.forwardSimulation;
+  if (!sim) {
+    return (
+      <div className="rounded-2xl border border-gray-800 bg-gray-900/60 p-5 text-sm text-gray-400">
+        Forward simulation appears here after running backtest with `Enable Forward Sim` on.
+      </div>
+    );
+  }
 
-  // Tab state
-  const { activeTab, setActiveTab } = useAiTabState("dashboard");
-  const [trainingInProgress, setTrainingInProgress] = useState(false);
+  const data = sim.dates.map((date, i) => ({
+    date,
+    price: sim.prices[i],
+    equity: sim.equityCurve[i],
+  }));
 
-  // Existing state for Prediction/Backtest tabs
-  const candlestickRef = useRef<CandlestickChartHandle>(null);
-  const [selectedModelId, setSelectedModelId] = useState<string | undefined>();
-  const [comparisonSelection, setComparisonSelection] = useState<string[]>([]);
-  const [predictionParams, setPredictionParams] =
-    useState<PredictionParams>(DEFAULT_PREDICTION);
-  const [fusionSettings, setFusionSettings] =
-    useState<FusionSettings>(DEFAULT_FUSION);
-  const [backtestParams, setBacktestParams] =
-    useState<BacktestParams>(DEFAULT_BACKTEST);
+  return (
+    <div className="space-y-4 rounded-2xl border border-gray-800 bg-gray-900/60 p-5">
+      <div className="flex flex-wrap gap-3">
+        <MetricCard label="Forward Sharpe" value={sim.sharpe.toFixed(2)} tone={sim.sharpe >= 0 ? "good" : "bad"} />
+        <MetricCard label="Forward Max DD" value={formatPercent(sim.maxDrawdown)} tone={sim.maxDrawdown < -0.2 ? "bad" : "neutral"} />
+        <MetricCard label="Forward Trades" value={String(sim.trades)} />
+      </div>
+      <div className="h-64 w-full rounded-xl border border-gray-800 bg-gray-950/70 p-2">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={data} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+            <CartesianGrid stroke="rgba(255,255,255,0.06)" />
+            <XAxis dataKey="date" tick={{ fill: "#9ca3af", fontSize: 11 }} tickFormatter={(v) => new Date(v).toLocaleDateString()} />
+            <YAxis yAxisId="left" tick={{ fill: "#9ca3af", fontSize: 11 }} />
+            <YAxis yAxisId="right" orientation="right" tick={{ fill: "#9ca3af", fontSize: 11 }} />
+            <Tooltip
+              contentStyle={{ background: "#0b0d10", border: "1px solid #20242c" }}
+              formatter={(v: number, key: string) => [key === "price" ? formatCurrency(v) : formatCurrency(v), key]}
+            />
+            <Line yAxisId="left" type="monotone" dataKey="price" stroke="#38bdf8" strokeWidth={2} dot={false} />
+            <Line yAxisId="right" type="monotone" dataKey="equity" stroke="#facc15" strokeWidth={2} dot={false} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
+export default function AiPage() {
+  const [predictionParams, setPredictionParams] = useState<PredictionParams>(DEFAULT_PREDICTION);
+  const [fusionSettings, setFusionSettings] = useState<FusionSettings>(DEFAULT_FUSION);
+  const [backtestParams, setBacktestParams] = useState<BacktestParams>(DEFAULT_BACKTEST);
+  const [selectedModelId, setSelectedModelId] = useState<string>("");
+
   const [prediction, setPrediction] = useState<PredictionResult | null>(null);
   const [backtest, setBacktest] = useState<BacktestResult | null>(null);
-  const [runEvents, setRunEvents] = useState<JobEvent[]>([]);
-  const [renderMode, setRenderMode] = useState<"candlestick" | "line">(
-    "candlestick"
-  );
-  const [viewMode, setViewMode] = useState<"history" | "prediction" | "backtest">(
-    "history"
-  );
-  const [glossaryOpen, setGlossaryOpen] = useState(false);
-  const [lastBacktestKey, setLastBacktestKey] = useState<string | null>(null);
-  const [markerFilters, setMarkerFilters] = useState<{
-    buy: boolean;
-    sell: boolean;
-  }>({ buy: true, sell: true });
-  const [segmentFilters, setSegmentFilters] = useState<{
-    history: boolean;
-    forecast: boolean;
-  }>({ history: true, forecast: true });
-  const [scopeFilters, setScopeFilters] = useState<{
-    prediction: boolean;
-    backtest: boolean;
-  }>({ prediction: true, backtest: false });
-  const [equitySeriesVisibility, setEquitySeriesVisibility] = useState<{
-    strategy: boolean;
-    buyHold: boolean;
-  }>({ strategy: true, buyHold: true });
-
-  const toggleButtonClass = (active: boolean) =>
-    cn(
-      "rounded-md border px-2.5 py-1 text-xs font-semibold transition",
-      active
-        ? "border-sky-500/80 bg-sky-500/10 text-sky-100"
-        : "border-gray-800 text-gray-400 hover:border-gray-600"
-    );
 
   const modelsQuery = useQuery({
     queryKey: ["models"],
     queryFn: listModels,
     refetchInterval: 60_000,
   });
-  const selectedModelQuery = useQuery<ModelMeta | undefined>({
-    queryKey: ["models", selectedModelId],
-    queryFn: () =>
-      selectedModelId
-        ? loadModel(selectedModelId)
-        : Promise.resolve(undefined),
-    enabled: Boolean(selectedModelId),
-  });
-
-  const addRunEvent = useCallback(
-    (message: string, status: JobEvent["status"] = "running") => {
-      setRunEvents((prev) => [
-        ...prev,
-        { timestamp: new Date().toISOString(), message, status },
-      ]);
-    },
-    []
-  );
 
   const predictMutation = useMutation({
     mutationFn: runPrediction,
-    onSuccess: (result: PredictionResult) => {
+    onSuccess: (result) => {
       setPrediction(result);
       setBacktest(null);
       toast.success(`Prediction ready for ${result.symbol}`);
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (err: Error) => toast.error(err.message),
   });
 
   const backtestMutation = useMutation({
     mutationFn: runBacktest,
-    onSuccess: (result: BacktestResult) => {
+    onSuccess: (result) => {
       setBacktest(result);
       toast.success("Backtest complete");
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (err: Error) => toast.error(err.message),
   });
 
-  useKeyboardShortcuts([
-    { key: "i", handler: () => handlePredict() },
-    { key: "f", handler: () => handleBacktest() },
-  ]);
+  const selectedModel = useMemo(() => {
+    return modelsQuery.data?.find((m) => m.id === selectedModelId);
+  }, [modelsQuery.data, selectedModelId]);
 
-  const handlePredict = useCallback(async () => {
-    if (viewMode === "backtest") {
-      toast.info(
-        "Switch to History or Prediction mode before running a new inference"
-      );
-      return;
-    }
-    if (!predictionParams.symbol) {
-      toast.error("Add a symbol to run inference");
-      return;
-    }
-    addRunEvent("Prediction requested", "running");
-    await predictMutation.mutateAsync({
-      ...predictionParams,
-      modelId: selectedModelId,
-      fusion: fusionSettings,
-    });
-    addRunEvent("Prediction finished", "completed");
-  }, [
-    viewMode,
-    predictionParams,
-    addRunEvent,
-    predictMutation,
-    selectedModelId,
-    fusionSettings,
-  ]);
-
-  const handleBacktest = useCallback(async () => {
-    if (!prediction) {
-      toast.error("Generate a prediction first");
-      return;
-    }
-    addRunEvent("Backtest started", "running");
-    await backtestMutation.mutateAsync({ prediction, params: backtestParams });
-    addRunEvent("Backtest finished", "completed");
-  }, [prediction, addRunEvent, backtestMutation, backtestParams]);
-
-  useShortcuts([
-    { combo: "ctrl+h", handler: () => setViewMode("history") },
-    { combo: "ctrl+p", handler: () => void handlePredict() },
-    { combo: "ctrl+b", handler: () => setViewMode("backtest") },
-  ]);
-
-  useEffect(() => {
-    if (viewMode !== "backtest" || !prediction) return;
-    const key = `${prediction.symbol}-${prediction.dates.at(-1) ?? ""}-${
-      prediction.predictedPrices.length
-    }`;
-    if (key === lastBacktestKey || backtestMutation.isPending) return;
-    setLastBacktestKey(key);
-    void handleBacktest();
-  }, [
-    viewMode,
-    prediction,
-    lastBacktestKey,
-    backtestMutation.isPending,
-    handleBacktest,
-  ]);
-
-  const applyPreset = (preset: keyof typeof QUICK_PRESETS) => {
-    const config = QUICK_PRESETS[preset];
-    setFusionSettings((prev) => ({ ...prev, ...config.fusion }));
-    setPredictionParams((prev) => ({
-      ...prev,
-      confidenceFloors: config.confidenceFloors,
-    }));
-    toast.success(`${preset} preset applied`);
-  };
-
-  const downloadArtifacts = async () => {
-    if (!selectedModelId) {
-      toast.error("Select a model to download");
-      return;
-    }
-    const blob = await downloadModelArtifacts(selectedModelId);
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `${selectedModelId}.zip`;
-    link.click();
-    URL.revokeObjectURL(link.href);
-  };
-
-  // Navigation handlers
-  const navigateToPrediction = useCallback(() => {
-    setActiveTab("prediction");
-  }, [setActiveTab]);
-
-  const handleTrainingComplete = useCallback(() => {
-    setTrainingInProgress(false);
-    queryClient.invalidateQueries({ queryKey: ["models"] });
-  }, [queryClient]);
-
-  // Chart data computations (same as before)
-  const candlestickData: CandlestickPoint[] = useMemo(() => {
+  const candles: CandlestickPoint[] = useMemo(() => {
     if (!prediction) return [];
-    const baseSeries = prediction.candles
-      ? [...prediction.candles]
-      : prediction.dates.map((date, index) => {
-          const close =
-            prediction.prices[index] ?? prediction.predictedPrices[index];
-          const prev = prediction.prices[index - 1] ?? close;
-          const high = Math.max(close, prev);
-          const low = Math.min(close, prev);
-          return { date, open: prev, high, low, close };
-        });
-    const limit = Math.max(
-      1,
-      predictionParams.daysOnChart ?? baseSeries.length
-    );
-    return baseSeries.slice(-limit);
-  }, [prediction, predictionParams.daysOnChart]);
-
-  const lastObservedPrice =
-    candlestickData.at(-1)?.close ?? prediction?.prices.at(-1);
+    if (prediction.candles?.length) {
+      return prediction.candles.map((c) => ({
+        date: c.date,
+        open: c.open,
+        high: c.high,
+        low: c.low,
+        close: c.close,
+        volume: c.volume,
+      }));
+    }
+    return prediction.dates.map((date, i) => {
+      const close = prediction.prices[i] ?? 0;
+      const prev = prediction.prices[i - 1] ?? close;
+      return {
+        date,
+        open: prev,
+        high: Math.max(prev, close),
+        low: Math.min(prev, close),
+        close,
+      };
+    });
+  }, [prediction]);
 
   const predictedSeries = useMemo(() => {
     if (!prediction) return [];
-    const history = prediction.dates.map((date, index) => ({
+    const history = prediction.dates.map((date, i) => ({
       date,
-      price:
-        prediction.predictedPrices[index] ?? prediction.prices[index],
+      price: prediction.predictedPrices[i] ?? prediction.prices[i] ?? 0,
       segment: "history" as const,
     }));
-    const historyLimit = Math.max(
-      1,
-      predictionParams.daysOnChart ?? history.length
-    );
-    const trimmedHistory = history.slice(-historyLimit);
-    const forecast = prediction.forecast;
-    const future = forecast
-      ? forecast.dates.map((date, index) => ({
+
+    const future = prediction.forecast
+      ? prediction.forecast.dates.map((date, i) => ({
           date,
-          price:
-            forecast.prices[index] ??
-            forecast.prices[index - 1] ??
-            trimmedHistory.at(-1)?.price ??
-            lastObservedPrice ??
-            0,
+          price: prediction.forecast?.prices[i] ?? history.at(-1)?.price ?? 0,
           segment: "forecast" as const,
         }))
       : [];
-    return [...trimmedHistory, ...future];
-  }, [prediction, predictionParams.daysOnChart, lastObservedPrice]);
 
-  const forecastChanges = useMemo(() => {
-    if (!prediction?.forecast || !segmentFilters.forecast) return [];
-    return prediction.forecast.dates.map((date, index) => ({
-      date,
-      value: prediction.forecast?.returns[index] ?? 0,
-    }));
-  }, [prediction?.forecast, segmentFilters.forecast]);
+    return [...history, ...future];
+  }, [prediction]);
 
-  const markerWindow = useMemo(() => {
-    const toTimestamp = (value?: string) => {
-      if (!value) return Number.NaN;
-      const ts = new Date(value).getTime();
-      return Number.isNaN(ts) ? Number.NaN : ts;
-    };
+  const chartMarkers: ChartMarker[] = useMemo(() => {
+    const p = prediction?.tradeMarkers ?? [];
+    const b = backtest?.annotations ?? [];
+    return [...p, ...b] as ChartMarker[];
+  }, [prediction?.tradeMarkers, backtest?.annotations]);
 
-    const historyStart = toTimestamp(candlestickData[0]?.date);
-    const historyEnd = toTimestamp(candlestickData.at(-1)?.date);
-    const forecastEnd = toTimestamp(prediction?.forecast?.dates.at(-1));
-    const endCandidates = [historyEnd, forecastEnd].filter((value) =>
-      Number.isFinite(value)
-    ) as number[];
-    const end = endCandidates.length
-      ? Math.max(...endCandidates)
-      : historyStart;
-
-    if (!Number.isFinite(historyStart) || !Number.isFinite(end)) return null;
-    return { start: historyStart, end };
-  }, [candlestickData, prediction?.forecast?.dates]);
-
-  const effectiveTradeShareFloor =
-    prediction?.metadata?.tradeShareFloor ??
-    predictionParams.tradeShareFloor ??
-    0;
-
-  const classificationOptions = useMemo(
-    () => ({
-      shareThreshold: effectiveTradeShareFloor,
-      confidenceFloor: SIGNAL_CONFIDENCE_FLOOR,
-    }),
-    [effectiveTradeShareFloor]
-  );
-
-  const allMarkers = useMemo(() => {
-    const normalized: ChartMarker[] = [];
-    const forecastDates = new Set(prediction?.forecast?.dates ?? []);
-    if (prediction?.tradeMarkers?.length) {
-      normalized.push(
-        ...prediction.tradeMarkers.map(
-          (marker) =>
-            applySignalThreshold(
-              {
-                ...marker,
-                segment:
-                  marker.segment ??
-                  (forecastDates.has(marker.date) ? "forecast" : "history"),
-                scope: marker.scope ?? "prediction",
-              },
-              classificationOptions
-            ) as ChartMarker
-        )
-      );
+  const handlePredict = async () => {
+    if (!predictionParams.symbol.trim()) {
+      toast.error("Please enter a symbol");
+      return;
     }
-    if (backtest?.annotations?.length) {
-      normalized.push(
-        ...backtest.annotations.map(
-          (marker) =>
-            applySignalThreshold(
-              {
-                ...marker,
-                segment: marker.segment ?? "history",
-                scope: marker.scope ?? "backtest",
-              },
-              classificationOptions
-            ) as ChartMarker
-        )
-      );
-    }
-    if (!markerWindow) {
-      return normalized;
-    }
-    return normalized.filter((marker) => {
-      const ts = new Date(marker.date).getTime();
-      if (Number.isNaN(ts)) return false;
-      return ts >= markerWindow.start && ts <= markerWindow.end;
-    });
-  }, [
-    prediction?.tradeMarkers,
-    prediction?.forecast?.dates,
-    backtest?.annotations,
-    markerWindow,
-    classificationOptions,
-  ]);
 
-  const filteredMarkers: ChartMarker[] = useMemo(() => {
-    return allMarkers.filter((marker) => {
-      const segment = marker.segment ?? "history";
-      const scope = marker.scope ?? "prediction";
-      const displayType = ((marker as ChartMarker).displayType ??
-        marker.type) as "buy" | "sell" | "hold";
-      if (displayType !== "hold" && !markerFilters[displayType]) {
-        return false;
-      }
-      return (
-        Boolean(segmentFilters[segment]) && Boolean(scopeFilters[scope])
-      );
-    });
-  }, [allMarkers, markerFilters, segmentFilters, scopeFilters]);
-
-  const backtestMarkers = useMemo(
-    () =>
-      filteredMarkers.filter(
-        (marker) => (marker.scope ?? "prediction") === "backtest"
-      ),
-    [filteredMarkers]
-  );
-
-  const chartMarkers = useMemo(() => {
-    if (viewMode === "history") {
-      return filteredMarkers.filter(
-        (marker) =>
-          (marker.scope ?? "prediction") === "prediction" &&
-          (marker.segment ?? "history") === "history"
-      );
-    }
-    if (viewMode === "prediction") {
-      return filteredMarkers.filter(
-        (marker) => (marker.scope ?? "prediction") === "prediction"
-      );
-    }
-    return filteredMarkers;
-  }, [filteredMarkers, viewMode]);
-
-  const toggleMarkerVisibility = (type: keyof typeof markerFilters) => {
-    setMarkerFilters((prev) => ({ ...prev, [type]: !prev[type] }));
-  };
-
-  const toggleSegmentVisibility = (segment: keyof typeof segmentFilters) => {
-    setSegmentFilters((prev) => ({ ...prev, [segment]: !prev[segment] }));
-  };
-
-  const toggleScopeVisibility = (scope: keyof typeof scopeFilters) => {
-    setScopeFilters((prev) => ({ ...prev, [scope]: !prev[scope] }));
-  };
-
-  const toggleEquitySeries = (series: keyof typeof equitySeriesVisibility) => {
-    setEquitySeriesVisibility((prev) => ({ ...prev, [series]: !prev[series] }));
-  };
-
-  const onToggleComparison = (modelId: string) => {
-    setComparisonSelection((prev) => {
-      if (prev.includes(modelId)) {
-        return prev.filter((id) => id !== modelId);
-      }
-      if (prev.length >= 3) {
-        return [...prev.slice(1), modelId];
-      }
-      return [...prev, modelId];
+    await predictMutation.mutateAsync({
+      ...predictionParams,
+      modelId: selectedModelId || undefined,
+      fusion: fusionSettings,
     });
   };
 
-  const selectedModel = selectedModelQuery.data;
-  const modeOptions: Array<{
-    value: typeof viewMode;
-    label: string;
-    helper: string;
-  }> = [
-    { value: "history", label: "History", helper: "Show only realized candles" },
-    {
-      value: "prediction",
-      label: "Prediction",
-      helper: "Overlay the AI forecast",
-    },
-    {
-      value: "backtest",
-      label: "Backtest",
-      helper: "Show simulated equity & trades",
-    },
-  ];
-  const overlaysForChart =
-    viewMode === "history" ? undefined : prediction?.overlays;
-  const forecastChangesForChart =
-    viewMode === "history" ? undefined : forecastChanges;
-  const predictedSeriesForChart =
-    viewMode === "history" ? [] : predictedSeries;
-  const showPredictionInsights = viewMode !== "history";
-  const showBacktestPanels = viewMode === "backtest";
-  const isPredictionDisabled =
-    predictMutation.isPending || viewMode === "backtest";
-
-  // Render tab content
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case "dashboard":
-        return <DashboardTab onNavigateToPrediction={navigateToPrediction} />;
-
-      case "training":
-        return (
-          <TrainingTab onTrainingComplete={handleTrainingComplete} />
-        );
-
-      case "prediction":
-      case "backtest":
-        return (
-          <div className="grid gap-6 xl:grid-cols-[360px,1fr,360px]">
-            <aside className="space-y-4">
-              <ModelControlPanel
-                models={modelsQuery.data}
-                modelsLoading={modelsQuery.isRefetching}
-                selectedModelId={selectedModelId}
-                onSelectModel={(id) => {
-                  setSelectedModelId(id);
-                  setPredictionParams((prev) => ({ ...prev, modelId: id }));
-                }}
-                predictionParams={predictionParams}
-                onChangePredictionParams={(partial) =>
-                  setPredictionParams((prev) => ({
-                    ...prev,
-                    ...partial,
-                    confidenceFloors:
-                      partial.confidenceFloors ?? prev.confidenceFloors,
-                  }))
-                }
-                fusionSettings={fusionSettings}
-                onChangeFusionSettings={(partial) =>
-                  setFusionSettings((prev) => ({
-                    ...prev,
-                    ...partial,
-                    regimeFilters: partial.regimeFilters ?? prev.regimeFilters,
-                  }))
-                }
-                backtestParams={backtestParams}
-                onChangeBacktestParams={(partial) =>
-                  setBacktestParams((prev) => ({ ...prev, ...partial }))
-                }
-                onApplyPreset={applyPreset}
-                onPredict={handlePredict}
-                onBacktest={handleBacktest}
-                disablePredict={predictMutation.isPending}
-                disableBacktest={backtestMutation.isPending}
-              />
-
-              <ModelComparisonPanel
-                models={modelsQuery.data}
-                selected={comparisonSelection}
-                onToggle={onToggleComparison}
-              />
-
-              <Button
-                variant="outline"
-                className="w-full border-gray-700 text-gray-200"
-                onClick={downloadArtifacts}
-              >
-                Download Model Artifacts
-              </Button>
-            </aside>
-
-            <main className="space-y-4">
-              <section className="rounded-2xl border border-gray-900 bg-gray-900/60 p-4">
-                <div className="flex flex-wrap items-center gap-4">
-                  <div>
-                    <p className="text-xs text-gray-500">Loaded Model</p>
-                    <p className="text-lg font-semibold text-white">
-                      {selectedModel?.symbol ?? "—"}
-                    </p>
-                    {selectedModel && (
-                      <p className="text-xs text-gray-500">
-                        {new Date(selectedModel.createdAt).toLocaleString()}
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500">Latest Prediction</p>
-                    <p className="text-lg font-semibold text-white">
-                      {prediction?.symbol ?? "Waiting"}
-                    </p>
-                  </div>
-                  {prediction && (
-                    <div>
-                      <p className="text-xs text-gray-500">Last price</p>
-                      <p className="text-lg font-semibold text-emerald-400">
-                        {formatCurrency(prediction.prices.at(-1) ?? 0)}
-                      </p>
-                    </div>
-                  )}
-                  <div className="ml-auto flex gap-2">
-                    <Button
-                      onClick={handlePredict}
-                      disabled={isPredictionDisabled}
-                    >
-                      Run Inference (⌘I)
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      onClick={handleBacktest}
-                      disabled={backtestMutation.isPending}
-                    >
-                      Backtest (⌘F)
-                    </Button>
-                  </div>
-                </div>
-              </section>
-
-              <section className="space-y-4" aria-label="Primary charts">
-                <div className="flex flex-wrap gap-3 rounded-2xl border border-gray-900 bg-gray-900/60 p-3 text-xs text-gray-400">
-                  <div>
-                    <p className="text-[11px] uppercase tracking-wide text-gray-500">
-                      Price View
-                    </p>
-                    <div className="mt-1 flex gap-1">
-                      <button
-                        type="button"
-                        className={toggleButtonClass(
-                          renderMode === "candlestick"
-                        )}
-                        onClick={() => setRenderMode("candlestick")}
-                      >
-                        Candles
-                      </button>
-                      <button
-                        type="button"
-                        className={toggleButtonClass(renderMode === "line")}
-                        onClick={() => setRenderMode("line")}
-                      >
-                        Line
-                      </button>
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-[11px] uppercase tracking-wide text-gray-500">
-                      Mode
-                    </p>
-                    <div className="mt-1 flex gap-1">
-                      {modeOptions.map((option) => (
-                        <button
-                          key={option.value}
-                          type="button"
-                          className={toggleButtonClass(
-                            viewMode === option.value
-                          )}
-                          onClick={() => setViewMode(option.value)}
-                          title={option.helper}
-                          aria-label={option.helper}
-                        >
-                          {option.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-[11px] uppercase tracking-wide text-gray-500">
-                      Markers
-                    </p>
-                    <div className="mt-1 flex gap-1">
-                      {(["buy", "sell"] as const).map((type) => (
-                        <button
-                          key={type}
-                          type="button"
-                          className={toggleButtonClass(markerFilters[type])}
-                          onClick={() => toggleMarkerVisibility(type)}
-                        >
-                          {type.toUpperCase()}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-[11px] uppercase tracking-wide text-gray-500">
-                      Segments
-                    </p>
-                    <div className="mt-1 flex gap-1">
-                      {(
-                        ["history", "forecast"] as Array<
-                          keyof typeof segmentFilters
-                        >
-                      ).map((segment) => (
-                        <button
-                          key={segment}
-                          type="button"
-                          className={toggleButtonClass(segmentFilters[segment])}
-                          onClick={() => toggleSegmentVisibility(segment)}
-                        >
-                          {segment === "history" ? "History" : "Forecast"}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-[11px] uppercase tracking-wide text-gray-500">
-                      Sources
-                    </p>
-                    <div className="mt-1 flex gap-1">
-                      {(
-                        ["prediction", "backtest"] as Array<
-                          keyof typeof scopeFilters
-                        >
-                      ).map((scope) => (
-                        <button
-                          key={scope}
-                          type="button"
-                          className={toggleButtonClass(scopeFilters[scope])}
-                          onClick={() => toggleScopeVisibility(scope)}
-                        >
-                          {scope === "prediction" ? "Prediction" : "Backtest"}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-[11px] uppercase tracking-wide text-gray-500">
-                      Equity Series
-                    </p>
-                    <div className="mt-1 flex gap-1">
-                      <button
-                        type="button"
-                        className={toggleButtonClass(
-                          equitySeriesVisibility.strategy
-                        )}
-                        onClick={() => toggleEquitySeries("strategy")}
-                      >
-                        Strategy
-                      </button>
-                      <button
-                        type="button"
-                        className={toggleButtonClass(
-                          equitySeriesVisibility.buyHold
-                        )}
-                        onClick={() => toggleEquitySeries("buyHold")}
-                      >
-                        Buy & Hold
-                      </button>
-                    </div>
-                  </div>
-                  <div className="ml-auto">
-                    <Dialog open={glossaryOpen} onOpenChange={setGlossaryOpen}>
-                      <DialogTrigger asChild>
-                        <button
-                          type="button"
-                          className="rounded-md border border-gray-800 px-3 py-1 text-[11px] font-semibold text-gray-200 hover:border-gray-600"
-                        >
-                          Glossary
-                        </button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-md border-gray-800 bg-gray-950 text-gray-100">
-                        <DialogHeader>
-                          <DialogTitle>Quick Glossary</DialogTitle>
-                          <DialogDescription>
-                            Short definitions so non-quants can follow along.
-                          </DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-3 text-sm">
-                          {GLOSSARY_ITEMS.map((item) => (
-                            <div key={item.term}>
-                              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-                                {item.term}
-                              </p>
-                              <p className="text-gray-300">{item.description}</p>
-                            </div>
-                          ))}
-                        </div>
-                      </DialogContent>
-                    </Dialog>
-                  </div>
-                </div>
-                <InteractiveCandlestick
-                  ref={candlestickRef}
-                  historicalSeries={candlestickData}
-                  overlays={overlaysForChart}
-                  tradeMarkers={chartMarkers}
-                  predictedSeries={predictedSeriesForChart}
-                  forecastChanges={forecastChangesForChart}
-                  renderMode={renderMode}
-                  mode={viewMode}
-                  showBuyMarkers={markerFilters.buy}
-                  showSellMarkers={markerFilters.sell}
-                  segmentFilters={segmentFilters}
-                  scopeFilters={scopeFilters}
-                  ariaLabel="Price action chart"
-                />
-                {showPredictionInsights && (
-                  <PredictionActionList
-                    forecast={prediction?.forecast}
-                    tradeMarkers={prediction?.tradeMarkers}
-                    lastPrice={lastObservedPrice}
-                    tradeShareFloor={effectiveTradeShareFloor}
-                  />
-                )}
-                {showBacktestPanels && (
-                  <>
-                    <EquityLineChart
-                      backtest={backtest ?? undefined}
-                      tradeMarkers={backtestMarkers}
-                      showStrategyEquity={equitySeriesVisibility.strategy}
-                      showBuyHoldEquity={equitySeriesVisibility.buyHold}
-                    />
-                    <BacktestSummaryChart backtest={backtest ?? undefined} />
-                  </>
-                )}
-              </section>
-            </main>
-
-            <aside className="space-y-4">
-              <DiagnosticsPanel prediction={prediction} backtest={backtest} />
-              <ScenarioBuilder prediction={prediction} />
-              <BacktestResults
-                backtest={backtest}
-                prediction={prediction}
-                onExportChart={() => candlestickRef.current?.exportImage()}
-              />
-              <StreamingLog title="Run Activity" events={runEvents} />
-            </aside>
-          </div>
-        );
-
-      case "registry":
-        return <RegistryTab />;
-
-      default:
-        return <DashboardTab onNavigateToPrediction={navigateToPrediction} />;
+  const handleBacktest = async () => {
+    if (!prediction) {
+      toast.error("Run prediction first");
+      return;
     }
+
+    await backtestMutation.mutateAsync({
+      prediction,
+      params: backtestParams,
+    });
   };
+
+  const metrics = backtest?.metrics;
 
   return (
-    <AiPageLayout
-      activeTab={activeTab}
-      onTabChange={setActiveTab}
-      trainingInProgress={trainingInProgress}
-    >
-      {renderTabContent()}
+    <div className="relative overflow-hidden">
+      <div className="pointer-events-none absolute -left-24 -top-24 h-64 w-64 rounded-full bg-yellow-500/20 blur-3xl" />
+      <div className="pointer-events-none absolute right-0 top-20 h-72 w-72 rounded-full bg-teal-400/15 blur-3xl" />
 
-      {/* Metadata footer for prediction/backtest */}
-      {(activeTab === "prediction" || activeTab === "backtest") &&
-        prediction?.metadata && (
-          <div className="rounded-2xl border border-gray-900 bg-gray-900/60 p-4 text-sm text-gray-300 mt-6">
-            <p className="text-xs uppercase tracking-wide text-gray-500">
-              Metadata
-            </p>
-            <div className="flex flex-wrap gap-4">
-              <span>Fusion mode: {prediction.metadata.fusionMode}</span>
-              <span>
-                Buy threshold: {prediction.metadata.buyThreshold.toFixed(2)}
-              </span>
-              <span>
-                Sell threshold: {prediction.metadata.sellThreshold.toFixed(2)}
-              </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() =>
-                  downloadJson("prediction-metadata.json", prediction.metadata)
-                }
-              >
-                Download JSON
-              </Button>
+      <section className="mb-6 rounded-3xl border border-gray-700/70 bg-gradient-to-br from-gray-900 via-gray-900/95 to-gray-950 p-6 shadow-[0_10px_60px_rgba(0,0,0,0.45)]">
+        <p className="text-xs uppercase tracking-[0.24em] text-yellow-400">Ralph Loop Console</p>
+        <h1 className="mt-2 font-mono text-3xl font-semibold text-gray-100">AI Trade Lab</h1>
+        <p className="mt-2 max-w-3xl text-sm text-gray-300">
+          End-to-end visibility for prediction, inventory-aware backtesting, and forward simulation. This page uses the live backend contract so you can inspect trades, equity, and execution behavior directly.
+        </p>
+      </section>
+
+      <div className="grid gap-6 xl:grid-cols-[350px,1fr]">
+        <aside className="space-y-4 rounded-2xl border border-gray-800 bg-gray-900/70 p-4">
+          <div className="space-y-2">
+            <p className="text-xs uppercase tracking-[0.18em] text-gray-500">Symbol + Horizon</p>
+            <input
+              className="w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-gray-100 outline-none focus:border-yellow-400"
+              value={predictionParams.symbol}
+              onChange={(e) => setPredictionParams((p) => ({ ...p, symbol: e.target.value.toUpperCase() }))}
+              placeholder="AAPL"
+            />
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                className="rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-gray-100 outline-none focus:border-yellow-400"
+                type="number"
+                value={predictionParams.horizon}
+                min={1}
+                onChange={(e) => setPredictionParams((p) => ({ ...p, horizon: Number(e.target.value) || 1 }))}
+                placeholder="Horizon"
+              />
+              <input
+                className="rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-gray-100 outline-none focus:border-yellow-400"
+                type="number"
+                value={predictionParams.daysOnChart}
+                min={30}
+                onChange={(e) => setPredictionParams((p) => ({ ...p, daysOnChart: Number(e.target.value) || 120 }))}
+                placeholder="Chart Days"
+              />
             </div>
           </div>
-        )}
-    </AiPageLayout>
-  );
-}
 
-export default function AiWorkbenchPage() {
-  return (
-    <Suspense fallback={<div className="min-h-screen bg-gray-950" />}>
-      <AiWorkbenchContent />
-    </Suspense>
+          <div className="space-y-2">
+            <p className="text-xs uppercase tracking-[0.18em] text-gray-500">Model + Fusion</p>
+            <select
+              className="w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-gray-100 outline-none focus:border-yellow-400"
+              value={selectedModelId}
+              onChange={(e) => setSelectedModelId(e.target.value)}
+            >
+              <option value="">Latest by Symbol</option>
+              {(modelsQuery.data ?? []).map((m: ModelMeta) => (
+                <option key={m.id} value={m.id}>{`${m.symbol} - ${new Date(m.createdAt).toLocaleDateString()}`}</option>
+              ))}
+            </select>
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                className="rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-gray-100 outline-none focus:border-yellow-400"
+                type="number"
+                step="0.01"
+                value={fusionSettings.buyThreshold}
+                onChange={(e) => setFusionSettings((f) => ({ ...f, buyThreshold: Number(e.target.value) || 0.3 }))}
+                placeholder="Buy Thr"
+              />
+              <input
+                className="rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-gray-100 outline-none focus:border-yellow-400"
+                type="number"
+                step="0.01"
+                value={fusionSettings.sellThreshold}
+                onChange={(e) => setFusionSettings((f) => ({ ...f, sellThreshold: Number(e.target.value) || 0.45 }))}
+                placeholder="Sell Thr"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-xs uppercase tracking-[0.18em] text-gray-500">Backtest Engine</p>
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                className="rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-gray-100 outline-none focus:border-yellow-400"
+                type="number"
+                value={backtestParams.initialCapital}
+                onChange={(e) => setBacktestParams((b) => ({ ...b, initialCapital: Number(e.target.value) || 10_000 }))}
+                placeholder="Capital"
+              />
+              <input
+                className="rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-gray-100 outline-none focus:border-yellow-400"
+                type="number"
+                step="0.1"
+                value={backtestParams.maxLong}
+                onChange={(e) => setBacktestParams((b) => ({ ...b, maxLong: Number(e.target.value) || 1.6 }))}
+                placeholder="Max Long"
+              />
+            </div>
+            <label className="flex items-center gap-2 text-sm text-gray-300">
+              <input
+                type="checkbox"
+                checked={backtestParams.enableForwardSim}
+                onChange={(e) => setBacktestParams((b) => ({ ...b, enableForwardSim: e.target.checked }))}
+              />
+              Enable Forward Simulation
+            </label>
+          </div>
+
+          <div className="space-y-2 pt-2">
+            <Button className="w-full yellow-btn" onClick={handlePredict} disabled={predictMutation.isPending}>
+              {predictMutation.isPending ? "Running Prediction..." : "Run Prediction"}
+            </Button>
+            <Button
+              className="w-full border border-gray-600 bg-gray-950 text-gray-100 hover:bg-gray-900"
+              onClick={handleBacktest}
+              disabled={backtestMutation.isPending || !prediction}
+            >
+              {backtestMutation.isPending ? "Running Backtest..." : "Run Backtest + Forward Sim"}
+            </Button>
+          </div>
+
+          <div className="rounded-xl border border-gray-800 bg-gray-950/70 p-3 text-xs text-gray-400">
+            <p className="font-semibold text-gray-200">Execution constraints</p>
+            <p className="mt-1">Long-only inventory backtester blocks impossible sells and includes commission/slippage in PnL.</p>
+          </div>
+        </aside>
+
+        <main className="space-y-6">
+          <section className="rounded-2xl border border-gray-800 bg-gray-900/60 p-4">
+            <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.18em] text-gray-500">Loaded</p>
+                <p className="font-mono text-lg text-gray-100">
+                  {prediction?.symbol ?? predictionParams.symbol} {selectedModel ? `• ${selectedModel.id}` : ""}
+                </p>
+              </div>
+              <div className="text-sm text-gray-300">
+                Quality gate: {String(prediction?.metadata?.modelQualityGatePassed ?? false)}
+              </div>
+            </div>
+
+            <InteractiveCandlestick
+              historicalSeries={candles}
+              predictedSeries={predictedSeries}
+              tradeMarkers={chartMarkers}
+              mode="backtest"
+              renderMode="candlestick"
+              segmentFilters={{ history: true, forecast: true }}
+              scopeFilters={{ prediction: true, backtest: true }}
+              ariaLabel="Prediction and execution chart"
+            />
+          </section>
+
+          <section className="grid gap-3 md:grid-cols-3">
+            <MetricCard
+              label="Cumulative Return"
+              value={metrics ? formatPercent(metrics.cumulativeReturn) : "-"}
+              tone={metrics && metrics.cumulativeReturn >= 0 ? "good" : "bad"}
+            />
+            <MetricCard
+              label="Sharpe"
+              value={metrics ? metrics.sharpeRatio.toFixed(2) : "-"}
+              tone={metrics && metrics.sharpeRatio >= 0 ? "good" : "bad"}
+            />
+            <MetricCard
+              label="Total Trades"
+              value={metrics ? String(metrics.totalTrades) : "-"}
+            />
+          </section>
+
+          <EquityLineChart backtest={backtest ?? undefined} tradeMarkers={backtest?.annotations} />
+
+          <ForwardSimulationPanel backtest={backtest} />
+
+          <section className="rounded-2xl border border-gray-800 bg-gray-900/60 p-4">
+            <p className="mb-3 text-xs uppercase tracking-[0.18em] text-gray-500">Trade Log</p>
+            {!backtest?.tradeLog?.length ? (
+              <p className="text-sm text-gray-400">Run backtest to populate trade details.</p>
+            ) : (
+              <div className="max-h-80 overflow-auto">
+                <table className="w-full text-left text-xs text-gray-300">
+                  <thead className="sticky top-0 bg-gray-900">
+                    <tr>
+                      <th className="px-2 py-2">Date</th>
+                      <th className="px-2 py-2">Action</th>
+                      <th className="px-2 py-2">Price</th>
+                      <th className="px-2 py-2">Shares</th>
+                      <th className="px-2 py-2">Position</th>
+                      <th className="px-2 py-2">PnL</th>
+                      <th className="px-2 py-2">Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {backtest.tradeLog.map((trade) => (
+                      <tr key={trade.id} className="border-t border-gray-800">
+                        <td className="px-2 py-2">{trade.date}</td>
+                        <td className={cn("px-2 py-2 font-semibold", trade.action === "BUY" ? "text-teal-300" : "text-red-300")}>{trade.action}</td>
+                        <td className="px-2 py-2">{formatCurrency(trade.price)}</td>
+                        <td className="px-2 py-2">{trade.shares.toFixed(2)}</td>
+                        <td className="px-2 py-2">{trade.position.toFixed(2)}</td>
+                        <td className="px-2 py-2">{formatCurrency(trade.pnl)}</td>
+                        <td className="px-2 py-2 text-gray-400">{trade.explanation?.notes ?? "-"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        </main>
+      </div>
+    </div>
   );
 }

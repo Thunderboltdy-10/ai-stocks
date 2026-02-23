@@ -7,17 +7,23 @@ import json
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Tuple
 
 import numpy as np
 import pandas as pd
+from pandas.tseries.offsets import BDay
 
 from data.data_fetcher import fetch_stock_data
 from data.feature_engineer import engineer_features
 from data.target_engineering import prevent_lookahead_bias
-from evaluation.advanced_backtester import AdvancedBacktester
+from evaluation.execution_backtester import LongOnlyExecutionBacktester
 from inference.load_gbm_models import GBMModelBundle, load_gbm_models, predict_with_gbm
 from inference.position_sizing import PositionSizer
+from inference.regime_ensemble import (
+    combine_ml_and_regime,
+    model_quality_gate_strict,
+    regime_exposure_from_prices,
+)
 
 
 def _to_daily_arithmetic_return(pred_log_return: np.ndarray, target_horizon_days: int) -> np.ndarray:
@@ -32,13 +38,16 @@ class BacktestConfig:
     end: str = "2024-12-31"
     mode: str = "gbm_only"
     include_sentiment: bool = False
-    max_long: float = 1.8
-    max_short: float = 0.2
+    max_long: float = 1.6
+    max_short: float = 0.0
     commission_pct: float = 0.0005
     slippage_pct: float = 0.0003
-    vol_target_annual: float = 0.25
-    min_vol_scale: float = 0.5
-    max_vol_scale: float = 2.2
+    vol_target_annual: float = 0.40
+    min_vol_scale: float = 0.90
+    max_vol_scale: float = 1.60
+    warmup_days: int = 252
+    min_eval_days: int = 20
+    min_position_change: float = 0.0
 
 
 class UnifiedBacktester:
@@ -54,26 +63,9 @@ class UnifiedBacktester:
 
     @staticmethod
     def _model_quality_gate(bundle: GBMModelBundle) -> bool:
-        holdout = bundle.metadata.get("holdout", {}).get("ensemble", {})
-        dir_acc = float(holdout.get("dir_acc", 0.0))
-        ic = float(holdout.get("ic", 0.0))
-        pred_std = float(holdout.get("pred_std", 0.0))
-        return (dir_acc >= 0.50) and (ic >= 0.0) and (pred_std >= 0.005)
+        return model_quality_gate_strict(bundle.metadata)
 
-    def _apply_volatility_targeting(self, positions: np.ndarray, frame: pd.DataFrame) -> np.ndarray:
-        target = float(self.config.vol_target_annual)
-        if target <= 0:
-            return positions
-
-        rets = frame["Close"].pct_change().fillna(0.0)
-        ann_vol = rets.rolling(20, min_periods=5).std() * np.sqrt(252.0)
-        scale = target / (ann_vol + 1e-6)
-        scale = scale.clip(lower=self.config.min_vol_scale, upper=self.config.max_vol_scale).fillna(1.0)
-
-        scaled = np.asarray(positions, dtype=float) * scale.to_numpy(dtype=float)
-        return np.clip(scaled, -self.config.max_short, self.config.max_long)
-
-    def _load_price_frame(self) -> pd.DataFrame:
+    def _load_price_frame(self) -> Tuple[pd.DataFrame, pd.Series]:
         raw = fetch_stock_data(self.symbol, period="max")
         raw.index = pd.to_datetime(raw.index)
         if getattr(raw.index, "tz", None) is not None:
@@ -81,14 +73,17 @@ class UnifiedBacktester:
 
         start_ts = pd.Timestamp(self.config.start)
         end_ts = pd.Timestamp(self.config.end)
+        warmup_start = start_ts - BDay(max(0, int(self.config.warmup_days)))
 
-        window = raw.loc[(raw.index >= start_ts) & (raw.index <= end_ts)].copy()
-        if len(window) < 150:
+        window = raw.loc[(raw.index >= warmup_start) & (raw.index <= end_ts)].copy()
+        eval_mask = (window.index >= start_ts) & (window.index <= end_ts)
+        eval_days = int(eval_mask.sum())
+        if eval_days < int(self.config.min_eval_days):
             raise ValueError(
-                f"Backtest window too short ({len(window)} rows). "
-                f"Use a larger date range."
+                f"Backtest window too short ({eval_days} rows). "
+                f"Need at least {self.config.min_eval_days} rows."
             )
-        return window
+        return window, eval_mask
 
     def _predict(self, bundle: GBMModelBundle, frame: pd.DataFrame) -> Dict[str, np.ndarray]:
         engineered = engineer_features(
@@ -128,6 +123,15 @@ class UnifiedBacktester:
             "engineered": engineered,
         }
 
+    def _regime_positions(self, frame: pd.DataFrame) -> np.ndarray:
+        return regime_exposure_from_prices(
+            close=frame["Close"],
+            max_long=self.config.max_long,
+            vol_target_annual=self.config.vol_target_annual,
+            min_scale=self.config.min_vol_scale,
+            max_scale=self.config.max_vol_scale,
+        )
+
     @staticmethod
     def _derive_sizing_stats(bundle: GBMModelBundle) -> Dict[str, float]:
         holdout = bundle.metadata.get("holdout", {}).get("ensemble", {})
@@ -144,55 +148,81 @@ class UnifiedBacktester:
 
     def run(self) -> Dict:
         bundle = self._load_bundle()
-        frame = self._load_price_frame()
-        preds = self._predict(bundle, frame)
+        frame_raw, _ = self._load_price_frame()
+        preds = self._predict(bundle, frame_raw)
 
-        close = frame["Close"].to_numpy(dtype=float)
-        returns = frame["Close"].pct_change().fillna(0.0).to_numpy(dtype=float)
-        forward_returns = frame["Close"].pct_change().shift(-1).to_numpy(dtype=float)
+        # Align raw prices to engineered-feature index (feature generation drops warmup rows).
+        if not isinstance(preds.get("engineered"), pd.DataFrame):
+            raise ValueError("Prediction pipeline did not return engineered frame for index alignment")
+        engineered_index = preds["engineered"].index
+        frame = frame_raw.loc[engineered_index].copy()
+
+        start_ts = pd.Timestamp(self.config.start)
+        end_ts = pd.Timestamp(self.config.end)
+        eval_mask = (frame.index >= start_ts) & (frame.index <= end_ts)
+        eval_days = int(eval_mask.sum())
+        if eval_days < int(self.config.min_eval_days):
+            raise ValueError(
+                f"Backtest window too short after feature warmup ({eval_days} rows). "
+                f"Need at least {self.config.min_eval_days} rows."
+            )
+
+        close_full = frame["Close"].to_numpy(dtype=float)
+        forward_returns_full = frame["Close"].pct_change().shift(-1).to_numpy(dtype=float)
 
         stats = self._derive_sizing_stats(bundle)
         use_model_positions = self._model_quality_gate(bundle)
+        ml_positions = None
         if use_model_positions:
             sizer = PositionSizer()
-            positions = sizer.size_batch(
+            ml_positions = sizer.size_batch(
                 predicted_returns=preds["pred_ens"],
                 prediction_stds=preds["pred_std"],
                 win_rate=stats["win_rate"],
                 avg_win=stats["avg_win"],
                 avg_loss=stats["avg_loss"],
             )
-            positions = self._apply_volatility_targeting(positions, frame)
-        else:
-            # Fallback: passive long when model fails minimum quality gates.
-            positions = np.ones(len(frame), dtype=float)
+        regime_positions = self._regime_positions(frame)
+        positions_full = combine_ml_and_regime(
+            regime_positions=regime_positions,
+            ml_positions=ml_positions,
+            ml_gate_passed=use_model_positions,
+            ml_weight=0.20,
+            max_long=self.config.max_long,
+        )
 
-        backtester = AdvancedBacktester(
+        # Evaluate only in requested date range while using full history for feature warmup.
+        close = close_full[eval_mask]
+        forward_returns = forward_returns_full[eval_mask]
+        positions = positions_full[eval_mask]
+        frame_eval = frame.loc[eval_mask].copy()
+
+        backtester = LongOnlyExecutionBacktester(
             initial_capital=100_000.0,
             commission_pct=self.config.commission_pct,
             slippage_pct=self.config.slippage_pct,
-            min_commission=0.0,
+            min_position_change=self.config.min_position_change,
         )
 
-        results = backtester.backtest_with_positions(
-            dates=frame.index.to_numpy(),
+        results = backtester.backtest(
+            dates=frame_eval.index.to_numpy(),
             prices=close,
-            returns=returns,
-            positions=positions,
+            target_positions=positions,
             max_long=self.config.max_long,
-            max_short=self.config.max_short,
             apply_position_lag=True,
         )
 
         valid_dir = ~np.isnan(forward_returns)
-        direction_accuracy = float(np.mean(np.sign(preds["pred_ens"][valid_dir]) == np.sign(forward_returns[valid_dir])))
+        pred_eval = preds["pred_ens"][eval_mask]
+        direction_accuracy = float(np.mean(np.sign(pred_eval[valid_dir]) == np.sign(forward_returns[valid_dir])))
 
         summary = {
             "symbol": self.symbol,
             "start": self.config.start,
             "end": self.config.end,
             "mode": self.config.mode,
-            "n_days": int(len(frame)),
+            "n_days": int(len(frame_eval)),
+            "warmup_days": int(self.config.warmup_days),
             "strategy_return": float(results.metrics.get("cum_return", 0.0)),
             "buy_hold_return": float(results.metrics.get("buy_hold_cum_return", 0.0)),
             "alpha": float(results.metrics.get("alpha", 0.0)),
@@ -200,16 +230,26 @@ class UnifiedBacktester:
             "max_drawdown": float(results.metrics.get("max_drawdown", 0.0)),
             "win_rate": float(results.metrics.get("win_rate", 0.0)),
             "direction_accuracy": direction_accuracy,
-            "prediction_std": float(np.std(preds["pred_ens"])),
-            "pred_positive_pct": float((preds["pred_ens"] > 0).mean()),
+            "prediction_std": float(np.std(pred_eval)),
+            "pred_positive_pct": float((pred_eval > 0).mean()),
             "turnover": float(results.metrics.get("turnover", 0.0)),
             "total_transaction_costs": float(results.metrics.get("total_transaction_costs", 0.0)),
             "cost_adjusted_sharpe": float(results.metrics.get("sharpe", 0.0)),
             "vol_target_annual": float(self.config.vol_target_annual),
             "model_quality_gate_passed": bool(use_model_positions),
+            "execution_mode": "long_only_inventory",
+            "ml_overlay_weight": 0.20 if use_model_positions else 0.0,
         }
 
-        self._save_outputs(frame, preds, positions, returns, forward_returns, results, summary)
+        preds_eval = {
+            "pred_xgb": preds["pred_xgb"][eval_mask],
+            "pred_lgb": preds["pred_lgb"][eval_mask],
+            "pred_ens": preds["pred_ens"][eval_mask],
+            "pred_std": preds["pred_std"][eval_mask],
+            "engineered": None,
+        }
+
+        self._save_outputs(frame_eval, preds_eval, positions, forward_returns, results, summary)
         return summary
 
     def _save_outputs(
@@ -217,7 +257,6 @@ class UnifiedBacktester:
         frame: pd.DataFrame,
         preds: Dict[str, np.ndarray],
         positions: np.ndarray,
-        returns: np.ndarray,
         forward_returns: np.ndarray,
         results,
         summary: Dict,
@@ -235,9 +274,12 @@ class UnifiedBacktester:
                 "pred_ens": preds["pred_ens"],
                 "pred_std": preds["pred_std"],
                 "position": positions,
-                "asset_return": returns,
+                "effective_position": results.effective_positions,
+                "asset_return": frame["Close"].pct_change().fillna(0.0).to_numpy(dtype=float),
                 "forward_return": forward_returns,
                 "strategy_daily_return": results.daily_returns,
+                "strategy_equity": results.equity_curve,
+                "buy_hold_equity": results.buy_hold_equity,
             }
         )
         daily.to_csv(out_dir / "daily_results.csv", index=False)
@@ -248,8 +290,8 @@ class UnifiedBacktester:
         equity = pd.DataFrame(
             {
                 "date": frame.index,
-                "strategy_equity": results.equity_curve[1:],
-                "buy_hold_equity": results.buy_hold_equity[1:],
+                "strategy_equity": results.equity_curve,
+                "buy_hold_equity": results.buy_hold_equity,
             }
         )
         equity.to_csv(out_dir / "equity_comparison.csv", index=False)
@@ -271,13 +313,16 @@ def main() -> None:
     parser.add_argument("--end", type=str, default="2024-12-31")
     parser.add_argument("--mode", type=str, default="gbm_only", choices=["gbm_only", "ensemble"])
     parser.add_argument("--include-sentiment", action="store_true")
-    parser.add_argument("--max-long", type=float, default=1.8)
-    parser.add_argument("--max-short", type=float, default=0.2)
+    parser.add_argument("--max-long", type=float, default=1.6)
+    parser.add_argument("--max-short", type=float, default=0.0)
     parser.add_argument("--commission", type=float, default=0.0005)
     parser.add_argument("--slippage", type=float, default=0.0003)
-    parser.add_argument("--vol-target-annual", type=float, default=0.25)
-    parser.add_argument("--min-vol-scale", type=float, default=0.5)
-    parser.add_argument("--max-vol-scale", type=float, default=2.2)
+    parser.add_argument("--vol-target-annual", type=float, default=0.40)
+    parser.add_argument("--min-vol-scale", type=float, default=0.90)
+    parser.add_argument("--max-vol-scale", type=float, default=1.60)
+    parser.add_argument("--warmup-days", type=int, default=252)
+    parser.add_argument("--min-eval-days", type=int, default=20)
+    parser.add_argument("--min-position-change", type=float, default=0.0)
     args = parser.parse_args()
 
     cfg = BacktestConfig(
@@ -293,6 +338,9 @@ def main() -> None:
         vol_target_annual=args.vol_target_annual,
         min_vol_scale=args.min_vol_scale,
         max_vol_scale=args.max_vol_scale,
+        warmup_days=args.warmup_days,
+        min_eval_days=args.min_eval_days,
+        min_position_change=args.min_position_change,
     )
 
     summary = UnifiedBacktester(cfg).run()

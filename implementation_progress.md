@@ -1315,3 +1315,77 @@ During training run, model experienced **VARIANCE COLLAPSE** at epoch 35:
 - Next steps: verify backtest works after training completes
 
 ---
+
+---
+
+## February 23, 2026 - Ralph Loop Iteration (5-symbol baseline + short-window support + AI page rewrite)
+
+### What was done
+
+1. Re-read `PLAN.md` and audited current backend/frontend contracts.
+2. Verified GPU path in `ai-stocks` environment (`xgboost` CUDA + `nvidia-smi`).
+3. Retrained 5 diverse symbols on GPU:
+   - `AAPL`, `XOM`, `JPM`, `KO`, `TSLA`
+4. Ran multi-window baseline matrix and found two immediate gaps:
+   - short-window backtests failed due hard min-row guard,
+   - cross-symbol robustness still weak on some windows/symbols.
+5. Implemented warmup-aware short-window backtesting in `run_backtest.py`:
+   - added `warmup_days` + `min_eval_days`,
+   - fixed engineered-feature index alignment bug.
+6. Kept strict quality gate + inventory-aware execution architecture intact.
+7. Rebuilt frontend `/ai` page from scratch (old tabbed architecture removed):
+   - clean single-workbench flow,
+   - prediction chart + markers,
+   - equity vs buy-and-hold,
+   - forward simulation chart,
+   - trade log with execution notes.
+8. Ran multiple strategy variants and accepted the best-performing stable variant from this loop (`post_iter2f` matrix).
+
+### Key accepted backend state
+
+- `run_backtest.py` now supports week-scale windows with proper warmup history.
+- `LongOnlyExecutionBacktester` remains inventory-aware (no impossible sells) and keeps cost accounting.
+- `regime_exposure_from_prices` remains in the stronger baseline form (after rejecting over-defensive variants that degraded AAPL/TSLA).
+- API backtest/forward simulation path still uses inventory-aware execution.
+
+### Validation
+
+- Python compile checks passed:
+  - `run_backtest.py`, `prediction_service.py`, `regime_ensemble.py`, `execution_backtester.py`
+- Tests passed:
+  - `python -m pytest tests/test_data_integrity.py tests/test_feature_count.py -q`
+  - `21 passed`
+- Frontend file lint check passed for rewritten file:
+  - `npx eslint app/(root)/ai/page.tsx`
+
+### Main experiment artifacts from this iteration
+
+- Pre-change baseline matrix:
+  - `python-ai-service/experiments/pre_iter2_multiwindow_20260223_215335.csv`
+- Accepted post-change matrix (best balance in this loop):
+  - `python-ai-service/experiments/post_iter2f_multiwindow_20260223_220157.csv`
+
+### Accepted result snapshot (`post_iter2f`)
+
+- `AAPL`
+  - `long_5y alpha`: `+1.6406`
+  - `mid_2y alpha`: `+0.3645`
+  - short windows: positive alpha
+- `XOM`
+  - `long_5y alpha`: `+0.7140`
+  - `mid_2y alpha`: `-0.1872` (still weak)
+- `JPM`
+  - `long_5y alpha`: `+0.2507`
+  - `mid_2y alpha`: `+0.4780`
+- `KO`
+  - `long_5y alpha`: `-0.0287` (near-flat underperformance)
+  - `mid_2y alpha`: `-0.0562`
+- `TSLA`
+  - `long_5y alpha`: `+19.5555`
+  - `mid_2y alpha`: `-0.4669`
+  - short windows: positive alpha
+
+### Notes
+
+- Multiple defensive-regime variants were tested and rejected because they improved some weak windows but degraded AAPL and/or TSLA materially.
+- The current accepted state prioritizes stronger aggregate performance while preserving short-window capability and execution realism.

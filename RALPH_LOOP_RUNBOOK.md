@@ -2,88 +2,85 @@
 
 Last updated: 2026-02-23
 
-This is the practical workflow to iterate autonomously and manually reproduce results.
+This runbook defines the working iteration loop for this project.
 
-## Core idea
+## Core loop
 
-1. Train one symbol with GPU.
-2. Backtest immediately.
-3. Diagnose failures (bias, variance collapse, weak direction, overfit).
-4. Change one thing at a time.
-5. Re-train and re-backtest.
-6. Keep the best configuration and log it.
+1. Activate env and verify GPU.
+2. Train target symbols (GPU XGBoost).
+3. Backtest immediately across multiple windows (long + short).
+4. Compare against buy-and-hold and inspect weak symbols/windows.
+5. Change one subsystem at a time.
+6. Re-run the same matrix to verify improvement.
+7. Keep only changes that survive cross-symbol checks.
 
-## Hard rules
+## Non-negotiables
 
-- Always activate env first:
+- Always:
 
 ```bash
-eval "$(/home/thunderboltdy/miniconda3/bin/conda shell.bash hook)"
+eval "$($HOME/miniconda3/bin/conda shell.bash hook)"
 conda activate ai-stocks
 cd /home/thunderboltdy/ai-stocks/python-ai-service
 ```
 
-- Use GPU (`xgboost_cuda_ok` + `nvidia-smi`).
-- Never trust one run. Validate on multiple windows and cost settings.
-- Preserve useful legacy blueprints (sentiment, other modules) even if inactive.
+- GPU must be active when training (`xgboost_cuda_ok` + `nvidia-smi`).
+- Use out-of-sample windows; do not trust one window.
+- Keep inventory constraints in execution simulation (no impossible sells).
 
-## Iteration template
+## Current production path
 
-### Step A: Train
+- Model: GBM-first (`training/train_gbm.py`)
+- Inference blend:
+  - strict ML quality gate (`model_quality_gate_strict`)
+  - regime fallback (`regime_exposure_from_prices`)
+  - optional ML overlay when gate passes
+- Backtester:
+  - `LongOnlyExecutionBacktester`
+  - commission/slippage/margin costs
+  - long-only inventory barrier
+- Short-window support:
+  - `run_backtest.py` now uses warmup history and minimum evaluation rows
+
+## Working baseline command set
+
+- Train 5 symbols:
 
 ```bash
-python -m training.train_gbm AAPL --overwrite --n-trials 10 --no-lgb --target-horizon 5 --max-features 50
+for s in AAPL XOM JPM KO TSLA; do
+  python -m training.train_gbm "$s" --overwrite --n-trials 10 --no-lgb --target-horizon 1 --max-features 50
+done
 ```
 
-### Step B: Inspect training metadata
+- Multi-window matrix:
 
 ```bash
 python - <<'PY'
-import json
-p='saved_models/AAPL/gbm/training_metadata.json'
-with open(p) as f:
-    m=json.load(f)
-print('dir_acc',m['holdout']['ensemble']['dir_acc'])
-print('pred_std',m['holdout']['ensemble']['pred_std'])
-print('positive_pct',m['holdout']['ensemble']['positive_pct'])
-print('wfe',m['wfe'])
-print('gpu',m['runtime'])
+from run_backtest import BacktestConfig, UnifiedBacktester
+symbols=['AAPL','XOM','JPM','KO','TSLA']
+windows=[('2020-01-01','2024-12-31'),('2023-01-01','2024-12-31'),('2024-10-01','2024-12-31'),('2024-11-15','2024-12-31')]
+for s in symbols:
+  for start,end in windows:
+    print(UnifiedBacktester(BacktestConfig(symbol=s,start=start,end=end,warmup_days=252,min_eval_days=20)).run())
 PY
 ```
 
-### Step C: Backtest
+## Latest accepted iteration notes
 
-```bash
-python run_backtest.py --symbol AAPL --start 2020-01-01 --end 2024-12-31
-```
+- Added warmup-aware short-window backtesting (`warmup_days`, `min_eval_days`).
+- Added inventory-aware execution constraints with trade-level notes.
+- Preserved GPU-first training path (`--no-lgb` + XGBoost CUDA).
+- Rebuilt `/ai` frontend page to expose:
+  - prediction chart with trade markers,
+  - backtest equity vs buy-and-hold,
+  - forward simulation chart,
+  - trade log details and execution notes.
 
-Notes:
-- Vol targeting is enabled by default (`--vol-target-annual 0.25`).
-- If model holdout diagnostics are weak, the engine automatically falls back to passive long exposure.
+## Rejection criteria for new ideas
 
-### Step D: Robustness check
+Reject a change if it improves one symbol/window but materially degrades:
+- AAPL long window,
+- cross-symbol median alpha,
+- or short-window stability.
 
-Use the sweep command in `TRAINING_COMMAND_REFERENCE.md`.
-
-## What to change when metrics are bad
-
-- `pred_std` too low: raise model capacity or reduce regularization.
-- `positive_pct` skewed: rebalance objective / sample weighting.
-- Holdout < walk-forward: reduce overfit, lower complexity, shorten feature set.
-- Backtest alpha weak but Sharpe okay: tune position sizing/risk caps.
-- Good single-window result but poor robustness: reject and continue iterating.
-
-## Current baseline (2026-02-23, latest)
-
-- AAPL, 2020-01-01 to 2024-12-31:
-  - `strategy_return`: 3.4810
-  - `buy_hold_return`: 2.4400
-  - `alpha`: +1.0410
-  - `sharpe`: 1.0759
-  - `max_drawdown`: -0.3165
-
-- AAPL robustness sweep also recorded strong outperformance in older windows; see
-  recent `python-ai-service/backtest_results/AAPL_20260223_191050_134367/summary.json`,
-  `python-ai-service/backtest_results/AAPL_20260223_191050_734922/summary.json`,
-  `python-ai-service/backtest_results/AAPL_20260223_191050_996974/summary.json`,
-  and `python-ai-service/backtest_results/AAPL_20260223_191051_509501/summary.json`.
+All accepted changes must survive the same matrix comparison.

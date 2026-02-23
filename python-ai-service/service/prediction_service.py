@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Dict, List
 
 import numpy as np
@@ -12,9 +11,14 @@ from pandas.tseries.offsets import BDay
 from data.data_fetcher import fetch_stock_data
 from data.feature_engineer import engineer_features
 from data.target_engineering import prevent_lookahead_bias
-from evaluation.advanced_backtester import AdvancedBacktester
+from evaluation.execution_backtester import LongOnlyExecutionBacktester
 from inference.load_gbm_models import GBMModelBundle, load_gbm_models, predict_with_gbm
 from inference.position_sizing import PositionSizer
+from inference.regime_ensemble import (
+    combine_ml_and_regime,
+    model_quality_gate_strict,
+    regime_exposure_from_prices,
+)
 
 
 def _to_daily_arithmetic_return(pred_log_return: np.ndarray, target_horizon_days: int) -> np.ndarray:
@@ -72,52 +76,34 @@ def _sizing_win_rate(bundle: GBMModelBundle) -> float:
     return float(np.clip(max(holdout_dir, train_pos), 0.50, 0.60))
 
 
-def _apply_volatility_targeting(
-    positions: np.ndarray,
-    close_series: pd.Series,
-    vol_target_annual: float = 0.25,
-    min_scale: float = 0.5,
-    max_scale: float = 2.2,
-    max_long: float = 1.8,
-    max_short: float = 0.2,
-) -> np.ndarray:
-    if vol_target_annual <= 0:
-        return np.asarray(positions, dtype=float)
-
-    rets = close_series.pct_change().fillna(0.0)
-    ann_vol = rets.rolling(20, min_periods=5).std() * np.sqrt(252.0)
-    scale = (vol_target_annual / (ann_vol + 1e-6)).clip(lower=min_scale, upper=max_scale).fillna(1.0)
-
-    scaled = np.asarray(positions, dtype=float) * scale.to_numpy(dtype=float)
-    return np.clip(scaled, -max_short, max_long)
-
-
 def _model_quality_gate(bundle: GBMModelBundle) -> bool:
-    holdout = bundle.metadata.get("holdout", {}).get("ensemble", {})
-    dir_acc = float(holdout.get("dir_acc", 0.0))
-    ic = float(holdout.get("ic", 0.0))
-    pred_std = float(holdout.get("pred_std", 0.0))
-    return (dir_acc >= 0.50) and (ic >= 0.0) and (pred_std >= 0.005)
+    return model_quality_gate_strict(bundle.metadata)
+
+
+def _regime_positions(close_series: pd.Series, max_long: float = 1.6) -> np.ndarray:
+    return regime_exposure_from_prices(
+        close=close_series,
+        max_long=max_long,
+        vol_target_annual=0.40,
+        min_scale=0.90,
+        max_scale=1.60,
+    )
 
 
 def _build_trade_markers(dates: List[str], prices: np.ndarray, positions: np.ndarray) -> List[Dict]:
     markers: List[Dict] = []
     prev = 0.0
     for i, pos in enumerate(positions):
-        if np.sign(pos) != np.sign(prev):
-            if pos > 0:
-                marker_type = "buy"
-            elif pos < 0:
-                marker_type = "sell"
-            else:
-                marker_type = "hold"
+        delta = float(pos - prev)
+        if abs(delta) >= 0.05:
+            marker_type = "buy" if delta > 0 else "sell"
             markers.append(
                 {
                     "date": dates[i],
                     "price": float(prices[i]),
                     "type": marker_type,
-                    "shares": float(abs(pos) * 100),
-                    "confidence": float(min(1.0, abs(pos))),
+                    "shares": float(abs(delta) * 100),
+                    "confidence": float(min(1.0, abs(delta))),
                     "scope": "prediction",
                     "segment": "history",
                 }
@@ -142,26 +128,27 @@ def generate_prediction(payload: Dict) -> Dict:
     raw = fetch_stock_data(symbol=symbol, period="10y")
     preds = _predict_series(bundle, raw)
 
-    if _model_quality_gate(bundle):
+    ml_gate = _model_quality_gate(bundle)
+    ml_positions = None
+    if ml_gate:
         sizer = PositionSizer()
-        positions = sizer.size_batch(
+        ml_positions = sizer.size_batch(
             predicted_returns=preds["pred_ens"],
             prediction_stds=preds["pred_std"],
             win_rate=_sizing_win_rate(bundle),
             avg_win=0.012,
             avg_loss=0.010,
         )
-        positions = _apply_volatility_targeting(
-            positions=positions,
-            close_series=raw["Close"],
-            vol_target_annual=0.25,
-            min_scale=0.5,
-            max_scale=2.2,
-            max_long=1.8,
-            max_short=0.2,
-        )
-    else:
-        positions = np.ones(len(raw), dtype=float)
+        ml_positions = np.clip(ml_positions, 0.0, 1.6)
+
+    regime_positions = _regime_positions(raw["Close"], max_long=1.6)
+    positions = combine_ml_and_regime(
+        regime_positions=regime_positions,
+        ml_positions=ml_positions,
+        ml_gate_passed=ml_gate,
+        ml_weight=0.20,
+        max_long=1.6,
+    )
 
     close = raw["Close"].to_numpy(dtype=float)
     dates = [d.strftime("%Y-%m-%d") for d in pd.to_datetime(raw.index)]
@@ -232,46 +219,76 @@ def generate_prediction(payload: Dict) -> Dict:
             "buyThreshold": buy_thr,
             "sellThreshold": sell_thr,
             "horizon": horizon,
-            "modelQualityGatePassed": _model_quality_gate(bundle),
+            "modelQualityGatePassed": ml_gate,
+            "executionMode": "long_only_inventory",
+            "mlOverlayWeight": 0.20 if ml_gate else 0.0,
         },
     }
 
     return result
 
 
-def run_backtest(prediction: Dict, params: Dict) -> Dict:
-    dates = prediction.get("dates", [])
-    prices = np.asarray(prediction.get("prices", []), dtype=float)
-    positions = np.asarray(prediction.get("fusedPositions", []), dtype=float)
+def _forward_simulate(prediction: Dict, params: Dict) -> Dict | None:
+    forecast = prediction.get("forecast", {})
+    if not isinstance(forecast, dict):
+        return None
 
-    if len(prices) == 0 or len(positions) == 0 or len(prices) != len(positions):
-        raise ValueError("Invalid prediction payload for backtest")
+    dates = forecast.get("dates", [])
+    prices = np.asarray(forecast.get("prices", []), dtype=float)
+    positions = np.asarray(forecast.get("positions", []), dtype=float)
 
-    returns = np.zeros_like(prices)
-    if len(prices) > 1:
-        returns[1:] = prices[1:] / prices[:-1] - 1.0
+    if len(dates) == 0 or len(prices) == 0 or len(prices) != len(positions):
+        return None
 
-    backtester = AdvancedBacktester(
+    max_long = float(params.get("maxLong", 1.6))
+    backtester = LongOnlyExecutionBacktester(
         initial_capital=float(params.get("initialCapital", 10_000.0)),
         commission_pct=float(params.get("commission", 0.0)),
         slippage_pct=float(params.get("slippage", 0.0)),
-        min_commission=0.0,
+        min_position_change=float(params.get("minPositionChange", 0.0)),
     )
-
-    max_long = float(params.get("maxLong", 1.8))
-    max_short = float(params.get("maxShort", 0.2))
-
-    bt = backtester.backtest_with_positions(
+    bt = backtester.backtest(
         dates=np.asarray(dates),
         prices=prices,
-        returns=returns,
-        positions=positions,
+        target_positions=positions,
         max_long=max_long,
-        max_short=max_short,
+        apply_position_lag=False,
+    )
+
+    return {
+        "dates": [str(d) for d in dates],
+        "prices": [float(x) for x in prices],
+        "equityCurve": [float(x) for x in bt.equity_curve],
+        "sharpe": float(bt.metrics.get("sharpe", 0.0)),
+        "maxDrawdown": float(bt.metrics.get("max_drawdown", 0.0)),
+        "trades": int(len(bt.trade_log)),
+    }
+
+
+def run_backtest(prediction: Dict, params: Dict) -> Dict:
+    dates = prediction.get("dates", [])
+    prices = np.asarray(prediction.get("prices", []), dtype=float)
+    target_positions = np.asarray(prediction.get("fusedPositions", []), dtype=float)
+
+    if len(prices) == 0 or len(target_positions) == 0 or len(prices) != len(target_positions):
+        raise ValueError("Invalid prediction payload for backtest")
+
+    max_long = float(params.get("maxLong", 1.6))
+    backtester = LongOnlyExecutionBacktester(
+        initial_capital=float(params.get("initialCapital", 10_000.0)),
+        commission_pct=float(params.get("commission", 0.0)),
+        slippage_pct=float(params.get("slippage", 0.0)),
+        min_position_change=float(params.get("minPositionChange", 0.0)),
+    )
+    bt = backtester.backtest(
+        dates=np.asarray(dates),
+        prices=prices,
+        target_positions=np.clip(target_positions, 0.0, max_long),
+        max_long=max_long,
         apply_position_lag=True,
     )
 
-    equity = bt.equity_curve[1:]
+    equity = bt.equity_curve
     running_max = np.maximum.accumulate(equity)
     drawdown = np.where(running_max > 0, equity / running_max - 1.0, 0.0)
 
@@ -281,11 +298,21 @@ def run_backtest(prediction: Dict, params: Dict) -> Dict:
     ]
     price_series = [{"date": dates[i], "price": float(prices[i])} for i in range(len(prices))]
 
+    returns = np.zeros_like(prices)
+    if len(prices) > 1:
+        returns[1:] = prices[1:] / prices[:-1] - 1.0
+
     trade_log = []
     annotations = []
     for i, trade in enumerate(bt.trade_log):
-        action = str(trade.get("action", "BUY"))
-        position_val = float(trade.get("position", 0.0))
+        idx = int(trade.get("index", 0))
+        idx = max(0, min(idx, len(dates) - 1))
+        action = str(trade.get("action", "BUY")).upper()
+        position_val = float(bt.effective_positions[idx]) if len(bt.effective_positions) > idx else 0.0
+        cumulative_pnl = float(equity[idx] - float(params.get("initialCapital", 10_000.0)))
+        pnl = 0.0 if idx == 0 else float(equity[idx] - equity[idx - 1])
+        notes = str(trade.get("blocked_reason") or "")
+
         record = {
             "id": f"trade-{i+1}",
             "date": pd.to_datetime(trade.get("date")).strftime("%Y-%m-%d"),
@@ -293,10 +320,16 @@ def run_backtest(prediction: Dict, params: Dict) -> Dict:
             "price": float(trade.get("price", 0.0)),
             "shares": float(trade.get("shares", 0.0)),
             "position": position_val,
-            "pnl": float(trade.get("equity_before", 0.0)),
-            "cumulativePnl": float(trade.get("equity_before", 0.0)),
+            "pnl": pnl,
+            "cumulativePnl": cumulative_pnl,
             "commission": float(trade.get("commission", 0.0)),
             "slippage": float(trade.get("slippage", 0.0)),
+            "explanation": {
+                "classifierProb": 0.0,
+                "regressorReturn": 0.0,
+                "fusionMode": str(prediction.get("metadata", {}).get("fusionMode", "gbm_only")),
+                "notes": notes or "inventory-aware execution",
+            },
         }
         trade_log.append(record)
         annotations.append(
@@ -310,6 +343,14 @@ def run_backtest(prediction: Dict, params: Dict) -> Dict:
             }
         )
 
+    pred_returns = np.asarray(prediction.get("predictedReturns", []), dtype=float)
+    if len(pred_returns) != len(returns):
+        pred_returns = np.zeros_like(returns)
+
+    corr_val = float(np.corrcoef(pred_returns, returns)[0, 1]) if len(returns) > 3 else 0.0
+    if not np.isfinite(corr_val):
+        corr_val = 0.0
+
     metrics = {
         "cumulativeReturn": float(bt.metrics.get("cum_return", 0.0)),
         "sharpeRatio": float(bt.metrics.get("sharpe", 0.0)),
@@ -317,22 +358,31 @@ def run_backtest(prediction: Dict, params: Dict) -> Dict:
         "winRate": float(bt.metrics.get("win_rate", 0.0)),
         "averageTradeProfit": float(np.mean([t["pnl"] for t in trade_log])) if trade_log else 0.0,
         "totalTrades": len(trade_log),
-        "directionalAccuracy": float(np.mean(np.sign(np.asarray(prediction.get("predictedReturns", []), dtype=float)) == np.sign(returns)))
-        if len(prediction.get("predictedReturns", [])) == len(returns)
-        else 0.0,
-        "correlation": 0.0,
-        "rmse": 0.0,
-        "smape": 0.0,
+        "directionalAccuracy": float(np.mean(np.sign(pred_returns) == np.sign(returns))),
+        "correlation": corr_val,
+        "rmse": float(np.sqrt(np.mean((pred_returns - returns) ** 2))) if len(returns) else 0.0,
+        "smape": float(
+            np.mean(
+                2.0 * np.abs(pred_returns - returns)
+                / (np.abs(pred_returns) + np.abs(returns) + 1e-9)
+            )
+        ) if len(returns) else 0.0,
     }
 
     buy_hold_equity = [
-        {"date": dates[i], "equity": float(bt.buy_hold_equity[1:][i])}
+        {"date": dates[i], "equity": float(bt.buy_hold_equity[i])}
         for i in range(len(dates))
     ]
 
-    csv_rows = ["date,price,position,equity"]
+    csv_rows = ["date,price,target_position,effective_position,equity"]
     for i in range(len(dates)):
-        csv_rows.append(f"{dates[i]},{prices[i]:.6f},{positions[i]:.6f},{equity[i]:.6f}")
+        csv_rows.append(
+            f"{dates[i]},{prices[i]:.6f},{target_positions[i]:.6f},{bt.effective_positions[i]:.6f},{equity[i]:.6f}"
+        )
+
+    forward_sim = None
+    if bool(params.get("enableForwardSim", False)):
+        forward_sim = _forward_simulate(prediction, params)
 
     return {
         "equityCurve": equity_curve,
@@ -342,4 +392,5 @@ def run_backtest(prediction: Dict, params: Dict) -> Dict:
         "annotations": annotations,
         "buyHoldEquity": buy_hold_equity,
         "csv": "\n".join(csv_rows),
+        "forwardSimulation": forward_sim,
     }
