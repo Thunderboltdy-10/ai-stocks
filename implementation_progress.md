@@ -1,5 +1,79 @@
 # Nuclear Redesign: Implementation Progress
 
+## Date: February 24, 2026 (Iteration: Anti-Overfit Generalization Hardening)
+
+### What changed
+
+1. Added reusable symbol-universe presets:
+- New file: `python-ai-service/utils/symbol_universe.py`
+- Presets now used by train/backtest scripts (`core5`, `holdout5`, `intraday10`, `daily15`, `core10`).
+- Goal: stop defaulting to a narrow fixed 5-symbol loop.
+
+2. Added metadata-based variant quality scoring:
+- New file: `python-ai-service/inference/variant_quality.py`
+- Scores each variant from holdout metadata (`dir_acc`, `pred_std`, `net_return`, `net_sharpe`, `positive_pct`, `wfe`).
+- Exposes hard pass/fail checks to reject weak or stale variants.
+
+3. Hardened auto variant routing:
+- Updated `python-ai-service/inference/variant_router.py`
+- Registry variants are now accepted only if they pass quality checks.
+- Fallback candidate ranking now includes quality score/penalty, not just raw return-based metadata terms.
+
+4. Upgraded registry builders:
+- Updated:
+  - `python-ai-service/scripts/build_intraday_variant_registry.py`
+  - `python-ai-service/scripts/build_daily_variant_registry.py`
+- New behavior:
+  - supports `--symbol-set` presets
+  - embeds variant quality diagnostics (`quality_pass`, `quality_score`, reasons, metrics)
+  - adds alpha hit-rate terms to selection score so one outlier window cannot dominate.
+
+5. Upgraded matrix scripts to diversified defaults:
+- Updated:
+  - `python-ai-service/scripts/run_intraday_auto_matrix.py`
+  - `python-ai-service/scripts/run_daily_auto_matrix.py`
+  - `python-ai-service/scripts/run_intraday_hourly_matrix.py`
+  - `python-ai-service/scripts/run_daily_matrix.py`
+- These now support `--symbol-set` and default to broader universes (`intraday10` / `daily15`).
+
+6. Added hard generalization gate:
+- New file: `python-ai-service/scripts/run_generalization_gate.py`
+- Runs core vs holdout groups across multiple windows and returns `gate_passed` plus checks:
+  - holdout mean alpha threshold
+  - holdout alpha hit-rate threshold
+  - core-holdout generalization gap threshold
+  - holdout worst-alpha guardrail
+
+### Runs completed this iteration
+
+1. Registry rebuilds:
+- `experiments/intraday_variant_registry_matrix_20260224_235756.csv`
+- `experiments/daily_variant_registry_matrix_20260224_235844.csv`
+
+2. Generalization gate (daily):
+- `experiments/generalization_gate_daily_20260224_235926.json`
+- `experiments/generalization_matrix_daily_20260224_235926.csv`
+- Result: `gate_passed=false`
+- Core mean alpha: `+0.0080`
+- Holdout mean alpha: `+0.0474`
+- Holdout hit rate: `0.333` (failed threshold `0.45`)
+
+3. Generalization gate (intraday):
+- `experiments/generalization_gate_intraday_20260224_235907.json`
+- `experiments/generalization_matrix_intraday_20260224_235907.csv`
+- Result: `gate_passed=false`
+- Core mean alpha: `-0.0221`
+- Holdout mean alpha: `-0.0257`
+- Holdout hit rate: `0.320` (failed threshold `0.40`)
+
+### Interpretation
+
+- This iteration was focused on preventing false confidence from a small hand-picked basket.
+- The new gate correctly blocks acceptance: daily/intraday currently fail robustness checks.
+- Intraday remains the main weak leg and needs further model/strategy iteration.
+
+---
+
 ## Date: February 23, 2026
 
 ## Ralph Loop Iteration: GBM-First Rewrite Stabilization
@@ -1389,3 +1463,287 @@ During training run, model experienced **VARIANCE COLLAPSE** at epoch 35:
 
 - Multiple defensive-regime variants were tested and rejected because they improved some weak windows but degraded AAPL and/or TSLA materially.
 - The current accepted state prioritizes stronger aggregate performance while preserving short-window capability and execution realism.
+
+---
+
+## February 24, 2026 - Ralph Loop Iteration (Intraday Stabilization + GPU Retrains)
+
+### Core fixes shipped
+
+1. Intraday execution correctness:
+   - `execution_backtester.py` now imports `pandas` for day-boundary logic.
+   - financing costs (margin + short borrow) now scale by `annualization_factor` instead of fixed `/252`.
+   - day-trading benchmark path now supports flat-overnight behavior when `flat_at_day_end=True`.
+
+2. Interval-aware runtime profile:
+   - new `utils/timeframe.py` with:
+     - `annualization_factor_for_interval()`
+     - `execution_profile()`
+     - intraday/day detection
+   - integrated into:
+     - `run_backtest.py`
+     - `service/prediction_service.py`
+
+3. Intraday model/control plumbing:
+   - API payload now supports:
+     - `modelVariant`, `dataInterval`, `dataPeriod`
+   - `/ai` page now exposes interval/period/model-variant controls.
+   - backtest + forward simulation now read interval metadata and apply intraday execution defaults automatically.
+
+4. Cost semantics fix:
+   - API backtest inputs are now interpreted safely:
+     - bps-style UI values (e.g. `0.5`) converted to decimal pct
+     - decimal inputs still supported.
+
+5. New intraday experimentation modules/scripts:
+   - `inference/intraday_signal.py` (intraday hybrid signal logic).
+   - `scripts/run_intraday_hourly_matrix.py` updated with:
+     - `--target-horizon`
+     - `--commission`, `--slippage`
+     - explicit intraday matrix generation.
+
+### Validation performed
+
+- `python -m compileall` on all changed backend files: passed.
+- `pytest tests/test_data_integrity.py tests/test_feature_count.py -q`: `21 passed`.
+- frontend lint on changed files: passed.
+- API smoke for intraday prediction/backtest: passed.
+
+### GPU training/backtest runs (intraday 1h, 5 symbols)
+
+Symbols: `AAPL, TSLA, XOM, JPM, KO`
+
+- Full GPU retrain + matrix:
+  - `experiments/intraday_hourly_matrix_20260224_082850.csv`
+- Post-iteration no-retrain validation matrix:
+  - `experiments/intraday_hourly_matrix_20260224_083237.csv`
+
+Observed pattern:
+- AAPL/JPM intraday alpha is positive on most tested windows.
+- TSLA/XOM/KO remain inconsistent (not yet robustly beating intraday buy-hold across 1y/6m/3m/1m windows).
+- Sharpe improved in several short windows, but not yet at target robustness.
+
+### Current accepted intraday state
+
+- Keep interval-aware intraday execution and cost semantics fixes.
+- Keep intraday GPU training path with `target_horizon=3` for 1h models.
+- Keep matrix script and `/ai` intraday controls for fast manual iteration.
+
+### Next loop priorities
+
+1. Add intraday-specific feature set (time-of-day/session features) and retrain.
+2. Add explicit no-trade/meta-label thresholding tied to realized execution drag.
+3. Evaluate 15-symbol breadth after intraday feature update (not only 5-symbol subset).
+
+---
+
+## February 24, 2026 - Ralph Loop Iteration (Bank-Style Diagnostics + AI Cockpit Expansion)
+
+### Functionality added
+
+1. Python backtest diagnostics contract:
+   - `service/prediction_service.py` now returns `diagnostics` with:
+     - rolling telemetry (rolling Sharpe, rolling alpha, drawdown, exposure)
+     - monthly strategy vs buy-hold returns
+     - action breakdown (count/win-rate/avg pnl/total pnl)
+     - intraday hourly buckets (avg return, avg position, trade count)
+     - risk stats (exposure mean/std, tail loss, CVaR, best/worst bar)
+
+2. CLI backtest reporting expanded:
+   - `run_backtest.py` now saves:
+     - `diagnostics.json`
+     - `risk_diagnostics.png`
+     - `trade_diagnostics.png`
+     - `intraday_hour_profile.png` (intraday)
+     - `monthly_diagnostics.csv`, `hourly_diagnostics.csv`, `action_diagnostics.csv`
+
+3. `/ai` page transformed into control + diagnostics cockpit:
+   - added preset modes (daily/intraday),
+   - expanded execution controls (commission, slippage, min position change, annualization override, flat-at-day-end),
+   - added diagnostics panels:
+     - rolling Sharpe/alpha/drawdown chart
+     - strategy vs buy-hold area chart
+     - monthly alpha bars
+     - intraday hour return/trade profile
+     - action quality table + risk cards
+
+### Validation
+
+- Python compile checks passed on edited backend files.
+- Frontend lint passed (`app/(root)/ai/page.tsx`, `types/ai.ts`).
+- API smoke test confirms diagnostics payload in `/api/backtest`.
+- Intraday 5-symbol matrix rerun after changes:
+  - `experiments/intraday_hourly_matrix_20260224_084237.csv`
+  - performance profile remained consistent with prior baseline (no regression from diagnostics/UI expansion).
+
+## February 24, 2026 - Ralph Loop Iteration (Cost-Aware Retraining + 5-Symbol Daily/Intraday Matrix)
+
+### Environment / execution
+
+- All Python runs executed in `ai-stocks` (`conda run -n ai-stocks ...`).
+- GPU path validated and used for XGBoost (`device='cuda'`, `tree_method='hist'`).
+
+### Backend updates shipped in this loop
+
+1. Cost-aware validation metrics in walk-forward:
+   - `validation/walk_forward.py`
+   - added cost-adjusted simulated trade metrics (`net_sharpe`, `net_return`, `turnover`) to `evaluate_predictions()`.
+   - added `eval_kwargs` passthrough in `run_walk_forward_validation()`.
+
+2. Interval-aware trainer objective changes:
+   - `training/train_gbm.py`
+   - intraday objective now explicitly optimizes cost-aware metrics.
+   - daily objective restored to previous long-horizon behavior after v3 regression.
+   - walk-forward / holdout evaluations now include annualization + trading-cost context.
+
+3. Execution policy hardening:
+   - `inference/signal_policy.py`
+   - intraday search now uses stricter threshold quantiles and stronger turnover penalty.
+   - validation-edge checks tightened for intraday policy enablement.
+
+4. Intraday risk/short controls:
+   - `inference/regime_ensemble.py`
+   - stricter intraday short-permission logic and trend-strength short-cap scaling.
+   - interval parameter added to short safety filter call sites.
+
+5. Intraday strategy refinements:
+   - `inference/intraday_signal.py`
+   - stronger cost hurdle, higher activation threshold, tighter short scaling, stronger churn deadband.
+
+6. API/backtest reliability:
+   - `service/prediction_service.py`
+   - recursive finite-number sanitizer added to avoid NaN/Inf payload issues in frontend fetches.
+   - intraday default `maxShort` lowered to `0.2`.
+
+7. Timeframe defaults and scripts:
+   - `scripts/run_intraday_hourly_matrix.py`
+     - default `target_horizon=1`, default `max_short=0.2`, added `intraday_2w` window.
+   - new `scripts/run_daily_matrix.py` to train+backtest daily 5-symbol matrices.
+
+8. Frontend preset update:
+   - `app/(root)/ai/page.tsx`
+   - intraday preset `maxShort` reduced from `0.8` to `0.2`.
+
+### Validation checks
+
+- `python -m compileall` on modified backend modules: passed.
+- `pytest tests/test_data_integrity.py tests/test_feature_count.py -q`: `21 passed`.
+- frontend lint on edited page: passed.
+
+### Experiments run and outputs
+
+#### Intraday retrain matrix (new model variant)
+
+- Command: `python scripts/run_intraday_hourly_matrix.py --symbols AAPL,TSLA,XOM,JPM,KO --n-trials 5 --model-suffix intraday_1h_v3 --overwrite ...`
+- Output: `python-ai-service/experiments/intraday_hourly_matrix_20260224_192407.csv`
+
+#### Intraday backtest-only matrix (same models, updated defaults)
+
+- Output: `python-ai-service/experiments/intraday_hourly_matrix_20260224_194331.csv`
+
+#### Daily retrain matrix (v3)
+
+- Output: `python-ai-service/experiments/daily_matrix_20260224_193610.csv`
+- Train summary: `python-ai-service/experiments/daily_train_summary_20260224_193610.json`
+
+#### Daily retrain matrix after daily-objective correction (v4)
+
+- Output: `python-ai-service/experiments/daily_matrix_20260224_195205.csv`
+- Train summary: `python-ai-service/experiments/daily_train_summary_20260224_195205.json`
+
+### Metric snapshot (5 symbols, matrix means)
+
+- Intraday baseline (older): `intraday_hourly_matrix_20260224_185348.csv`
+  - mean alpha: `-0.0354`
+  - mean strategy return: `-0.0229`
+
+- Intraday updated (latest non-collapsed): `intraday_hourly_matrix_20260224_194331.csv`
+  - mean alpha: `-0.0146`
+  - mean strategy return: `-0.0067`
+  - improvement vs old baseline:
+    - alpha: `+0.0208`
+    - strategy return: `+0.0163`
+
+- Daily v3: `daily_matrix_20260224_193610.csv`
+  - mean alpha: `+0.0064`
+  - mean strategy return: `+0.4105`
+
+- Daily v4 (accepted): `daily_matrix_20260224_195205.csv`
+  - mean alpha: `+0.0134`
+  - mean strategy return: `+0.4183`
+  - vs v3:
+    - alpha: `+0.0070`
+    - strategy return: `+0.0078`
+
+### Current accepted state after this loop
+
+- Intraday accepted variant: `gbm_intraday_1h_v3` with lower short cap defaults (`0.2`) and cost-aware policy calibration.
+- Daily accepted variant: `gbm_daily_v4` (daily objective reverted to long-horizon scoring behavior).
+- New reusable matrix scripts are now available for both intraday and daily loops.
+
+### Remaining gaps observed
+
+- Intraday still not robustly positive on all symbols/windows (notably TSLA/XOM/KO in 1y windows).
+- Daily cross-symbol robustness improved vs v3 but still mixed by window/symbol (AAPL remains weak).
+
+## February 24, 2026 - Ralph Loop Iteration (Core vs Unseen Robustness Gate)
+
+### What changed in this iteration
+
+1. Intraday execution/profile refactor (symbol-agnostic):
+- `python-ai-service/utils/timeframe.py`
+  - moved intraday profile to continuous exposure mode (no forced EOD flatten).
+  - tuned core/overlay/regime defaults for higher trend participation.
+- `python-ai-service/evaluation/execution_backtester.py`
+  - added `day_end_flatten_fraction` support for partial/optional EOD flatten behavior.
+- `python-ai-service/run_backtest.py`, `python-ai-service/service/prediction_service.py`, `python-ai-service/app.py`, `types/ai.ts`
+  - wired new execution metadata/params through API + backtest path.
+
+2. Signal/policy updates:
+- `python-ai-service/inference/intraday_signal.py`
+  - added trend-breakout component and adaptive turnover deadband.
+- `python-ai-service/inference/signal_policy.py`
+  - tightened intraday policy search; capped intraday `min_position_change` to prevent no-trade lockups.
+- `python-ai-service/inference/regime_ensemble.py`
+  - stricter short safety in intraday with bullish-regime short suppression.
+  - intraday macro-bull long floor for regime exposure.
+
+3. Trainer stability:
+- `python-ai-service/training/train_gbm.py`
+  - reverted intraday objective back to stable `reg:squarederror`.
+  - removed intraday tuning knobs that caused no-split/collapsed behavior (`gamma/max_delta_step` search).
+- `python-ai-service/validation/walk_forward.py`
+  - hardened `_safe_corr` for zero-variance vectors (reduces warning noise).
+
+4. Variant-selection and automation:
+- `python-ai-service/scripts/build_intraday_variant_registry.py`
+- `python-ai-service/scripts/build_daily_variant_registry.py`
+  - registry selection now uses composite score with alpha priority, not raw return only.
+
+### Matrices and robustness outputs generated
+
+Core set (`AAPL, TSLA, XOM, JPM, KO`):
+- Intraday auto matrix:
+  - `python-ai-service/experiments/intraday_auto_matrix_20260224_234207.csv`
+  - aggregate: mean strategy return `0.0718`, mean buy-hold `0.0927`, mean alpha `-0.0209`, alpha hit-rate `0.32`
+- Daily auto matrix:
+  - `python-ai-service/experiments/daily_auto_matrix_20260224_234045.csv`
+  - aggregate: mean strategy return `0.4265`, mean buy-hold `0.4058`, mean alpha `+0.0207`, alpha hit-rate `0.40`
+
+Out-of-set unseen symbols (`AMZN, MSFT, NVDA, PFE, WMT`):
+- Intraday train+matrix:
+  - `python-ai-service/experiments/intraday_hourly_matrix_20260224_233420.csv`
+  - aggregate: mean strategy return `0.0097`, mean buy-hold `0.0340`, mean alpha `-0.0243`, alpha hit-rate `0.32`
+- Daily train+matrix:
+  - `python-ai-service/experiments/daily_matrix_20260224_234019.csv`
+  - aggregate: mean strategy return `0.7366`, mean buy-hold `0.6890`, mean alpha `+0.0476`, alpha hit-rate `0.333`
+
+Execution parameter sweep (core set, intraday):
+- `python-ai-service/experiments/intraday_param_sweep_20260224_234339.csv`
+- best core-only combo found: `max_long=2.2`, `max_short=0.1` with mean alpha `-0.0078`
+- but this setting degraded unseen intraday alpha (worse than default), so it is not accepted as global default.
+
+### Current acceptance status (after robustness gate)
+
+- Daily pipeline: accepted as the stronger path in this loop (positive mean alpha on both core and unseen sets).
+- Intraday pipeline: improved but not yet acceptable for robust alpha across core+unseen sets; remains the primary gap.

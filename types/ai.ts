@@ -84,6 +84,11 @@ export interface JobEvent {
 export interface PredictionParams {
   symbol: string;
   modelId?: string;
+  modelVariant?: string;
+  dataInterval?: string;
+  dataPeriod?: string;
+  maxLong?: number;
+  maxShort?: number;
   horizon: number;
   daysOnChart: number;
   smoothing: "none" | "ema" | "moving-average";
@@ -122,6 +127,12 @@ export interface PredictionResult {
     prices: number[];
     returns: number[];
     positions: number[];
+    actions?: Array<{
+      date: string;
+      action: "BUY" | "SELL" | "SHORT" | "COVER" | "HOLD";
+      price: number;
+      targetPosition: number;
+    }>;
   };
   metadata: {
     modelId: string;
@@ -130,6 +141,21 @@ export interface PredictionResult {
     sellThreshold: number;
     horizon: number;
     tradeShareFloor?: number;
+    modelQualityGatePassed?: boolean;
+    executionMode?: string;
+    maxLong?: number;
+    maxShort?: number;
+    mlOverlayWeight?: number;
+    directionConfidenceMean?: number;
+    modelVariantRequested?: string;
+    modelVariant?: string;
+    dataInterval?: string;
+    dataPeriod?: string;
+    isIntraday?: boolean;
+    annualizationFactor?: number;
+    flatAtDayEnd?: boolean;
+    dayEndFlattenFraction?: number;
+    recommendedMinPositionChange?: number;
   };
 }
 
@@ -156,6 +182,11 @@ export interface BacktestParams {
   initialCapital: number;
   maxLong: number;
   maxShort: number;
+  dataInterval?: string;
+  annualizationFactor?: number;
+  flatAtDayEnd?: boolean;
+  dayEndFlattenFraction?: number;
+  minPositionChange?: number;
   commission: number;
   slippage: number;
   enableForwardSim: boolean;
@@ -167,10 +198,52 @@ export interface BacktestResult {
   priceSeries: Array<{ date: string; price: number }>;
   tradeLog: TradeRecord[];
   metrics: BacktestMetrics;
+  diagnostics?: BacktestDiagnostics;
   annotations: TradeMarker[];
   buyHoldEquity?: Array<{ date: string; equity: number }>;
   csv?: string;
   forwardSimulation?: ForwardSimResult;
+}
+
+export interface BacktestDiagnostics {
+  rolling: Array<{
+    date: string;
+    equity: number;
+    buyHoldEquity: number;
+    drawdown: number;
+    rollingSharpe: number;
+    rollingAlpha: number;
+    position: number;
+    strategyReturn: number;
+    buyHoldReturn: number;
+  }>;
+  monthly: Array<{
+    period: string;
+    strategyReturn: number;
+    buyHoldReturn: number;
+    alpha: number;
+  }>;
+  actionBreakdown: Array<{
+    action: string;
+    count: number;
+    winRate: number;
+    avgPnl: number;
+    totalPnl: number;
+  }>;
+  hourly: Array<{
+    hour: number;
+    avgStrategyReturn: number;
+    avgPosition: number;
+    tradeCount: number;
+  }>;
+  risk: {
+    exposureMean: number;
+    exposureStd: number;
+    tailLossP95: number;
+    cvar95: number;
+    bestBar: number;
+    worstBar: number;
+  };
 }
 
 export interface ForwardSimResult {
@@ -180,12 +253,45 @@ export interface ForwardSimResult {
   sharpe: number;
   maxDrawdown: number;
   trades: number;
+  actions?: Array<{
+    id: string;
+    date: string;
+    action:
+      | "BUY"
+      | "SELL"
+      | "SHORT"
+      | "COVER"
+      | "COVER_BUY"
+      | "SELL_SHORT"
+      | "EOD_FLAT_SELL"
+      | "EOD_FLAT_COVER"
+      | "EOD_REDUCE_SELL"
+      | "EOD_REDUCE_COVER";
+    price: number;
+    shares: number;
+    targetWeight: number;
+    effectiveWeightAfter: number;
+    notes: string;
+  }>;
+  markers?: TradeMarker[];
+  totalCosts?: number;
+  borrowFee?: number;
 }
 
 export interface TradeRecord {
   id: string;
   date: string;
-  action: "BUY" | "SELL";
+  action:
+    | "BUY"
+    | "SELL"
+    | "SHORT"
+    | "COVER"
+    | "COVER_BUY"
+    | "SELL_SHORT"
+    | "EOD_FLAT_SELL"
+    | "EOD_FLAT_COVER"
+    | "EOD_REDUCE_SELL"
+    | "EOD_REDUCE_COVER";
   price: number;
   shares: number;
   position: number;
@@ -203,7 +309,12 @@ export interface TradeRecord {
 
 export interface BacktestMetrics {
   cumulativeReturn: number;
+  cumulativeReturnPct?: number;
+  buyHoldReturnPct?: number;
+  excessReturnPct?: number;
   sharpeRatio: number;
+  sortinoRatio?: number;
+  calmarRatio?: number;
   maxDrawdown: number;
   winRate: number;
   averageTradeProfit: number;
@@ -212,6 +323,8 @@ export interface BacktestMetrics {
   correlation: number;
   smape?: number;
   rmse?: number;
+  transactionCosts?: number;
+  borrowFee?: number;
 }
 
 export interface ScenarioPoint {

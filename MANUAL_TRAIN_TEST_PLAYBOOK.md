@@ -1,16 +1,8 @@
 # Manual Train/Test Playbook
 
-If you want to run the full workflow manually with minimal friction, use this file.
+This is the fastest manual workflow for daily + intraday validation.
 
-## 0) One-time
-
-Make sure NVIDIA driver and CUDA are visible:
-
-```bash
-nvidia-smi
-```
-
-## 1) Start every session like this
+## 1) Start Session
 
 ```bash
 eval "$($HOME/miniconda3/bin/conda shell.bash hook)"
@@ -18,93 +10,140 @@ conda activate ai-stocks
 cd /home/thunderboltdy/ai-stocks/python-ai-service
 ```
 
-## 2) Quick GPU check
+## 2) Confirm GPU
 
 ```bash
+nvidia-smi
 python - <<'PY'
 import xgboost as xgb, numpy as np
 X=np.random.randn(256,8).astype('float32')
 y=np.random.randn(256).astype('float32')
 m=xgb.XGBRegressor(device='cuda',tree_method='hist',n_estimators=8,objective='reg:squarederror')
 m.fit(X,y,verbose=False)
-print('xgboost_cuda_ok')
+print("xgboost_cuda_ok")
 PY
 ```
 
-## 3) Train one symbol
+## 3) Train Daily Model
 
 ```bash
-python -m training.train_gbm AAPL --overwrite --n-trials 10 --no-lgb --target-horizon 1 --max-features 50
+python -m training.train_gbm AAPL \
+  --overwrite --n-trials 10 --no-lgb \
+  --target-horizon 1 --max-features 55 \
+  --data-period max --data-interval 1d
 ```
 
-Inspect quality quickly:
+## 4) Train Intraday Hourly Model
+
+```bash
+python -m training.train_gbm AAPL \
+  --overwrite --n-trials 10 --no-lgb \
+  --target-horizon 1 --max-features 55 \
+  --data-period 730d --data-interval 1h \
+  --model-suffix intraday_1h_v5
+```
+
+## 5) Validate Training Metadata
 
 ```bash
 python - <<'PY'
 import json
-p='saved_models/AAPL/gbm/training_metadata.json'
-with open(p) as f:m=json.load(f)
-h=m['holdout']['ensemble']
-print('dir_acc',h['dir_acc'])
-print('pred_std',h['pred_std'])
-print('positive_pct',h['positive_pct'])
-print('wfe',m['wfe'])
-print('gpu',m['runtime'])
+for p in [
+  "saved_models/AAPL/gbm/training_metadata.json",
+  "saved_models/AAPL/gbm_intraday_1h_v5/training_metadata.json",
+]:
+  with open(p) as f:
+    m=json.load(f)
+  h=m["holdout"]["ensemble"]
+  print("\\n", p)
+  print("dir_acc:", round(h["dir_acc"],4), "pred_std:", round(h["pred_std"],6), "wfe:", round(m["wfe"],2))
+  print("runtime:", m.get("runtime",{}))
 PY
 ```
 
-## 4) Backtest one symbol (long window)
+## 6) Backtest Daily
 
 ```bash
-python run_backtest.py --symbol AAPL --start 2020-01-01 --end 2024-12-31 --warmup-days 252 --min-eval-days 20
+python run_backtest.py \
+  --symbol AAPL \
+  --start 2020-01-01 --end 2024-12-31 \
+  --max-long 1.6 --max-short 0.25 \
+  --warmup-days 252 --min-eval-days 20
 ```
 
-## 5) Backtest one symbol (short/weeks window)
+## 7) Backtest Intraday
 
 ```bash
-python run_backtest.py --symbol AAPL --start 2024-11-15 --end 2024-12-31 --warmup-days 252 --min-eval-days 20
+python run_backtest.py \
+  --symbol AAPL \
+  --model-variant auto_intraday \
+  --data-period 730d --data-interval 1h \
+  --start "2025-01-01 00:00:00" --end "2026-02-20 16:00:00" \
+  --max-long 1.4 --max-short 0.2 \
+  --commission 0.0001 --slippage 0.0001 \
+  --warmup-days 40 --min-eval-days 10
 ```
 
-## 6) Train 5 diverse symbols
+## 8) Train + Test Intraday Universe (10 Symbols)
 
 ```bash
-for s in AAPL XOM JPM KO TSLA; do
-  python -m training.train_gbm "$s" --overwrite --n-trials 10 --no-lgb --target-horizon 1 --max-features 50
-done
+python scripts/run_intraday_hourly_matrix.py \
+  --symbol-set intraday10 \
+  --n-trials 3 --max-features 55 \
+  --period 730d --interval 1h \
+  --model-suffix intraday_1h_v5 \
+  --target-horizon 1 \
+  --max-short 0.2 \
+  --commission 0.0001 --slippage 0.0001 \
+  --overwrite
 ```
 
-## 7) Run 5-symbol multi-window matrix
+## 9) Build Variant Registries + Auto Matrices
 
 ```bash
-python - <<'PY'
-from pathlib import Path
-import pandas as pd
-from run_backtest import BacktestConfig, UnifiedBacktester
-
-symbols=['AAPL','XOM','JPM','KO','TSLA']
-windows=[
-  ('2020-01-01','2024-12-31','long_5y'),
-  ('2023-01-01','2024-12-31','mid_2y'),
-  ('2024-10-01','2024-12-31','short_q4_2024'),
-  ('2024-11-15','2024-12-31','short_7w_2024'),
-]
-rows=[]
-for sym in symbols:
-  for start,end,label in windows:
-    cfg=BacktestConfig(symbol=sym,start=start,end=end,warmup_days=252,min_eval_days=20)
-    r=UnifiedBacktester(cfg).run()
-    r['window']=label
-    rows.append(r)
-
-df=pd.DataFrame(rows)
-out=Path('experiments')/f'manual_matrix_{pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")}.csv'
-df.to_csv(out,index=False)
-print('saved',out)
-print(df[['symbol','window','alpha','strategy_return','buy_hold_return','sharpe_ratio','n_days']])
-PY
+python scripts/build_intraday_variant_registry.py --symbol-set intraday10
+python scripts/build_daily_variant_registry.py --symbol-set daily15
+python scripts/run_intraday_auto_matrix.py --symbol-set intraday10
+python scripts/run_daily_auto_matrix.py --symbol-set daily15
 ```
 
-## 8) Open API + frontend to inspect visually
+## 10) Train + Test Daily Universe (15 Symbols)
+
+```bash
+python scripts/run_daily_matrix.py \
+  --symbol-set daily15 \
+  --n-trials 2 --max-features 50 \
+  --period max --interval 1d \
+  --model-suffix daily_v4 \
+  --max-long 1.6 --max-short 0.6 \
+  --commission 0.0005 --slippage 0.0003 \
+  --target-horizon 1 \
+  --overwrite
+```
+
+## 11) Generalization Gate (Required)
+
+```bash
+python scripts/run_generalization_gate.py \
+  --interval 1h --period 730d \
+  --max-long 1.4 --max-short 0.2 \
+  --commission 0.0001 --slippage 0.0001 \
+  --warmup-days 40 --min-eval-days 15
+
+python scripts/run_generalization_gate.py \
+  --interval 1d --period max \
+  --max-long 1.6 --max-short 0.6 \
+  --commission 0.0005 --slippage 0.0003 \
+  --warmup-days 252 --min-eval-days 20
+```
+
+Gate outputs:
+- `experiments/generalization_gate_intraday_*.json`
+- `experiments/generalization_gate_daily_*.json`
+- `experiments/generalization_matrix_intraday_*.csv`
+- `experiments/generalization_matrix_daily_*.csv`
+
+## 12) Launch API + Frontend
 
 Terminal 1:
 
@@ -120,23 +159,18 @@ cd /home/thunderboltdy/ai-stocks
 npm run dev
 ```
 
-Then open `http://localhost:3000/ai`.
+Open `http://localhost:3000/ai` and set:
+- `Interval`: `1h`
+- `Period`: `730d`
+- `Model Variant`: `auto_intraday`
 
-## 9) Where outputs are
+## 13) Where Files Go
 
-- Model artifacts: `python-ai-service/saved_models/{SYMBOL}/gbm/`
-- Backtest artifacts: `python-ai-service/backtest_results/{SYMBOL}_*/`
-- Experiment CSV summaries: `python-ai-service/experiments/`
-
-## 10) Debug checklist
-
-- Training slow or CPU-like:
-  - verify `conda activate ai-stocks`
-  - run `nvidia-smi`
-  - run GPU smoke command above
-- Backtest fails on short ranges:
-  - increase `warmup-days`
-  - confirm `min-eval-days` <= available trading days
-- Weird execution behavior:
-  - inspect `trade_log.csv` in latest backtest folder
-  - check `blocked_reason` and `notes` fields
+- models: `python-ai-service/saved_models/`
+- backtest folders + `backtest_overview.png`: `python-ai-service/backtest_results/`
+- matrix csv outputs: `python-ai-service/experiments/`
+- extra diagnostics in each backtest folder:
+  - `diagnostics.json`
+  - `risk_diagnostics.png`
+  - `trade_diagnostics.png`
+  - `intraday_hour_profile.png` (intraday only)

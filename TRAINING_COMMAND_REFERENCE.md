@@ -1,10 +1,8 @@
-# Training Command Reference (GPU-First)
+# Training Command Reference (GPU + Intraday)
 
-Last updated: 2026-02-23
+Last updated: 2026-02-24
 
-This is the current, working command set for the GBM-first pipeline.
-
-## 1) Environment (always first)
+## 1) Start Session
 
 ```bash
 eval "$($HOME/miniconda3/bin/conda shell.bash hook)"
@@ -12,7 +10,7 @@ conda activate ai-stocks
 cd /home/thunderboltdy/ai-stocks/python-ai-service
 ```
 
-## 2) Verify GPU is actually used
+## 2) Verify GPU Is Active
 
 ```bash
 python - <<'PY'
@@ -24,93 +22,146 @@ m.fit(X,y,verbose=False)
 print('xgboost_cuda_ok')
 PY
 
-nvidia-smi --query-gpu=name,utilization.gpu,memory.used --format=csv,noheader
+nvidia-smi --query-gpu=name,utilization.gpu,memory.used,memory.total --format=csv,noheader
 ```
 
-## 3) Train one symbol (example: AAPL)
+## 3) Train Daily GBM (baseline)
 
 ```bash
-python -m training.train_gbm AAPL --overwrite --n-trials 10 --no-lgb --target-horizon 1 --max-features 50
+python -m training.train_gbm AAPL \
+  --overwrite --n-trials 10 --no-lgb \
+  --target-horizon 1 --max-features 55 \
+  --data-period max --data-interval 1d
+```
+
+## 4) Train Intraday Hourly GBM (day-trading profile)
+
+```bash
+python -m training.train_gbm AAPL \
+  --overwrite --n-trials 10 --no-lgb \
+  --target-horizon 1 --max-features 55 \
+  --data-period 730d --data-interval 1h \
+  --model-suffix intraday_1h_v5
+```
+
+Artifacts:
+- daily: `saved_models/{SYMBOL}/gbm/`
+- intraday: `saved_models/{SYMBOL}/gbm_intraday_1h_v5/`
+
+## 5) Backtest Daily
+
+```bash
+python run_backtest.py \
+  --symbol AAPL \
+  --start 2020-01-01 --end 2024-12-31 \
+  --max-long 1.6 --max-short 0.25 \
+  --warmup-days 252 --min-eval-days 20
+```
+
+## 6) Backtest Intraday (flat-at-day-end auto-enabled)
+
+```bash
+python run_backtest.py \
+  --symbol AAPL \
+  --model-variant auto_intraday \
+  --data-period 730d --data-interval 1h \
+  --start "2025-01-01 00:00:00" --end "2026-02-20 16:00:00" \
+  --max-long 1.4 --max-short 0.2 \
+  --commission 0.0001 --slippage 0.0001 \
+  --warmup-days 40 --min-eval-days 10
 ```
 
 Notes:
-- `--no-lgb` is intentional here because LightGBM GPU backend is unavailable in this environment.
-- XGBoost uses CUDA (`device=cuda`) and remains the primary model.
+- `commission`/`slippage` here are decimal percentages (1 bps = `0.0001`).
+- API `/ai` page fields are in bps-style; backend converts to decimal safely.
 
-## 4) Backtest one symbol (long + short windows)
-
-Long window:
+## 7) Run Intraday Matrix (10-Symbol Universe, train + backtest)
 
 ```bash
-python run_backtest.py --symbol AAPL --start 2020-01-01 --end 2024-12-31
+python scripts/run_intraday_hourly_matrix.py \
+  --symbol-set intraday10 \
+  --n-trials 3 --max-features 55 \
+  --period 730d --interval 1h \
+  --model-suffix intraday_1h_v5 \
+  --target-horizon 1 \
+  --max-short 0.2 \
+  --commission 0.0001 --slippage 0.0001 \
+  --overwrite
 ```
 
-Short window (weeks) with warmup enabled by default:
+No retrain (reuse existing artifacts):
 
 ```bash
-python run_backtest.py --symbol AAPL --start 2024-11-15 --end 2024-12-31 --warmup-days 252 --min-eval-days 20
+python scripts/run_intraday_hourly_matrix.py \
+  --symbol-set intraday10 \
+  --period 730d --interval 1h \
+  --model-suffix intraday_1h_v5 \
+  --target-horizon 1 \
+  --max-short 0.2 \
+  --commission 0.0001 --slippage 0.0001
 ```
 
-## 5) Full 5-symbol train loop
+## 8) Run Daily Matrix (15-Symbol Universe, train + backtest)
 
 ```bash
-for s in AAPL XOM JPM KO TSLA; do
-  python -m training.train_gbm "$s" --overwrite --n-trials 10 --no-lgb --target-horizon 1 --max-features 50
-  python - <<'PY' "$s"
-import json,sys
-sym=sys.argv[1]
-p=f'saved_models/{sym}/gbm/training_metadata.json'
-with open(p) as f:m=json.load(f)
-h=m['holdout']['ensemble']
-print(sym,'dir_acc',round(h['dir_acc'],4),'pred_std',round(h['pred_std'],6),'pos',round(h['positive_pct'],3),'wfe',round(m['wfe'],1),'gpu',m['runtime']['xgb_gpu_enabled'])
-PY
-done
+python scripts/run_daily_matrix.py \
+  --symbol-set daily15 \
+  --n-trials 2 --max-features 50 \
+  --period max --interval 1d \
+  --model-suffix daily_v4 \
+  --max-long 1.6 --max-short 0.6 \
+  --commission 0.0005 --slippage 0.0003 \
+  --target-horizon 1 \
+  --overwrite
 ```
-
-## 6) Full 5-symbol multi-window backtest matrix
-
-```bash
-python - <<'PY'
-from pathlib import Path
-import pandas as pd
-from run_backtest import BacktestConfig, UnifiedBacktester
-
-symbols=['AAPL','XOM','JPM','KO','TSLA']
-windows=[
-  ('2020-01-01','2024-12-31','long_5y'),
-  ('2023-01-01','2024-12-31','mid_2y'),
-  ('2024-10-01','2024-12-31','short_q4_2024'),
-  ('2024-11-15','2024-12-31','short_7w_2024'),
-]
-rows=[]
-for sym in symbols:
-  for start,end,label in windows:
-    cfg=BacktestConfig(symbol=sym,start=start,end=end,warmup_days=252,min_eval_days=20)
-    r=UnifiedBacktester(cfg).run()
-    r['window']=label
-    rows.append(r)
-
-df=pd.DataFrame(rows)
-out=Path('experiments')/f'multiwindow_{pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")}.csv'
-df.to_csv(out,index=False)
-print('saved:',out)
-print(df[['symbol','window','alpha','strategy_return','buy_hold_return','sharpe_ratio','n_days']])
-PY
-```
-
-## 7) API smoke test
+## 9) API / UI Smoke Test
 
 ```bash
 python app.py
-# New terminal:
+# new terminal
 curl http://localhost:8000/api/health
-curl -X POST http://localhost:8000/api/predict -H "Content-Type: application/json" -d '{"symbol":"AAPL","horizon":10,"daysOnChart":180,"fusion":{"mode":"weighted","regressorScale":15,"buyThreshold":0.3,"sellThreshold":0.45,"regimeFilters":{"bull":true,"bear":true}}}'
 ```
 
-## 8) Current architecture summary
+Frontend:
+- run `npm run dev` at repo root
+- open `http://localhost:3000/ai`
+- pick `dataInterval=1h`, `dataPeriod=730d`, `modelVariant=auto_intraday`
 
-- Training: `training/train_gbm.py` (Optuna + SHAP feature selection + purged CV)
-- Inference: GBM predictions + strict quality gate + regime fallback
-- Backtest: `evaluation/execution_backtester.py` (inventory-aware, no impossible sells)
-- CLI: `run_backtest.py` supports warmup-aware short-window evaluation
-- Service: `service/prediction_service.py` returns prediction + backtest + forward simulation
+## 10) Robustness Gate (Do Not Skip)
+
+```bash
+python scripts/build_intraday_variant_registry.py --symbol-set intraday10
+python scripts/build_daily_variant_registry.py --symbol-set daily15
+python scripts/run_intraday_auto_matrix.py --symbol-set intraday10
+python scripts/run_daily_auto_matrix.py --symbol-set daily15
+
+python scripts/run_generalization_gate.py \
+  --interval 1h --period 730d \
+  --max-long 1.4 --max-short 0.2 \
+  --commission 0.0001 --slippage 0.0001 \
+  --warmup-days 40 --min-eval-days 15
+
+python scripts/run_generalization_gate.py \
+  --interval 1d --period max \
+  --max-long 1.6 --max-short 0.6 \
+  --commission 0.0005 --slippage 0.0003 \
+  --warmup-days 252 --min-eval-days 20
+```
+
+Interpretation rule:
+- Do not accept a configuration if `gate_passed` is `false` in either daily or intraday JSON output.
+## 11) Output Locations
+
+- models: `python-ai-service/saved_models/{SYMBOL}/...`
+- backtests: `python-ai-service/backtest_results/{SYMBOL}_*/`
+- experiment matrices: `python-ai-service/experiments/*.csv`
+- plot pngs per backtest:
+  - `backtest_overview.png`
+  - `risk_diagnostics.png`
+  - `trade_diagnostics.png`
+  - `intraday_hour_profile.png` (intraday runs)
+- diagnostics data:
+  - `diagnostics.json`
+  - `monthly_diagnostics.csv`
+  - `hourly_diagnostics.csv`
+  - `action_diagnostics.csv`

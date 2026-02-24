@@ -12,7 +12,12 @@ import {
 const API_BASE = process.env.NEXT_PUBLIC_PYTHON_API_URL || "http://localhost:8000";
 
 async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
-  const response = await fetch(input, init);
+  let response: Response;
+  try {
+    response = await fetch(input, init);
+  } catch {
+    throw new Error(`NetworkError while calling Python API (${API_BASE}). Verify backend is running and CORS allows this origin.`);
+  }
   if (!response.ok) {
     const detail = await response.json().catch(() => ({}));
     const message = detail?.detail || detail?.error || response.statusText;
