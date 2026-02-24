@@ -122,6 +122,11 @@ def predict_with_gbm(
 
     if bundle.has_xgb():
         X_xgb = bundle.xgb_scaler.transform(X)
+        # Avoid device-mismatch fallback warnings at inference time when features are on CPU.
+        try:
+            bundle.xgb_model.set_params(device="cpu")
+        except Exception:
+            pass
         outputs["xgb"] = np.asarray(bundle.xgb_model.predict(X_xgb), dtype=float)
 
     if bundle.has_lgb():

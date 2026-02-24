@@ -9,7 +9,10 @@ logger = logging.getLogger(__name__)
 def fetch_stock_data(
     symbol: str, 
     period: str = "max",
-    min_required_days: int = 500
+    min_required_days: int = 500,
+    interval: str = "1d",
+    start: datetime | None = None,
+    end: datetime | None = None,
 ) -> pd.DataFrame:
     """
     Fetch historical stock data with minimum data requirement.
@@ -34,7 +37,7 @@ def fetch_stock_data(
     from datetime import datetime, timedelta
     import time
     
-    logger.info(f"Fetching data for {symbol} (period={period})")
+    logger.info(f"Fetching data for {symbol} (period={period}, interval={interval})")
     
     # Fetch data with retries and fallback periods
     df = pd.DataFrame()
@@ -44,8 +47,11 @@ def fetch_stock_data(
         # Create fresh ticker object each retry
         ticker = yf.Ticker(symbol)
         
-        # Try period-based first
-        df = ticker.history(period=period)
+        # Try period-based first unless explicit dates are provided.
+        if start is not None or end is not None:
+            df = ticker.history(start=start, end=end, interval=interval)
+        else:
+            df = ticker.history(period=period, interval=interval)
         
         if not df.empty:
             break
@@ -57,13 +63,13 @@ def fetch_stock_data(
         end_date = datetime.now()
         
         # Map period to years
-        period_years = {'max': 20, '10y': 10, '5y': 5, '2y': 2, '1y': 1}
+        period_years = {'max': 20, '10y': 10, '5y': 5, '2y': 2, '1y': 1, '730d': 2, '365d': 1, '180d': 1}
         years = period_years.get(period, 5)
         
         for try_years in [years, 10, 5, 2]:
             start_date = end_date - timedelta(days=365 * try_years)
             logger.info(f"Trying date range: {start_date.date()} to {end_date.date()}...")
-            df = ticker.history(start=start_date, end=end_date)
+            df = ticker.history(start=start_date, end=end_date, interval=interval)
             if not df.empty:
                 logger.info(f"Successfully fetched {len(df)} days with {try_years}y date range")
                 break
@@ -92,8 +98,9 @@ def fetch_stock_data(
         
         # Try fetching longer period if not already 'max'
         if period != 'max':
-            logger.info("Attempting to fetch 'max' period instead...")
-            df = ticker.history(period='max')
+            fallback_period = "max" if interval in {"1d", "1wk", "1mo"} else "730d"
+            logger.info("Attempting fallback period '%s'...", fallback_period)
+            df = ticker.history(period=fallback_period, interval=interval)
             df = df.dropna()
             df.index = pd.to_datetime(df.index)
             

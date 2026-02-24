@@ -1,6 +1,6 @@
-# Training Command Reference (GPU + Intraday)
+# Manual Train/Test Playbook
 
-Last updated: 2026-02-24
+This is the fastest manual workflow for daily + intraday validation.
 
 ## 1) Start Session
 
@@ -10,22 +10,21 @@ conda activate ai-stocks
 cd /home/thunderboltdy/ai-stocks/python-ai-service
 ```
 
-## 2) Verify GPU Is Active
+## 2) Confirm GPU
 
 ```bash
+nvidia-smi
 python - <<'PY'
 import xgboost as xgb, numpy as np
 X=np.random.randn(256,8).astype('float32')
 y=np.random.randn(256).astype('float32')
 m=xgb.XGBRegressor(device='cuda',tree_method='hist',n_estimators=8,objective='reg:squarederror')
 m.fit(X,y,verbose=False)
-print('xgboost_cuda_ok')
+print("xgboost_cuda_ok")
 PY
-
-nvidia-smi --query-gpu=name,utilization.gpu,memory.used,memory.total --format=csv,noheader
 ```
 
-## 3) Train Daily GBM (baseline)
+## 3) Train Daily Model
 
 ```bash
 python -m training.train_gbm AAPL \
@@ -34,7 +33,7 @@ python -m training.train_gbm AAPL \
   --data-period max --data-interval 1d
 ```
 
-## 4) Train Intraday Hourly GBM (day-trading profile)
+## 4) Train Intraday Hourly Model
 
 ```bash
 python -m training.train_gbm AAPL \
@@ -44,11 +43,25 @@ python -m training.train_gbm AAPL \
   --model-suffix intraday_1h_v5
 ```
 
-Artifacts:
-- daily: `saved_models/{SYMBOL}/gbm/`
-- intraday: `saved_models/{SYMBOL}/gbm_intraday_1h_v5/`
+## 5) Validate Training Metadata
 
-## 5) Backtest Daily
+```bash
+python - <<'PY'
+import json
+for p in [
+  "saved_models/AAPL/gbm/training_metadata.json",
+  "saved_models/AAPL/gbm_intraday_1h_v5/training_metadata.json",
+]:
+  with open(p) as f:
+    m=json.load(f)
+  h=m["holdout"]["ensemble"]
+  print("\\n", p)
+  print("dir_acc:", round(h["dir_acc"],4), "pred_std:", round(h["pred_std"],6), "wfe:", round(m["wfe"],2))
+  print("runtime:", m.get("runtime",{}))
+PY
+```
+
+## 6) Backtest Daily
 
 ```bash
 python run_backtest.py \
@@ -58,7 +71,7 @@ python run_backtest.py \
   --warmup-days 252 --min-eval-days 20
 ```
 
-## 6) Backtest Intraday (flat-at-day-end auto-enabled)
+## 7) Backtest Intraday
 
 ```bash
 python run_backtest.py \
@@ -71,11 +84,7 @@ python run_backtest.py \
   --warmup-days 40 --min-eval-days 10
 ```
 
-Notes:
-- `commission`/`slippage` here are decimal percentages (1 bps = `0.0001`).
-- API `/ai` page fields are in bps-style; backend converts to decimal safely.
-
-## 7) Run Intraday Matrix (10-Symbol Universe, train + backtest)
+## 8) Train + Test Intraday Universe (10 Symbols)
 
 ```bash
 python scripts/run_intraday_hourly_matrix.py \
@@ -89,19 +98,16 @@ python scripts/run_intraday_hourly_matrix.py \
   --overwrite
 ```
 
-No retrain (reuse existing artifacts):
+## 9) Build Variant Registries + Auto Matrices
 
 ```bash
-python scripts/run_intraday_hourly_matrix.py \
-  --symbol-set intraday10 \
-  --period 730d --interval 1h \
-  --model-suffix intraday_1h_v5 \
-  --target-horizon 1 \
-  --max-short 0.2 \
-  --commission 0.0001 --slippage 0.0001
+python scripts/build_intraday_variant_registry.py --symbol-set intraday10
+python scripts/build_daily_variant_registry.py --symbol-set daily15
+python scripts/run_intraday_auto_matrix.py --symbol-set intraday10
+python scripts/run_daily_auto_matrix.py --symbol-set daily15
 ```
 
-## 8) Run Daily Matrix (15-Symbol Universe, train + backtest)
+## 10) Train + Test Daily Universe (15 Symbols)
 
 ```bash
 python scripts/run_daily_matrix.py \
@@ -114,27 +120,10 @@ python scripts/run_daily_matrix.py \
   --target-horizon 1 \
   --overwrite
 ```
-## 9) API / UI Smoke Test
+
+## 11) Generalization Gate (Required)
 
 ```bash
-python app.py
-# new terminal
-curl http://localhost:8000/api/health
-```
-
-Frontend:
-- run `npm run dev` at repo root
-- open `http://localhost:3000/ai`
-- pick `dataInterval=1h`, `dataPeriod=730d`, `modelVariant=auto_intraday`
-
-## 10) Robustness Gate (Do Not Skip)
-
-```bash
-python scripts/build_intraday_variant_registry.py --symbol-set intraday10
-python scripts/build_daily_variant_registry.py --symbol-set daily15
-python scripts/run_intraday_auto_matrix.py --symbol-set intraday10
-python scripts/run_daily_auto_matrix.py --symbol-set daily15
-
 python scripts/run_generalization_gate.py \
   --interval 1h --period 730d \
   --max-long 1.4 --max-short 0.2 \
@@ -148,20 +137,40 @@ python scripts/run_generalization_gate.py \
   --warmup-days 252 --min-eval-days 20
 ```
 
-Interpretation rule:
-- Do not accept a configuration if `gate_passed` is `false` in either daily or intraday JSON output.
-## 11) Output Locations
+Gate outputs:
+- `experiments/generalization_gate_intraday_*.json`
+- `experiments/generalization_gate_daily_*.json`
+- `experiments/generalization_matrix_intraday_*.csv`
+- `experiments/generalization_matrix_daily_*.csv`
 
-- models: `python-ai-service/saved_models/{SYMBOL}/...`
-- backtests: `python-ai-service/backtest_results/{SYMBOL}_*/`
-- experiment matrices: `python-ai-service/experiments/*.csv`
-- plot pngs per backtest:
-  - `backtest_overview.png`
+## 12) Launch API + Frontend
+
+Terminal 1:
+
+```bash
+cd /home/thunderboltdy/ai-stocks/python-ai-service
+python app.py
+```
+
+Terminal 2:
+
+```bash
+cd /home/thunderboltdy/ai-stocks
+npm run dev
+```
+
+Open `http://localhost:3000/ai` and set:
+- `Interval`: `1h`
+- `Period`: `730d`
+- `Model Variant`: `auto_intraday`
+
+## 13) Where Files Go
+
+- models: `python-ai-service/saved_models/`
+- backtest folders + `backtest_overview.png`: `python-ai-service/backtest_results/`
+- matrix csv outputs: `python-ai-service/experiments/`
+- extra diagnostics in each backtest folder:
+  - `diagnostics.json`
   - `risk_diagnostics.png`
   - `trade_diagnostics.png`
-  - `intraday_hour_profile.png` (intraday runs)
-- diagnostics data:
-  - `diagnostics.json`
-  - `monthly_diagnostics.csv`
-  - `hourly_diagnostics.csv`
-  - `action_diagnostics.csv`
+  - `intraday_hour_profile.png` (intraday only)

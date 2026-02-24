@@ -1,5 +1,6 @@
 from dataclasses import asdict
 from pathlib import Path
+import os
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,9 +20,19 @@ from utils.losses import register_custom_objects
 register_custom_objects()
 
 app = FastAPI(title="AI Stock Predictor API")
+default_origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+extra_origins = [o.strip() for o in os.getenv("PYTHON_API_ALLOW_ORIGINS", "").split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=default_origins + extra_origins,
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -59,6 +70,11 @@ class FusionSettingsModel(BaseModel):
 class PredictionPayload(BaseModel):
     symbol: str
     modelId: Optional[str] = None
+    modelVariant: Optional[str] = None
+    dataInterval: str = "1d"
+    dataPeriod: str = "10y"
+    maxLong: Optional[float] = None
+    maxShort: Optional[float] = None
     horizon: int = Field(default=5, ge=1)
     daysOnChart: int = Field(default=120, ge=30)
     smoothing: Literal["none", "ema", "moving-average"] = "none"
@@ -71,6 +87,11 @@ class BacktestParamsModel(BaseModel):
     initialCapital: float = Field(default=10_000, gt=0.0)
     maxLong: float = Field(default=1.8, gt=0.0)
     maxShort: float = Field(default=0.2, ge=0.0)
+    dataInterval: str = "1d"
+    annualizationFactor: Optional[float] = None
+    flatAtDayEnd: Optional[bool] = None
+    dayEndFlattenFraction: Optional[float] = None
+    minPositionChange: Optional[float] = None
     commission: float = 0.0
     slippage: float = 0.0
     enableForwardSim: bool = False
@@ -78,6 +99,11 @@ class BacktestParamsModel(BaseModel):
 
 
 class BacktestPayload(BaseModel):
+    prediction: dict
+    params: BacktestParamsModel
+
+
+class ForwardSimPayload(BaseModel):
     prediction: dict
     params: BacktestParamsModel
 
@@ -167,6 +193,17 @@ async def backtest(payload: BacktestPayload):
         return run_backtest(payload.prediction, payload.params.model_dump())
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Backtest failed: {exc}") from exc
+
+
+@app.post("/api/forward_sim")
+async def forward_sim(payload: ForwardSimPayload):
+    try:
+        params = payload.params.model_dump()
+        params["enableForwardSim"] = True
+        out = run_backtest(payload.prediction, params)
+        return out.get("forwardSimulation")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Forward simulation failed: {exc}") from exc
 
 
 @app.post("/api/models/train")

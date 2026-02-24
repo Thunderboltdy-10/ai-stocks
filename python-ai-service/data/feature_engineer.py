@@ -100,6 +100,16 @@ TECHNICAL_FEATURE_COLUMNS: List[str] = [
     "vix_proxy_change",
     "rv_iv_spread",
     "rv_iv_spread_zscore",
+    # Calendar/session (9)
+    "hour_sin",
+    "hour_cos",
+    "minute_sin",
+    "minute_cos",
+    "day_of_week_sin",
+    "day_of_week_cos",
+    "session_open",
+    "session_midday",
+    "session_close",
 ]
 
 SENTIMENT_FEATURE_COLUMNS: List[str] = []
@@ -382,6 +392,38 @@ def engineer_features(
     feat["vix_proxy_change"] = feat["vix_proxy_level"].pct_change(5)
     feat["rv_iv_spread"] = rv_iv_spread
     feat["rv_iv_spread_zscore"] = rv_iv_spread_zscore
+
+    # Intraday calendar/session context. For daily bars these collapse to stable values.
+    ts_index = pd.to_datetime(work.index)
+    hour = ts_index.hour.to_numpy(dtype=float)
+    minute = ts_index.minute.to_numpy(dtype=float)
+    minute_of_day = (hour * 60.0) + minute
+    day_of_week = ts_index.dayofweek.to_numpy(dtype=float)
+    intraday_data = False
+    if len(ts_index) > 5:
+        delta_mins = pd.Series(ts_index).diff().dropna().dt.total_seconds().div(60.0)
+        median_step = float(delta_mins.median()) if len(delta_mins) else float("nan")
+        intraday_data = bool(np.isfinite(median_step) and median_step < (24.0 * 60.0))
+
+    feat["hour_sin"] = np.sin((2.0 * np.pi * hour) / 24.0)
+    feat["hour_cos"] = np.cos((2.0 * np.pi * hour) / 24.0)
+    feat["minute_sin"] = np.sin((2.0 * np.pi * minute_of_day) / (24.0 * 60.0))
+    feat["minute_cos"] = np.cos((2.0 * np.pi * minute_of_day) / (24.0 * 60.0))
+    feat["day_of_week_sin"] = np.sin((2.0 * np.pi * day_of_week) / 7.0)
+    feat["day_of_week_cos"] = np.cos((2.0 * np.pi * day_of_week) / 7.0)
+    feat["session_open"] = ((minute_of_day >= (9 * 60 + 30)) & (minute_of_day < (10 * 60 + 30))).astype(float)
+    feat["session_midday"] = ((minute_of_day >= (11 * 60 + 30)) & (minute_of_day < (13 * 60 + 30))).astype(float)
+    feat["session_close"] = ((minute_of_day >= (15 * 60)) & (minute_of_day <= (16 * 60))).astype(float)
+    if not intraday_data:
+        feat["hour_sin"] = 0.0
+        feat["hour_cos"] = 0.0
+        feat["minute_sin"] = 0.0
+        feat["minute_cos"] = 0.0
+        feat["day_of_week_sin"] = 0.0
+        feat["day_of_week_cos"] = 0.0
+        feat["session_open"] = 0.0
+        feat["session_midday"] = 0.0
+        feat["session_close"] = 0.0
 
     # Ensure exact canonical features.
     for col in TECHNICAL_FEATURE_COLUMNS:

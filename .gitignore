@@ -39,3 +39,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# python ai-service generated artifacts
+python-ai-service/**/__pycache__/
+python-ai-service/**/*.py[cod]
+python-ai-service/backtest_results/
+python-ai-service/experiments/
+python-ai-service/logs/
+python-ai-service/cache/
+python-ai-service/saved_models/

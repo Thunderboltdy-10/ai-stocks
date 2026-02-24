@@ -25,20 +25,21 @@ class DataCacheManager:
         self,
         cache_dir: str = "cache",
         cache_lifetime_hours: int = 72,
-        cache_version: str = "gbm_v2",
+        cache_version: str = "gbm_v3",
     ) -> None:
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.cache_lifetime = timedelta(hours=cache_lifetime_hours)
         self.cache_version = cache_version
 
-    def _symbol_dir(self, symbol: str) -> Path:
-        path = self.cache_dir / symbol.upper()
+    def _symbol_dir(self, symbol: str, period: str = "max", interval: str = "1d") -> Path:
+        dataset_key = f"{period}_{interval}".replace("/", "_")
+        path = self.cache_dir / symbol.upper() / dataset_key
         path.mkdir(parents=True, exist_ok=True)
         return path
 
-    def _paths(self, symbol: str) -> Dict[str, Path]:
-        base = self._symbol_dir(symbol)
+    def _paths(self, symbol: str, period: str = "max", interval: str = "1d") -> Dict[str, Path]:
+        base = self._symbol_dir(symbol, period=period, interval=interval)
         return {
             "raw": base / "raw_data.pkl",
             "engineered": base / "engineered_features.pkl",
@@ -47,12 +48,23 @@ class DataCacheManager:
             "metadata": base / "metadata.json",
         }
 
-    def _cache_valid(self, metadata: Dict, include_sentiment: bool, horizons: List[int]) -> bool:
+    def _cache_valid(
+        self,
+        metadata: Dict,
+        include_sentiment: bool,
+        horizons: List[int],
+        period: str,
+        interval: str,
+    ) -> bool:
         if metadata.get("cache_version") != self.cache_version:
             return False
         if metadata.get("include_sentiment") != include_sentiment:
             return False
         if metadata.get("horizons") != horizons:
+            return False
+        if metadata.get("period") != period:
+            return False
+        if metadata.get("interval") != interval:
             return False
 
         expected = len(get_feature_columns(include_sentiment=include_sentiment))
@@ -71,8 +83,10 @@ class DataCacheManager:
         symbol: str,
         include_sentiment: bool,
         horizons: List[int],
+        period: str,
+        interval: str,
     ) -> Optional[Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, list]]:
-        paths = self._paths(symbol)
+        paths = self._paths(symbol, period=period, interval=interval)
         if not all(p.exists() for p in paths.values()):
             return None
 
@@ -83,7 +97,13 @@ class DataCacheManager:
             logger.warning("Failed reading cache metadata for %s: %s", symbol, exc)
             return None
 
-        if not self._cache_valid(metadata, include_sentiment=include_sentiment, horizons=horizons):
+        if not self._cache_valid(
+            metadata,
+            include_sentiment=include_sentiment,
+            horizons=horizons,
+            period=period,
+            interval=interval,
+        ):
             logger.info("Cache invalid/stale for %s; refreshing", symbol)
             return None
 
@@ -108,8 +128,10 @@ class DataCacheManager:
         feature_cols: list,
         include_sentiment: bool = False,
         horizons: List[int] | None = None,
+        period: str = "max",
+        interval: str = "1d",
     ) -> None:
-        paths = self._paths(symbol)
+        paths = self._paths(symbol, period=period, interval=interval)
         horizons = horizons or [1]
 
         raw_df.to_pickle(paths["raw"])
@@ -124,6 +146,8 @@ class DataCacheManager:
             "cache_version": self.cache_version,
             "include_sentiment": include_sentiment,
             "horizons": horizons,
+            "period": period,
+            "interval": interval,
             "feature_count": len(feature_cols),
             "expected_feature_count": len(get_feature_columns(include_sentiment=include_sentiment)),
             "raw_rows": len(raw_df),
@@ -139,6 +163,7 @@ class DataCacheManager:
         include_sentiment: bool = False,
         force_refresh: bool = False,
         period: str = "max",
+        interval: str = "1d",
         horizons: List[int] | None = None,
     ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, list]:
         symbol = symbol.upper()
@@ -149,11 +174,13 @@ class DataCacheManager:
                 symbol,
                 include_sentiment=include_sentiment,
                 horizons=horizons,
+                period=period,
+                interval=interval,
             )
             if cached is not None:
                 return cached
 
-        raw_df = fetch_stock_data(symbol=symbol, period=period)
+        raw_df = fetch_stock_data(symbol=symbol, period=period, interval=interval)
         engineered_df = engineer_features(raw_df, symbol=symbol, include_sentiment=include_sentiment)
         prepared_df, feature_cols = prepare_training_data(
             engineered_df,
@@ -178,17 +205,19 @@ class DataCacheManager:
             feature_cols=feature_cols,
             include_sentiment=include_sentiment,
             horizons=horizons,
+            period=period,
+            interval=interval,
         )
         return raw_df, engineered_df, prepared_df, feature_cols
 
-    def clear_cache(self, symbol: str) -> None:
-        base = self._symbol_dir(symbol)
+    def clear_cache(self, symbol: str, period: str = "max", interval: str = "1d") -> None:
+        base = self._symbol_dir(symbol, period=period, interval=interval)
         for p in base.glob("*"):
             if p.is_file():
                 p.unlink(missing_ok=True)
 
-    def get_cache_info(self, symbol: str) -> Dict:
-        paths = self._paths(symbol)
+    def get_cache_info(self, symbol: str, period: str = "max", interval: str = "1d") -> Dict:
+        paths = self._paths(symbol, period=period, interval=interval)
         if not paths["metadata"].exists():
             return {"symbol": symbol.upper(), "exists": False}
 
