@@ -64,6 +64,32 @@ export function EquityLineChart({ backtest, tradeMarkers, showStrategyEquity = t
     );
   };
 
+  const markerAction = (marker: TradeMarker): string => {
+    const explicit = String(marker.explanation ?? "").trim().toUpperCase();
+    if (explicit) return explicit;
+    if (marker.type === "buy") return "BUY";
+    if (marker.type === "sell") return "SELL";
+    return "HOLD";
+  };
+
+  const markerColor = (action: string): string => {
+    const a = action.toUpperCase();
+    if (a.includes("SHORT")) return "#f97316";
+    if (a.includes("COVER")) return "#38bdf8";
+    if (a.includes("BUY")) return "#22c55e";
+    if (a.includes("SELL")) return "#ef4444";
+    return "#94a3b8";
+  };
+
+  const markerCode = (action: string): string => {
+    const a = action.toUpperCase();
+    if (a.includes("SHORT")) return "SH";
+    if (a.includes("COVER")) return "CV";
+    if (a.includes("BUY")) return "BY";
+    if (a.includes("SELL")) return "SL";
+    return "HD";
+  };
+
   return (
     <div className="h-80 w-full rounded-xl border border-gray-800 bg-gray-900/60 p-4" aria-label="Equity curve chart">
       {data?.length ? (
@@ -77,28 +103,30 @@ export function EquityLineChart({ backtest, tradeMarkers, showStrategyEquity = t
             <Legend wrapperStyle={{ color: "#d1d5db" }} />
             <Area yAxisId="right" type="monotone" dataKey="drawdown" stroke="#f87171" fill="rgba(248,113,113,0.15)" name="Drawdown" />
             {showStrategyEquity && (
-              <Line yAxisId="left" type="monotone" dataKey="strategyEquity" stroke="#facc15" strokeWidth={2} dot={false} name="Strategy" />
+              <Line yAxisId="left" type="monotone" dataKey="strategyEquity" stroke="#facc15" strokeWidth={2} dot={false} name="Portfolio Equity" />
             )}
             {showBuyHoldEquity && (
-              <Line yAxisId="left" type="monotone" dataKey="buyHoldEquity" stroke="#60a5fa" strokeWidth={2} dot={false} name="Buy & Hold" strokeDasharray="4 3" />
+              <Line yAxisId="left" type="monotone" dataKey="buyHoldEquity" stroke="#60a5fa" strokeWidth={2} dot={false} name="Stock (Buy & Hold)" strokeDasharray="4 3" />
             )}
-            <Line yAxisId="left" type="monotone" dataKey="price" stroke="#94a3b8" strokeWidth={1} dot={false} name="Spot Price" strokeDasharray="2 2" />
+            <Line yAxisId="left" type="monotone" dataKey="price" stroke="#94a3b8" strokeWidth={1} dot={false} name="Spot Price (raw)" strokeDasharray="2 2" />
             {tradeMarkers?.map((marker) => {
               const targetPoint = data?.find((point) => point.date === marker.date);
               if (!targetPoint) return null;
+              const action = markerAction(marker);
+              const color = markerColor(action);
               return (
                 <ReferenceDot
                   key={`${marker.date}-${marker.type}-${marker.scope ?? "backtest"}`}
                   x={marker.date}
                   yAxisId="left"
                   y={targetPoint.strategyEquity}
-                  fill={marker.type === "buy" ? "#22c55e" : marker.type === "sell" ? "#ef4444" : "#94a3b8"}
+                  fill={color}
                   label={{
                     position: "top",
-                    value: marker.type.toUpperCase(),
-                    fill: marker.type === "buy" ? "#22c55e" : marker.type === "sell" ? "#ef4444" : "#94a3b8",
+                    value: markerCode(action),
+                    fill: color,
                   }}
-                  r={6}
+                  r={6.5}
                 />
               );
             })}

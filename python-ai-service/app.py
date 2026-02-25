@@ -190,7 +190,7 @@ async def predict(payload: PredictionPayload):
 @app.post("/api/backtest")
 async def backtest(payload: BacktestPayload):
     try:
-        return run_backtest(payload.prediction, payload.params.model_dump())
+        return run_backtest(payload.prediction, payload.params.model_dump(exclude_none=True))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Backtest failed: {exc}") from exc
 
@@ -198,7 +198,7 @@ async def backtest(payload: BacktestPayload):
 @app.post("/api/forward_sim")
 async def forward_sim(payload: ForwardSimPayload):
     try:
-        params = payload.params.model_dump()
+        params = payload.params.model_dump(exclude_none=True)
         params["enableForwardSim"] = True
         out = run_backtest(payload.prediction, params)
         return out.get("forwardSimulation")

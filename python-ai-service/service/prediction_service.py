@@ -67,6 +67,32 @@ def _cost_to_decimal(raw: float) -> float:
     return val
 
 
+def _as_float(value, default: float) -> float:
+    if value is None:
+        return float(default)
+    try:
+        if isinstance(value, str) and not value.strip():
+            return float(default)
+        out = float(value)
+        return out if np.isfinite(out) else float(default)
+    except Exception:
+        return float(default)
+
+
+def _as_bool(value, default: bool) -> bool:
+    if value is None:
+        return bool(default)
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        v = value.strip().lower()
+        if v in {"1", "true", "yes", "y", "on"}:
+            return True
+        if v in {"0", "false", "no", "n", "off"}:
+            return False
+    return bool(value)
+
+
 def _sanitize_for_json(value):
     if isinstance(value, dict):
         return {str(k): _sanitize_for_json(v) for k, v in value.items()}
@@ -700,26 +726,27 @@ def _forward_simulate(prediction: Dict, params: Dict) -> Dict | None:
     if len(dates) == 0 or len(prices) == 0 or len(prices) != len(positions):
         return None
 
-    max_long = float(params.get("maxLong", prediction.get("metadata", {}).get("maxLong", 1.6)))
-    max_short = float(params.get("maxShort", prediction.get("metadata", {}).get("maxShort", 0.25)))
+    max_long = _as_float(params.get("maxLong"), _as_float(prediction.get("metadata", {}).get("maxLong"), 1.6))
+    max_short = _as_float(params.get("maxShort"), _as_float(prediction.get("metadata", {}).get("maxShort"), 0.25))
     interval = str(params.get("dataInterval", prediction.get("metadata", {}).get("dataInterval", "1d")))
     profile = execution_profile(interval)
     intraday = bool(profile["is_intraday"])
-    annualization = float(params.get("annualizationFactor", profile["annualization_factor"]))
-    flat_at_day_end = bool(params.get("flatAtDayEnd", profile["flat_at_day_end"]))
-    day_end_flatten_fraction = float(
-        params.get(
-            "dayEndFlattenFraction",
-            prediction.get("metadata", {}).get("dayEndFlattenFraction", profile.get("day_end_flatten_fraction", 1.0)),
-        )
+    annualization = _as_float(params.get("annualizationFactor"), _as_float(profile["annualization_factor"], 252.0))
+    flat_at_day_end = _as_bool(params.get("flatAtDayEnd"), bool(profile["flat_at_day_end"]))
+    day_end_flatten_fraction = _as_float(
+        params.get("dayEndFlattenFraction"),
+        _as_float(
+            prediction.get("metadata", {}).get("dayEndFlattenFraction"),
+            _as_float(profile.get("day_end_flatten_fraction", 1.0), 1.0),
+        ),
     )
     backtester = LongOnlyExecutionBacktester(
-        initial_capital=float(params.get("initialCapital", 10_000.0)),
-        commission_pct=_cost_to_decimal(float(params.get("commission", 0.0))),
-        slippage_pct=_cost_to_decimal(float(params.get("slippage", 0.0))),
+        initial_capital=_as_float(params.get("initialCapital"), 10_000.0),
+        commission_pct=_cost_to_decimal(_as_float(params.get("commission"), 0.0)),
+        slippage_pct=_cost_to_decimal(_as_float(params.get("slippage"), 0.0)),
         min_position_change=max(
-            float(params.get("minPositionChange", 0.03 if intraday else 0.0)),
-            float(prediction.get("metadata", {}).get("recommendedMinPositionChange", 0.0)),
+            _as_float(params.get("minPositionChange"), 0.03 if intraday else 0.0),
+            _as_float(prediction.get("metadata", {}).get("recommendedMinPositionChange"), 0.0),
         ),
     )
     bt = backtester.backtest(
@@ -786,26 +813,27 @@ def run_backtest(prediction: Dict, params: Dict) -> Dict:
     if len(prices) == 0 or len(target_positions) == 0 or len(prices) != len(target_positions):
         raise ValueError("Invalid prediction payload for backtest")
 
-    max_long = float(params.get("maxLong", prediction.get("metadata", {}).get("maxLong", 1.6)))
-    max_short = float(params.get("maxShort", prediction.get("metadata", {}).get("maxShort", 0.25)))
+    max_long = _as_float(params.get("maxLong"), _as_float(prediction.get("metadata", {}).get("maxLong"), 1.6))
+    max_short = _as_float(params.get("maxShort"), _as_float(prediction.get("metadata", {}).get("maxShort"), 0.25))
     interval = str(params.get("dataInterval", prediction.get("metadata", {}).get("dataInterval", "1d")))
     profile = execution_profile(interval)
     intraday = bool(profile["is_intraday"])
-    annualization = float(params.get("annualizationFactor", profile["annualization_factor"]))
-    flat_at_day_end = bool(params.get("flatAtDayEnd", profile["flat_at_day_end"]))
-    day_end_flatten_fraction = float(
-        params.get(
-            "dayEndFlattenFraction",
-            prediction.get("metadata", {}).get("dayEndFlattenFraction", profile.get("day_end_flatten_fraction", 1.0)),
-        )
+    annualization = _as_float(params.get("annualizationFactor"), _as_float(profile["annualization_factor"], 252.0))
+    flat_at_day_end = _as_bool(params.get("flatAtDayEnd"), bool(profile["flat_at_day_end"]))
+    day_end_flatten_fraction = _as_float(
+        params.get("dayEndFlattenFraction"),
+        _as_float(
+            prediction.get("metadata", {}).get("dayEndFlattenFraction"),
+            _as_float(profile.get("day_end_flatten_fraction", 1.0), 1.0),
+        ),
     )
     backtester = LongOnlyExecutionBacktester(
-        initial_capital=float(params.get("initialCapital", 10_000.0)),
-        commission_pct=_cost_to_decimal(float(params.get("commission", 0.0))),
-        slippage_pct=_cost_to_decimal(float(params.get("slippage", 0.0))),
+        initial_capital=_as_float(params.get("initialCapital"), 10_000.0),
+        commission_pct=_cost_to_decimal(_as_float(params.get("commission"), 0.0)),
+        slippage_pct=_cost_to_decimal(_as_float(params.get("slippage"), 0.0)),
         min_position_change=max(
-            float(params.get("minPositionChange", 0.03 if intraday else 0.0)),
-            float(prediction.get("metadata", {}).get("recommendedMinPositionChange", 0.0)),
+            _as_float(params.get("minPositionChange"), 0.03 if intraday else 0.0),
+            _as_float(prediction.get("metadata", {}).get("recommendedMinPositionChange"), 0.0),
         ),
     )
     target_positions_clipped = np.clip(target_positions, -max_short, max_long)
@@ -843,7 +871,7 @@ def run_backtest(prediction: Dict, params: Dict) -> Dict:
         action = str(trade.get("action", "BUY")).upper()
         chart_action = "buy" if action in {"BUY", "COVER", "COVER_BUY"} else "sell"
         position_val = float(bt.effective_positions[idx]) if len(bt.effective_positions) > idx else 0.0
-        cumulative_pnl = float(equity[idx] - float(params.get("initialCapital", 10_000.0)))
+        cumulative_pnl = float(equity[idx] - _as_float(params.get("initialCapital"), 10_000.0))
         pnl = 0.0 if idx == 0 else float(equity[idx] - equity[idx - 1])
         notes = str(trade.get("blocked_reason") or "inventory-aware execution")
 
