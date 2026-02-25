@@ -354,7 +354,9 @@ export default function AiPage() {
     const p = prediction?.tradeMarkers ?? [];
     const b = backtest?.annotations ?? [];
     const f = backtest?.forwardSimulation?.markers ?? [];
-    return [...p, ...b, ...f] as ChartMarker[];
+    return [...p, ...b, ...f].sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    ) as ChartMarker[];
   }, [prediction?.tradeMarkers, backtest?.annotations, backtest?.forwardSimulation?.markers]);
 
   const applyPreset = (preset: "daily" | "intraday") => {
@@ -487,156 +489,226 @@ export default function AiPage() {
             </button>
           </div>
 
-          <div className="space-y-2 rounded-xl border border-zinc-800 bg-zinc-900/60 p-3">
+          <div className="space-y-3 rounded-xl border border-zinc-800 bg-zinc-900/60 p-3">
             <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Symbol + Data</p>
-            <input
-              className="w-full rounded-lg border border-zinc-700 bg-black/50 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-cyan-400"
-              value={predictionParams.symbol}
-              onChange={(e) => setPredictionParams((p) => ({ ...p, symbol: e.target.value.toUpperCase() }))}
-              placeholder="AAPL"
-            />
-            <div className="grid grid-cols-2 gap-2">
+            
+            <div>
+              <label className="text-xs text-zinc-400">Stock Symbol</label>
               <input
-                className="rounded-lg border border-zinc-700 bg-black/50 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-cyan-400"
-                type="number"
-                value={predictionParams.horizon}
-                min={1}
-                onChange={(e) => setPredictionParams((p) => ({ ...p, horizon: Number(e.target.value) || 1 }))}
-                placeholder="Horizon"
+                className="mt-1 w-full rounded-lg border border-zinc-700 bg-black/50 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-cyan-400"
+                value={predictionParams.symbol}
+                onChange={(e) => setPredictionParams((p) => ({ ...p, symbol: e.target.value.toUpperCase() }))}
+                placeholder="AAPL"
               />
-              <input
-                className="rounded-lg border border-zinc-700 bg-black/50 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-cyan-400"
-                type="number"
-                value={predictionParams.daysOnChart}
-                min={30}
-                onChange={(e) => setPredictionParams((p) => ({ ...p, daysOnChart: Number(e.target.value) || 120 }))}
-                placeholder="Chart Bars"
-              />
+              <p className="mt-1 text-[10px] text-zinc-500">Ticker symbol (e.g., AAPL, TSLA, MSFT)</p>
             </div>
-            <div className="grid grid-cols-3 gap-2">
-              <select
-                className="rounded-lg border border-zinc-700 bg-black/50 px-3 py-2 text-xs text-zinc-100 outline-none focus:border-cyan-400"
-                value={predictionParams.dataInterval ?? "1d"}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setPredictionParams((p) => ({
-                    ...p,
-                    dataInterval: v,
-                    dataPeriod: v === "1d" ? "10y" : "730d",
-                  }));
-                  setBacktestParams((b) => ({ ...b, dataInterval: v }));
-                }}
-              >
-                <option value="1d">1d</option>
-                <option value="1h">1h</option>
-                <option value="30m">30m</option>
-                <option value="15m">15m</option>
-              </select>
-              <select
-                className="rounded-lg border border-zinc-700 bg-black/50 px-3 py-2 text-xs text-zinc-100 outline-none focus:border-cyan-400"
-                value={predictionParams.dataPeriod ?? "10y"}
-                onChange={(e) => setPredictionParams((p) => ({ ...p, dataPeriod: e.target.value }))}
-              >
-                <option value="10y">10y</option>
-                <option value="5y">5y</option>
-                <option value="730d">730d</option>
-                <option value="365d">365d</option>
-                <option value="180d">180d</option>
-                <option value="60d">60d</option>
-              </select>
-              <input
-                className="rounded-lg border border-zinc-700 bg-black/50 px-3 py-2 text-xs text-zinc-100 outline-none focus:border-cyan-400"
-                value={predictionParams.modelVariant ?? "auto"}
-                onChange={(e) => setPredictionParams((p) => ({ ...p, modelVariant: e.target.value || "auto" }))}
-                placeholder="Variant"
-              />
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-zinc-400">Forecast Horizon</label>
+                <input
+                  className="mt-1 w-full rounded-lg border border-zinc-700 bg-black/50 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-cyan-400"
+                  type="number"
+                  value={predictionParams.horizon}
+                  min={1}
+                  onChange={(e) => setPredictionParams((p) => ({ ...p, horizon: Number(e.target.value) || 1 }))}
+                  placeholder="Horizon"
+                />
+                <p className="mt-1 text-[10px] text-zinc-500">Days to predict ahead (1-30)</p>
+              </div>
+              <div>
+                <label className="text-xs text-zinc-400">Chart Bars</label>
+                <input
+                  className="mt-1 w-full rounded-lg border border-zinc-700 bg-black/50 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-cyan-400"
+                  type="number"
+                  value={predictionParams.daysOnChart}
+                  min={30}
+                  onChange={(e) => setPredictionParams((p) => ({ ...p, daysOnChart: Number(e.target.value) || 120 }))}
+                  placeholder="Chart Bars"
+                />
+                <p className="mt-1 text-[10px] text-zinc-500">Historical bars to display</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="text-xs text-zinc-400">Data Interval</label>
+                <select
+                  className="mt-1 w-full rounded-lg border border-zinc-700 bg-black/50 px-3 py-2 text-xs text-zinc-100 outline-none focus:border-cyan-400"
+                  value={predictionParams.dataInterval ?? "1d"}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setPredictionParams((p) => ({
+                      ...p,
+                      dataInterval: v,
+                      dataPeriod: v === "1d" ? "10y" : "730d",
+                    }));
+                    setBacktestParams((b) => ({ ...b, dataInterval: v }));
+                  }}
+                >
+                  <option value="1d">1 day</option>
+                  <option value="1h">1 hour</option>
+                  <option value="30m">30 min</option>
+                  <option value="15m">15 min</option>
+                </select>
+                <p className="mt-1 text-[10px] text-zinc-500">Candle frequency</p>
+              </div>
+              <div>
+                <label className="text-xs text-zinc-400">Data Period</label>
+                <select
+                  className="mt-1 w-full rounded-lg border border-zinc-700 bg-black/50 px-3 py-2 text-xs text-zinc-100 outline-none focus:border-cyan-400"
+                  value={predictionParams.dataPeriod ?? "10y"}
+                  onChange={(e) => setPredictionParams((p) => ({ ...p, dataPeriod: e.target.value }))}
+                >
+                  <option value="10y">10 years</option>
+                  <option value="5y">5 years</option>
+                  <option value="730d">2 years</option>
+                  <option value="365d">1 year</option>
+                  <option value="180d">6 months</option>
+                  <option value="60d">2 months</option>
+                </select>
+                <p className="mt-1 text-[10px] text-zinc-500">Historical lookback</p>
+              </div>
+              <div>
+                <label className="text-xs text-zinc-400">Model Variant</label>
+                <input
+                  className="mt-1 w-full rounded-lg border border-zinc-700 bg-black/50 px-3 py-2 text-xs text-zinc-100 outline-none focus:border-cyan-400"
+                  value={predictionParams.modelVariant ?? "auto"}
+                  onChange={(e) => setPredictionParams((p) => ({ ...p, modelVariant: e.target.value || "auto" }))}
+                  placeholder="auto"
+                />
+                <p className="mt-1 text-[10px] text-zinc-500">auto, gbm, intraday_1h_v5</p>
+              </div>
             </div>
           </div>
 
-          <div className="space-y-2 rounded-xl border border-zinc-800 bg-zinc-900/60 p-3">
+          <div className="space-y-3 rounded-xl border border-zinc-800 bg-zinc-900/60 p-3">
             <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Model + Fusion</p>
-            <select
-              className="w-full rounded-lg border border-zinc-700 bg-black/50 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-cyan-400"
-              value={selectedModelId}
-              onChange={(e) => setSelectedModelId(e.target.value)}
-            >
-              <option value="">Latest by Symbol</option>
-              {(modelsQuery.data ?? []).map((m: ModelMeta) => (
-                <option key={m.id} value={m.id}>{`${m.symbol} - ${new Date(m.createdAt).toLocaleDateString()}`}</option>
-              ))}
-            </select>
-            <div className="grid grid-cols-2 gap-2">
-              <input
-                className="rounded-lg border border-zinc-700 bg-black/50 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-cyan-400"
-                type="number"
-                step="0.01"
-                value={fusionSettings.buyThreshold}
-                onChange={(e) => setFusionSettings((f) => ({ ...f, buyThreshold: Number(e.target.value) || 0.3 }))}
-                placeholder="Buy Thr"
-              />
-              <input
-                className="rounded-lg border border-zinc-700 bg-black/50 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-cyan-400"
-                type="number"
-                step="0.01"
-                value={fusionSettings.sellThreshold}
-                onChange={(e) => setFusionSettings((f) => ({ ...f, sellThreshold: Number(e.target.value) || 0.45 }))}
-                placeholder="Sell Thr"
-              />
+            
+            <div>
+              <label className="text-xs text-zinc-400">Select Model</label>
+              <select
+                className="mt-1 w-full rounded-lg border border-zinc-700 bg-black/50 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-cyan-400"
+                value={selectedModelId}
+                onChange={(e) => setSelectedModelId(e.target.value)}
+              >
+                <option value="">Latest by Symbol (auto)</option>
+                {(modelsQuery.data ?? []).map((m: ModelMeta) => (
+                  <option key={m.id} value={m.id}>{`${m.symbol} - ${new Date(m.createdAt).toLocaleDateString()}`}</option>
+                ))}
+              </select>
+              <p className="mt-1 text-[10px] text-zinc-500">Leave empty for latest trained model</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-zinc-400">Buy Threshold</label>
+                <input
+                  className="mt-1 w-full rounded-lg border border-zinc-700 bg-black/50 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-cyan-400"
+                  type="number"
+                  step="0.01"
+                  value={fusionSettings.buyThreshold}
+                  onChange={(e) => setFusionSettings((f) => ({ ...f, buyThreshold: Number(e.target.value) || 0.3 }))}
+                  placeholder="Buy Thr"
+                />
+                <p className="mt-1 text-[10px] text-zinc-500">Min confidence to BUY (0-1). Higher = fewer trades, lower = more trades</p>
+              </div>
+              <div>
+                <label className="text-xs text-zinc-400">Sell Threshold</label>
+                <input
+                  className="mt-1 w-full rounded-lg border border-zinc-700 bg-black/50 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-cyan-400"
+                  type="number"
+                  step="0.01"
+                  value={fusionSettings.sellThreshold}
+                  onChange={(e) => setFusionSettings((f) => ({ ...f, sellThreshold: Number(e.target.value) || 0.45 }))}
+                  placeholder="Sell Thr"
+                />
+                <p className="mt-1 text-[10px] text-zinc-500">Min confidence to SELL (0-1). Should be higher than buy threshold</p>
+              </div>
             </div>
           </div>
 
-          <div className="space-y-2 rounded-xl border border-zinc-800 bg-zinc-900/60 p-3">
+          <div className="space-y-3 rounded-xl border border-zinc-800 bg-zinc-900/60 p-3">
             <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Execution + Risk Controls</p>
-            <div className="grid grid-cols-2 gap-2">
+            
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-zinc-400">Initial Capital</label>
+                <input
+                  className="mt-1 w-full rounded-lg border border-zinc-700 bg-black/50 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-cyan-400"
+                  type="number"
+                  value={backtestParams.initialCapital}
+                  onChange={(e) => setBacktestParams((b) => ({ ...b, initialCapital: Number(e.target.value) || 10_000 }))}
+                  placeholder="Capital"
+                />
+                <p className="mt-1 text-[10px] text-zinc-500">Starting cash for backtest ($)</p>
+              </div>
+              <div>
+                <label className="text-xs text-zinc-400">Max Long Position</label>
+                <input
+                  className="mt-1 w-full rounded-lg border border-zinc-700 bg-black/50 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-cyan-400"
+                  type="number"
+                  step="0.1"
+                  value={backtestParams.maxLong}
+                  onChange={(e) => setBacktestParams((b) => ({ ...b, maxLong: Number(e.target.value) || 1.6 }))}
+                  placeholder="Max Long"
+                />
+                <p className="mt-1 text-[10px] text-zinc-500">Max long as % of capital (1.0=100%). Higher = more bullish, more risk</p>
+              </div>
+              <div>
+                <label className="text-xs text-zinc-400">Max Short Position</label>
+                <input
+                  className="mt-1 w-full rounded-lg border border-zinc-700 bg-black/50 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-cyan-400"
+                  type="number"
+                  step="0.05"
+                  value={backtestParams.maxShort}
+                  onChange={(e) => setBacktestParams((b) => ({ ...b, maxShort: Number(e.target.value) || 0.25 }))}
+                  placeholder="Max Short"
+                />
+                <p className="mt-1 text-[10px] text-zinc-500">Max short as % of capital (0.25=25%). Higher = more bearish, more risk</p>
+              </div>
+              <div>
+                <label className="text-xs text-zinc-400">Commission (bps)</label>
+                <input
+                  className="mt-1 w-full rounded-lg border border-zinc-700 bg-black/50 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-cyan-400"
+                  type="number"
+                  step="0.1"
+                  value={backtestParams.commission}
+                  onChange={(e) => setBacktestParams((b) => ({ ...b, commission: Number(e.target.value) || 0.5 }))}
+                  placeholder="Commission (bps)"
+                />
+                <p className="mt-1 text-[10px] text-zinc-500">Trading fee per trade. 0.5 bps = 0.005%. Higher = more costs, less profit</p>
+              </div>
+              <div>
+                <label className="text-xs text-zinc-400">Slippage (bps)</label>
+                <input
+                  className="mt-1 w-full rounded-lg border border-zinc-700 bg-black/50 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-cyan-400"
+                  type="number"
+                  step="0.1"
+                  value={backtestParams.slippage}
+                  onChange={(e) => setBacktestParams((b) => ({ ...b, slippage: Number(e.target.value) || 0.2 }))}
+                  placeholder="Slippage (bps)"
+                />
+                <p className="mt-1 text-[10px] text-zinc-500">Price impact per trade. 0.2 bps = 0.002%. Simulates market impact</p>
+              </div>
+              <div>
+                <label className="text-xs text-zinc-400">Min Position Change</label>
+                <input
+                  className="mt-1 w-full rounded-lg border border-zinc-700 bg-black/50 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-cyan-400"
+                  type="number"
+                  step="0.01"
+                  value={backtestParams.minPositionChange ?? 0}
+                  onChange={(e) => setBacktestParams((b) => ({ ...b, minPositionChange: Number(e.target.value) || 0 }))}
+                  placeholder="Min Pos Delta"
+                />
+                <p className="mt-1 text-[10px] text-zinc-500">Min position change to execute trade. Higher = fewer trades, less overtrading</p>
+              </div>
+            </div>
+            
+            <div>
+              <label className="text-xs text-zinc-400">Annualization Factor (optional)</label>
               <input
-                className="rounded-lg border border-zinc-700 bg-black/50 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-cyan-400"
-                type="number"
-                value={backtestParams.initialCapital}
-                onChange={(e) => setBacktestParams((b) => ({ ...b, initialCapital: Number(e.target.value) || 10_000 }))}
-                placeholder="Capital"
-              />
-              <input
-                className="rounded-lg border border-zinc-700 bg-black/50 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-cyan-400"
-                type="number"
-                step="0.1"
-                value={backtestParams.maxLong}
-                onChange={(e) => setBacktestParams((b) => ({ ...b, maxLong: Number(e.target.value) || 1.6 }))}
-                placeholder="Max Long"
-              />
-              <input
-                className="rounded-lg border border-zinc-700 bg-black/50 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-cyan-400"
-                type="number"
-                step="0.05"
-                value={backtestParams.maxShort}
-                onChange={(e) => setBacktestParams((b) => ({ ...b, maxShort: Number(e.target.value) || 0.25 }))}
-                placeholder="Max Short"
-              />
-              <input
-                className="rounded-lg border border-zinc-700 bg-black/50 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-cyan-400"
-                type="number"
-                step="0.1"
-                value={backtestParams.commission}
-                onChange={(e) => setBacktestParams((b) => ({ ...b, commission: Number(e.target.value) || 0.5 }))}
-                placeholder="Commission (bps)"
-              />
-              <input
-                className="rounded-lg border border-zinc-700 bg-black/50 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-cyan-400"
-                type="number"
-                step="0.1"
-                value={backtestParams.slippage}
-                onChange={(e) => setBacktestParams((b) => ({ ...b, slippage: Number(e.target.value) || 0.2 }))}
-                placeholder="Slippage (bps)"
-              />
-              <input
-                className="rounded-lg border border-zinc-700 bg-black/50 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-cyan-400"
-                type="number"
-                step="0.01"
-                value={backtestParams.minPositionChange ?? 0}
-                onChange={(e) => setBacktestParams((b) => ({ ...b, minPositionChange: Number(e.target.value) || 0 }))}
-                placeholder="Min Pos Delta"
-              />
-              <input
-                className="col-span-2 rounded-lg border border-zinc-700 bg-black/50 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-cyan-400"
+                className="mt-1 w-full rounded-lg border border-zinc-700 bg-black/50 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-cyan-400"
                 type="number"
                 step="1"
                 value={backtestParams.annualizationFactor ?? ""}
@@ -644,25 +716,35 @@ export default function AiPage() {
                   const v = e.target.value.trim();
                   setBacktestParams((b) => ({ ...b, annualizationFactor: v === "" ? undefined : Number(v) }));
                 }}
-                placeholder="Annualization Override (optional)"
+                placeholder="Leave empty for auto"
               />
+              <p className="mt-1 text-[10px] text-zinc-500">For daily: 252. For hourly: ~6500. Auto-calculated if empty. Used for Sharpe ratio</p>
             </div>
-            <div className="grid grid-cols-2 gap-2 pt-1 text-sm text-zinc-300">
-              <label className="flex items-center gap-2">
+            
+            <div className="grid grid-cols-2 gap-3 pt-2 text-sm text-zinc-300">
+              <label className="flex items-start gap-2">
                 <input
                   type="checkbox"
                   checked={backtestParams.enableForwardSim}
                   onChange={(e) => setBacktestParams((b) => ({ ...b, enableForwardSim: e.target.checked }))}
+                  className="mt-1"
                 />
-                Forward Sim
+                <span>
+                  <span className="font-medium text-zinc-200">Forward Simulation</span>
+                  <br/><span className="text-[10px] text-zinc-500">Test predictions on unseen future data. More realistic but shorter evaluation period.</span>
+                </span>
               </label>
-              <label className="flex items-center gap-2">
+              <label className="flex items-start gap-2">
                 <input
                   type="checkbox"
                   checked={Boolean(backtestParams.flatAtDayEnd ?? prediction?.metadata?.flatAtDayEnd)}
                   onChange={(e) => setBacktestParams((b) => ({ ...b, flatAtDayEnd: e.target.checked }))}
+                  className="mt-1"
                 />
-                Flat At Day End
+                <span>
+                  <span className="font-medium text-zinc-200">Flat At Day End</span>
+                  <br/><span className="text-[10px] text-zinc-500">Close all positions daily. For intraday only - reduces overnight risk.</span>
+                </span>
               </label>
             </div>
           </div>
