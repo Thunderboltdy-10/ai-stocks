@@ -40,11 +40,61 @@ export interface CandlestickChartHandle {
 const formatTimeLabel = (time: Time): string => {
   if (typeof time === "string") return time;
   if (typeof time === "number") {
-    return new Date(time * 1000).toISOString().slice(0, 10);
+    const iso = new Date(time * 1000).toISOString().replace("T", " ").slice(0, 19);
+    return iso.endsWith("00:00:00") ? iso.slice(0, 10) : iso;
   }
   const month = `${time.month}`.padStart(2, "0");
   const day = `${time.day}`.padStart(2, "0");
   return `${time.year}-${month}-${day}`;
+};
+
+const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+const toChartTime = (raw: string): Time => {
+  const value = String(raw ?? "").trim();
+  if (!value) return "1970-01-01";
+
+  if (DATE_ONLY_RE.test(value)) {
+    return value as Time;
+  }
+
+  const normalized = value.includes(" ") ? value.replace(" ", "T") : value;
+  const hasTimezone = /[zZ]|[+\-]\d{2}:?\d{2}$/.test(normalized);
+  const isoCandidate = hasTimezone ? normalized : `${normalized}Z`;
+  const parsed = Date.parse(isoCandidate);
+  if (!Number.isNaN(parsed)) {
+    return Math.floor(parsed / 1000) as Time;
+  }
+
+  const dayPart = value.slice(0, 10);
+  if (DATE_ONLY_RE.test(dayPart)) {
+    return dayPart as Time;
+  }
+
+  return "1970-01-01";
+};
+
+const timeKey = (time: Time): string => {
+  if (typeof time === "number") return `n:${time}`;
+  if (typeof time === "string") return `s:${time}`;
+  return `s:${time.year}-${String(time.month).padStart(2, "0")}-${String(time.day).padStart(2, "0")}`;
+};
+
+const markerAction = (marker: TradeMarker): string => {
+  const explicit = String(marker.explanation ?? "").trim().toUpperCase();
+  if (explicit) return explicit;
+  if (marker.type === "buy") return "BUY";
+  if (marker.type === "sell") return "SELL";
+  return "HOLD";
+};
+
+const markerDisplayCode = (action: string): string => {
+  const a = action.toUpperCase();
+  if (a.includes("SELL_SHORT") || a.includes("SHORT")) return "SH";
+  if (a.includes("COVER")) return "CV";
+  if (a.includes("SELL")) return "SL";
+  if (a.includes("BUY")) return "BY";
+  return "HD";
 };
 
 const InteractiveCandlestick = forwardRef<CandlestickChartHandle, InteractiveCandlestickProps>(
@@ -128,32 +178,52 @@ const InteractiveCandlestick = forwardRef<CandlestickChartHandle, InteractiveCan
       }
     }, [tradeMarkers]);
 
+    const markerLookup = useMemo(() => {
+      const map = new Map<string, ChartMarker>();
+      for (const marker of filteredMarkers) {
+        map.set(timeKey(toChartTime(marker.date)), marker);
+      }
+      return map;
+    }, [filteredMarkers]);
+
     const getMarkerStyle = (marker: TradeMarker): SeriesMarker<Time> => {
       const markerType = (marker as ChartMarker).displayType ?? marker.type;
       const isBuy = markerType === "buy";
       const isSell = markerType === "sell";
       const isHold = markerType === "hold";
       const isForecast = marker.segment === "forecast";
+      const action = markerAction(marker);
+      const isShort = action.includes("SHORT");
+      const isCover = action.includes("COVER");
+      const color = isShort
+        ? "#f97316"
+        : isCover
+          ? "#38bdf8"
+          : isBuy
+            ? "#16a34a"
+            : isSell
+              ? "#dc2626"
+              : "#94a3b8";
 
       const baseStyle = {
-        time: marker.date as Time,
-        position: isBuy ? "aboveBar" : isSell ? "belowBar" : "inBar",
+        time: toChartTime(marker.date),
+        position: isBuy || isCover ? "belowBar" : isSell || isShort ? "aboveBar" : "inBar",
         shape: (isBuy ? "arrowUp" : isSell ? "arrowDown" : "triangle") as SeriesMarkerShape,
-        text: "",
+        text: markerDisplayCode(action),
       } as const;
 
       if (isForecast) {
         return {
           ...baseStyle,
-          color: isBuy ? "#10b981" : isSell ? "#ef4444" : "#94a3b8",
-          size: isHold ? 0.6 : 0.9,
+          color,
+          size: isHold ? 0.7 : 1.05,
         };
       }
 
       return {
         ...baseStyle,
-        color: isBuy ? "#059669" : isSell ? "#dc2626" : "#64748b",
-        size: isHold ? 0.6 : 0.8,
+        color,
+        size: isHold ? 0.7 : 1.0,
       };
     };
 
@@ -194,13 +264,13 @@ const InteractiveCandlestick = forwardRef<CandlestickChartHandle, InteractiveCan
           }
         }
 
-        const markerAtTime = filteredMarkers.find((marker) => marker.date === timeLabel);
+        const markerAtTime = markerLookup.get(timeKey(param.time));
         setHoverInfo(
           markerAtTime || priceValue
             ? {
                 date: timeLabel,
                 price: priceValue,
-                signal: markerAtTime ? ((markerAtTime as ChartMarker).displayType ?? markerAtTime.type) : undefined,
+                signal: markerAtTime ? markerAction(markerAtTime) : undefined,
               }
             : null
         );
@@ -220,11 +290,11 @@ const InteractiveCandlestick = forwardRef<CandlestickChartHandle, InteractiveCan
           });
 
       if (isLineMode) {
-        priceSeries.setData(historicalSeries.map((point) => ({ time: point.date as Time, value: point.close })));
+        priceSeries.setData(historicalSeries.map((point) => ({ time: toChartTime(point.date), value: point.close })));
       } else {
         priceSeries.setData(
           historicalSeries.map((point) => ({
-            time: point.date as Time,
+            time: toChartTime(point.date),
             open: point.open,
             high: point.high,
             low: point.low,
@@ -241,7 +311,7 @@ const InteractiveCandlestick = forwardRef<CandlestickChartHandle, InteractiveCan
           lineWidth: 2,
           lineStyle: LineStyle.Solid,
         });
-        predictedLine.setData(predictedHistory.map((point) => ({ time: point.date as Time, value: point.price })));
+        predictedLine.setData(predictedHistory.map((point) => ({ time: toChartTime(point.date), value: point.price })));
       }
 
       if (predictedSeries && mode !== "history") {
@@ -250,10 +320,10 @@ const InteractiveCandlestick = forwardRef<CandlestickChartHandle, InteractiveCan
           const lastHistorical = historicalSeries[historicalSeries.length - 1];
           const pathPoints = [
             lastHistorical && {
-              time: lastHistorical.date as Time,
+              time: toChartTime(lastHistorical.date),
               value: lastHistorical.close,
             },
-            ...forecastPoints.map((point) => ({ time: point.date as Time, value: point.price })),
+            ...forecastPoints.map((point) => ({ time: toChartTime(point.date), value: point.price })),
           ].filter(Boolean) as Array<{ time: Time; value: number }>;
           const forecastSeries = chart.addLineSeries({
             color: "#3b82f6",
@@ -271,13 +341,13 @@ const InteractiveCandlestick = forwardRef<CandlestickChartHandle, InteractiveCan
             lineWidth: 2,
             lineStyle: overlay.type === "predicted-path" ? LineStyle.Dotted : LineStyle.Solid,
           });
-          series.setData(overlay.points.map((point) => ({ time: point.date as Time, value: point.value })));
+          series.setData(overlay.points.map((point) => ({ time: toChartTime(point.date), value: point.value })));
         }
         if (overlay.type === "bollinger" && overlay.upper && overlay.lower) {
           const upper = chart.addLineSeries({ color: "rgba(148,163,184,0.6)", lineWidth: 1 });
           const lower = chart.addLineSeries({ color: "rgba(148,163,184,0.6)", lineWidth: 1 });
-          upper.setData(overlay.points.map((point, idx) => ({ time: point.date as Time, value: overlay.upper![idx] })));
-          lower.setData(overlay.points.map((point, idx) => ({ time: point.date as Time, value: overlay.lower![idx] })));
+          upper.setData(overlay.points.map((point, idx) => ({ time: toChartTime(point.date), value: overlay.upper![idx] })));
+          lower.setData(overlay.points.map((point, idx) => ({ time: toChartTime(point.date), value: overlay.lower![idx] })));
         }
       });
 
@@ -290,7 +360,7 @@ const InteractiveCandlestick = forwardRef<CandlestickChartHandle, InteractiveCan
         volumeSeries.priceScale().applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } });
         volumeSeries.setData(
           historicalSeries.map((point) => ({
-            time: point.date as Time,
+            time: toChartTime(point.date),
             value: point.volume ?? 0,
             color: point.close >= point.open ? "rgba(34,197,94,0.4)" : "rgba(248,113,113,0.4)",
           }))
@@ -306,7 +376,7 @@ const InteractiveCandlestick = forwardRef<CandlestickChartHandle, InteractiveCan
         changeSeries.priceScale().applyOptions({ scaleMargins: { top: 0.85, bottom: 0 } });
         changeSeries.setData(
           forecastChanges.map((point) => ({
-            time: point.date as Time,
+            time: toChartTime(point.date),
             value: point.value * 100,
             color: point.value >= 0 ? "rgba(34,197,94,0.45)" : "rgba(248,113,113,0.45)",
           }))
@@ -337,7 +407,7 @@ const InteractiveCandlestick = forwardRef<CandlestickChartHandle, InteractiveCan
         priceSeriesRef.current = null;
         setHoverInfo(null);
       };
-    }, [historicalSeries, overlays, predictedSeries, forecastChanges, renderMode, onRangeChange, mode, filteredMarkers]);
+    }, [historicalSeries, overlays, predictedSeries, forecastChanges, renderMode, onRangeChange, mode, filteredMarkers, markerLookup]);
 
     useEffect(() => {
       if (!chartRef.current || !priceSeriesRef.current) return;

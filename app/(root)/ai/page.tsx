@@ -435,6 +435,24 @@ export default function AiPage() {
 
   const metrics = backtest?.metrics;
   const intraday = Boolean(prediction?.metadata?.isIntraday || predictionParams.dataInterval !== "1d");
+  const actionSummary = useMemo(() => {
+    const rows = backtest?.tradeLog ?? [];
+    const out = {
+      total: rows.length,
+      longBuy: 0,
+      longSell: 0,
+      shortSell: 0,
+      shortCover: 0,
+    };
+    for (const trade of rows) {
+      const action = String(trade.action ?? "").toUpperCase();
+      if (action === "BUY") out.longBuy += 1;
+      else if (action === "SELL" || action === "EOD_FLAT_SELL" || action === "EOD_REDUCE_SELL") out.longSell += 1;
+      else if (action === "SHORT" || action === "SELL_SHORT") out.shortSell += 1;
+      else if (action === "COVER" || action === "COVER_BUY" || action === "EOD_FLAT_COVER" || action === "EOD_REDUCE_COVER") out.shortCover += 1;
+    }
+    return out;
+  }, [backtest?.tradeLog]);
 
   return (
     <div className="relative overflow-hidden bg-gradient-to-b from-zinc-950 to-black">
@@ -697,6 +715,14 @@ export default function AiPage() {
               scopeFilters={{ prediction: true, backtest: true }}
               ariaLabel="Prediction and execution chart"
             />
+            <div className="mt-3 grid gap-2 rounded-lg border border-zinc-800 bg-black/25 p-3 text-xs text-zinc-300 md:grid-cols-6">
+              <div className="font-semibold text-zinc-100">Trade Markers</div>
+              <div><span className="font-mono text-emerald-300">BY</span> = Long Buy</div>
+              <div><span className="font-mono text-red-300">SL</span> = Long Sell</div>
+              <div><span className="font-mono text-orange-300">SH</span> = Short Entry</div>
+              <div><span className="font-mono text-sky-300">CV</span> = Short Cover</div>
+              <div className="text-zinc-400">Total: {actionSummary.total}</div>
+            </div>
           </section>
 
           <section className="grid gap-3 md:grid-cols-8">
@@ -710,7 +736,15 @@ export default function AiPage() {
             <MetricCard label="Borrow Fee" value={metrics ? formatCurrency(metrics.borrowFee ?? 0) : "-"} tone={metrics && (metrics.borrowFee ?? 0) > 0 ? "bad" : "neutral"} />
           </section>
 
-          <EquityLineChart backtest={backtest ?? undefined} tradeMarkers={backtest?.annotations} />
+          <section className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Portfolio vs Stock</p>
+              <p className="text-xs text-zinc-400">
+                Portfolio Equity (yellow) vs Stock Buy&Hold (blue) with trade dots on portfolio curve
+              </p>
+            </div>
+            <EquityLineChart backtest={backtest ?? undefined} tradeMarkers={backtest?.annotations} />
+          </section>
 
           <DiagnosticsPanel diagnostics={backtest?.diagnostics} intraday={intraday} />
 
