@@ -7,6 +7,7 @@ from typing import Dict
 import numpy as np
 import pandas as pd
 
+from inference.variant_quality import score_variant_quality
 from utils.timeframe import is_intraday_interval
 
 
@@ -17,32 +18,10 @@ def model_quality_gate_strict(metadata: Dict) -> bool:
     gate only enables ML overlay when direction, dispersion, and walk-forward
     efficiency all clear thresholds.
     """
-    holdout_all = metadata.get("holdout", {})
-    holdout = holdout_all.get("ensemble", {})
-    holdout_cal = holdout_all.get("ensemble_calibrated", {})
     interval = str(metadata.get("data_interval", "1d"))
     intraday = is_intraday_interval(interval)
-    dir_acc = max(float(holdout.get("dir_acc", 0.0)), float(holdout_cal.get("dir_acc", 0.0)))
-    ic = max(float(holdout.get("ic", 0.0)), float(holdout_cal.get("ic", 0.0)))
-    pred_std = max(float(holdout.get("pred_std", 0.0)), float(holdout_cal.get("pred_std", 0.0)))
-    sharpe = max(float(holdout.get("sharpe", 0.0)), float(holdout_cal.get("sharpe", 0.0)))
-    net_sharpe = max(float(holdout.get("net_sharpe", 0.0)), float(holdout_cal.get("net_sharpe", 0.0)))
-    wfe = float(metadata.get("wfe", 0.0))
-
-    if intraday:
-        return (
-            dir_acc >= 0.510
-            and ic >= -0.005
-            and pred_std >= 0.0018
-            and (wfe >= 10.0 or sharpe >= 0.10 or net_sharpe >= 0.10)
-        )
-
-    return (
-        dir_acc >= 0.51
-        and ic >= 0.0
-        and pred_std >= 0.004
-        and wfe >= 20.0
-    )
+    quality = score_variant_quality(metadata, intraday=intraday)
+    return bool(quality.passed)
 
 
 def regime_exposure_from_prices(

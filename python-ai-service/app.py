@@ -221,7 +221,7 @@ class TrainingStartRequest(BaseModel):
     batchSize: int = 512
     sequenceLength: int = 90
     loss: str = "balanced"
-    modelType: str = "lstm_transformer"
+    modelType: str = "gbm"
     dropout: float = 0.3
     learningRate: float = 0.001
     featureToggles: dict[str, bool] | None = None

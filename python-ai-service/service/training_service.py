@@ -36,7 +36,7 @@ class TrainingJob:
     started_at: str
     completed_at: Optional[str] = None
     error: Optional[str] = None
-    model_type: str = "lstm_transformer"
+    model_type: str = "gbm"
     epochs: int = 50
     batch_size: int = 512
     sequence_length: int = 90
@@ -99,7 +99,7 @@ class TrainingService:
         batch_size = config.get("batchSize", 512)
         sequence_length = config.get("sequenceLength", 90)
         loss = config.get("loss", "balanced")
-        model_type = config.get("modelType", "lstm_transformer")
+        model_type = config.get("modelType", "gbm")
 
         job = TrainingJob(
             id=job_id,
@@ -217,7 +217,7 @@ class TrainingService:
 
         try:
             # Determine script based on model type
-            model_type = config.get("modelType", "lstm_transformer")
+            model_type = config.get("modelType", "gbm")
             if model_type == "gbm":
                 module_name = "training.train_gbm"
             elif model_type == "stacking":
@@ -235,6 +235,7 @@ class TrainingService:
                     "--overwrite",
                     "--n-trials",
                     str(max(10, min(50, int(config.get("nTrials", 20))))),
+                    "--no-lgb",
                 ]
             else:
                 cmd = [

@@ -7,7 +7,7 @@ import json
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -17,7 +17,7 @@ from data.data_fetcher import fetch_stock_data
 from data.feature_engineer import engineer_features
 from data.target_engineering import prevent_lookahead_bias
 from evaluation.execution_backtester import LongOnlyExecutionBacktester
-from inference.load_gbm_models import GBMModelBundle, load_gbm_models, predict_with_gbm
+from inference.load_gbm_models import GBMModelBundle, blend_with_direction_head, load_gbm_models, predict_with_gbm
 from inference.intraday_signal import intraday_hybrid_positions
 from inference.position_sizing import PositionSizer, PositionSizingConfig
 from inference.regime_ensemble import (
@@ -30,12 +30,21 @@ from inference.regime_ensemble import (
 )
 from inference.signal_policy import apply_direction_calibration, positions_from_policy
 from inference.variant_router import resolve_model_variant
+from inference.variant_quality import score_variant_quality
 from utils.timeframe import execution_profile, strategy_mix_for_window
 
 
 def _to_daily_arithmetic_return(pred_log_return: np.ndarray, target_horizon_days: int) -> np.ndarray:
     horizon = max(1, int(target_horizon_days))
     return np.expm1(np.asarray(pred_log_return, dtype=float) / horizon)
+
+
+def _to_model_target_return(daily_return: np.ndarray, target_horizon_days: int) -> np.ndarray:
+    horizon = max(1, int(target_horizon_days))
+    arr = np.asarray(daily_return, dtype=float)
+    if horizon == 1:
+        return arr
+    return np.log1p(np.clip(arr, -0.95, None)) * horizon
 
 
 @dataclass
@@ -58,6 +67,12 @@ class BacktestConfig:
     warmup_days: int = 252
     min_eval_days: int = 20
     min_position_change: float = 0.0
+    ml_weight_override: Optional[float] = None
+    fallback_ml_weight_override: Optional[float] = None
+    core_long_override: Optional[float] = None
+    overlay_min_override: Optional[float] = None
+    overlay_max_override: Optional[float] = None
+    smooth_alpha_override: Optional[float] = None
 
 
 class UnifiedBacktester:
@@ -126,25 +141,53 @@ class UnifiedBacktester:
         X = engineered[bundle.feature_columns].to_numpy(dtype=np.float32)
         components = predict_with_gbm(bundle, X, return_components=True)
         target_horizon = int(bundle.metadata.get("target_horizon_days", 1))
-        components = {k: _to_daily_arithmetic_return(v, target_horizon) for k, v in components.items()}
+        raw_components = {
+            k: np.asarray(v, dtype=float)
+            for k, v in components.items()
+            if k in {"xgb", "lgb"}
+        }
+        direction_prob = np.asarray(components.get("direction_prob", np.full(len(X), np.nan)), dtype=float)
+        daily_components = {
+            k: _to_daily_arithmetic_return(v, target_horizon)
+            for k, v in raw_components.items()
+        }
 
-        if "xgb" in components and "lgb" in components:
+        if "xgb" in raw_components and "lgb" in raw_components:
             weights = bundle.metadata.get("ensemble_weights", {"xgb": 0.5, "lgb": 0.5})
             wx = float(weights.get("xgb", 0.5))
             wl = float(weights.get("lgb", 0.5))
             total = max(wx + wl, 1e-9)
-            pred_ens = (wx * components["xgb"] + wl * components["lgb"]) / total
-            pred_std = np.std(np.vstack([components["xgb"], components["lgb"]]), axis=0) + 1e-4
+            pred_raw = (wx * raw_components["xgb"] + wl * raw_components["lgb"]) / total
+            pred_std_raw = np.std(np.vstack([raw_components["xgb"], raw_components["lgb"]]), axis=0) + 1e-4
+            pred_std = np.std(np.vstack([daily_components["xgb"], daily_components["lgb"]]), axis=0) + 1e-4
         else:
-            only = list(components.values())[0]
-            pred_ens = only
-            pred_std = pd.Series(pred_ens).rolling(20, min_periods=5).std().fillna(np.nanstd(pred_ens) + 1e-4).to_numpy()
+            pred_raw = next(iter(raw_components.values()))
+            pred_std_raw = (
+                pd.Series(pred_raw)
+                .rolling(20, min_periods=5)
+                .std()
+                .fillna(np.nanstd(pred_raw) + 1e-4)
+                .to_numpy()
+            )
+            pred_std = (
+                pd.Series(_to_daily_arithmetic_return(pred_raw, target_horizon))
+                .rolling(20, min_periods=5)
+                .std()
+                .fillna(np.nanstd(_to_daily_arithmetic_return(pred_raw, target_horizon)) + 1e-4)
+                .to_numpy()
+            )
+
+        pred_ens_raw = blend_with_direction_head(pred_raw, components.get("direction_prob"), bundle.metadata)
+        pred_ens = _to_daily_arithmetic_return(pred_ens_raw, target_horizon)
 
         return {
-            "pred_xgb": components.get("xgb", np.full(len(X), np.nan)),
-            "pred_lgb": components.get("lgb", np.full(len(X), np.nan)),
+            "pred_xgb": daily_components.get("xgb", np.full(len(X), np.nan)),
+            "pred_lgb": daily_components.get("lgb", np.full(len(X), np.nan)),
             "pred_ens": pred_ens,
+            "pred_ens_raw": pred_ens_raw,
             "pred_std": pred_std,
+            "pred_std_raw": pred_std_raw,
+            "direction_prob": direction_prob,
             "engineered": engineered,
         }
 
@@ -169,6 +212,7 @@ class UnifiedBacktester:
         hold = bundle.metadata.get("holdout", {})
         dir_acc = max(
             float(hold.get("ensemble", {}).get("dir_acc", 0.53)),
+            float(hold.get("ensemble_directional", {}).get("dir_acc", 0.53)),
             float(hold.get("ensemble_calibrated", {}).get("dir_acc", 0.53)),
         )
         target_dist = bundle.metadata.get("target_distribution", {})
@@ -183,22 +227,105 @@ class UnifiedBacktester:
 
     @staticmethod
     def _adaptive_ml_weights(bundle: GBMModelBundle) -> tuple[float, float]:
-        hold = bundle.metadata.get("holdout", {})
-        ens = hold.get("ensemble", {})
-        cal = hold.get("ensemble_calibrated", {})
-        dir_acc = max(float(ens.get("dir_acc", 0.0)), float(cal.get("dir_acc", 0.0)))
-        pred_std = max(float(ens.get("pred_std", 0.0)), float(cal.get("pred_std", 0.0)))
-        sharpe = max(float(ens.get("sharpe", 0.0)), float(cal.get("sharpe", 0.0)))
-        wfe = float(bundle.metadata.get("wfe", 0.0))
         intraday = bool(execution_profile(str(bundle.metadata.get("data_interval", "1d"))).get("is_intraday", False))
+        quality = score_variant_quality(bundle.metadata, intraday=intraday)
+        metrics = quality.metrics
+        dir_acc = float(metrics.get("dir_acc", 0.0))
+        pred_std = float(metrics.get("pred_std", 0.0))
+        net_sharpe = float(metrics.get("net_sharpe", 0.0))
+        net_return = float(metrics.get("net_return", 0.0))
+        wfe = float(metrics.get("wfe", 0.0))
 
-        if model_quality_gate_strict(bundle.metadata):
+        if quality.passed:
             return (0.24, 0.08) if intraday else (0.24, 0.08)
-        if intraday and dir_acc >= 0.50 and pred_std >= 0.0015 and (wfe >= 5.0 or sharpe >= 0.0):
+        if intraday and dir_acc >= 0.50 and pred_std >= 0.0012 and (wfe >= 5.0 or net_sharpe >= 0.05 or net_return >= 0.04):
             return 0.16, 0.08
-        if (not intraday) and dir_acc >= 0.50 and pred_std >= 0.003 and wfe >= 15.0:
-            return 0.16, 0.08
+        if (not intraday) and dir_acc >= 0.50 and pred_std >= 0.0015 and (net_sharpe >= 0.10 or net_return >= 0.06):
+            return 0.14, 0.06
         return (0.06, 0.04) if intraday else (0.08, 0.04)
+
+    @staticmethod
+    def _run_execution(
+        backtester: LongOnlyExecutionBacktester,
+        *,
+        dates: np.ndarray,
+        prices: np.ndarray,
+        positions: np.ndarray,
+        profile: Dict[str, float | bool],
+        max_long: float,
+        max_short: float,
+    ):
+        return backtester.backtest(
+            dates=dates,
+            prices=prices,
+            target_positions=positions,
+            max_long=max_long,
+            max_short=max_short,
+            apply_position_lag=True,
+            annualization_factor=float(profile["annualization_factor"]),
+            flat_at_day_end=bool(profile["flat_at_day_end"]),
+            day_end_flatten_fraction=float(profile.get("day_end_flatten_fraction", 1.0)),
+        )
+
+    @staticmethod
+    def _execution_summary(results) -> Dict[str, float]:
+        return {
+            "return": float(results.metrics.get("cum_return", 0.0)),
+            "buy_hold_return": float(results.metrics.get("buy_hold_cum_return", 0.0)),
+            "alpha": float(results.metrics.get("alpha", 0.0)),
+            "sharpe": float(results.metrics.get("sharpe", 0.0)),
+            "max_drawdown": float(results.metrics.get("max_drawdown", 0.0)),
+            "turnover": float(results.metrics.get("turnover", 0.0)),
+        }
+
+    def _finalize_positions(
+        self,
+        frame: pd.DataFrame,
+        active_positions: np.ndarray,
+        calibrated_pred: np.ndarray,
+        profile: Dict[str, float | bool],
+        window_mix: Dict[str, float],
+    ) -> np.ndarray:
+        overlay_min = (
+            float(self.config.overlay_min_override)
+            if self.config.overlay_min_override is not None
+            else float(np.clip(float(profile["overlay_min"]) * window_mix["overlay_multiplier"], 0.01, 0.95))
+        )
+        overlay_max = (
+            float(self.config.overlay_max_override)
+            if self.config.overlay_max_override is not None
+            else float(np.clip(float(profile["overlay_max"]) * window_mix["overlay_multiplier"], 0.05, 0.98))
+        )
+        overlay_weights = adaptive_overlay_weight(
+            close=frame["Close"],
+            predicted_returns=calibrated_pred,
+            lookback=60,
+            min_weight=overlay_min,
+            max_weight=overlay_max,
+        )
+        core_long = float(self.config.core_long_override) if self.config.core_long_override is not None else float(
+            np.clip(float(profile["core_long"]) + window_mix["core_adjust"], -self.config.max_short, self.config.max_long)
+        )
+        smooth_alpha = (
+            float(self.config.smooth_alpha_override)
+            if self.config.smooth_alpha_override is not None
+            else float(window_mix["smooth_alpha"])
+        )
+        positions = blend_positions_with_core(
+            active_positions=active_positions,
+            overlay_weights=overlay_weights,
+            core_long=core_long,
+            max_long=self.config.max_long,
+            max_short=self.config.max_short,
+            smooth_alpha=smooth_alpha,
+        )
+        return apply_short_safety_filter(
+            close=frame["Close"],
+            positions=positions,
+            predicted_returns=calibrated_pred,
+            max_short=self.config.max_short,
+            interval=self.config.data_interval,
+        )
 
     def run(self) -> Dict:
         profile = execution_profile(self.config.data_interval)
@@ -229,10 +356,17 @@ class UnifiedBacktester:
         stats = self._derive_sizing_stats(bundle)
         use_model_positions = self._model_quality_gate(bundle)
         ml_weight, fallback_ml_weight = self._adaptive_ml_weights(bundle)
-        calibrated_pred, direction_conf = apply_direction_calibration(
-            preds["pred_ens"],
+        if self.config.ml_weight_override is not None:
+            ml_weight = float(self.config.ml_weight_override)
+        if self.config.fallback_ml_weight_override is not None:
+            fallback_ml_weight = float(self.config.fallback_ml_weight_override)
+        quality = score_variant_quality(bundle.metadata, intraday=bool(profile["is_intraday"]))
+        target_horizon = int(bundle.metadata.get("target_horizon_days", 1))
+        calibrated_pred_raw, direction_conf = apply_direction_calibration(
+            preds["pred_ens_raw"],
             bundle.metadata.get("direction_calibrator"),
         )
+        calibrated_pred = _to_daily_arithmetic_return(calibrated_pred_raw, target_horizon)
         policy = bundle.metadata.get("execution_calibration", {})
         sizer_cfg = PositionSizingConfig(
             max_long=self.config.max_long,
@@ -244,7 +378,7 @@ class UnifiedBacktester:
         if isinstance(policy, dict) and bool(policy.get("enabled", False)):
             ml_positions = positions_from_policy(
                 calibrated_pred,
-                preds["pred_std"],
+                preds["pred_std_raw"],
                 policy,
                 max_long=self.config.max_long,
                 max_short=self.config.max_short,
@@ -252,8 +386,8 @@ class UnifiedBacktester:
         elif bool(profile["is_intraday"]):
             ml_positions = intraday_hybrid_positions(
                 close=frame["Close"],
-                predicted_returns=calibrated_pred,
-                prediction_stds=preds["pred_std"],
+                predicted_returns=calibrated_pred_raw,
+                prediction_stds=preds["pred_std_raw"],
                 max_long=self.config.max_long,
                 max_short=self.config.max_short,
                 cost_buffer=2.0 * float(self.config.commission_pct + self.config.slippage_pct),
@@ -261,13 +395,13 @@ class UnifiedBacktester:
         else:
             ml_positions = sizer.size_batch(
                 predicted_returns=calibrated_pred,
-                prediction_stds=preds["pred_std"],
+                prediction_stds=preds["pred_std_raw"],
                 win_rate=stats["win_rate"],
                 avg_win=stats["avg_win"],
                 avg_loss=stats["avg_loss"],
             )
         regime_positions = self._regime_positions(frame, profile=profile)
-        positions_full = combine_ml_and_regime(
+        active_positions_full = combine_ml_and_regime(
             regime_positions=regime_positions,
             ml_positions=ml_positions,
             ml_gate_passed=use_model_positions,
@@ -276,42 +410,36 @@ class UnifiedBacktester:
             max_long=self.config.max_long,
             max_short=self.config.max_short,
         )
-        overlay_weights = adaptive_overlay_weight(
-            close=frame["Close"],
-            predicted_returns=calibrated_pred,
-            lookback=60,
-            min_weight=(
-                float(np.clip(float(profile["overlay_min"]) * window_mix["overlay_multiplier"], 0.01, 0.95))
-                if use_model_positions
-                else 0.02
-            ),
-            max_weight=(
-                float(np.clip(float(profile["overlay_max"]) * window_mix["overlay_multiplier"], 0.05, 0.98))
-                if use_model_positions
-                else 0.35
-            ),
+        active_positions_regime_only = np.clip(np.asarray(regime_positions, dtype=float), -self.config.max_short, self.config.max_long)
+        active_positions_ml_only = np.clip(np.asarray(ml_positions, dtype=float), -self.config.max_short, self.config.max_long)
+        positions_full = self._finalize_positions(
+            frame=frame,
+            active_positions=active_positions_full,
+            calibrated_pred=calibrated_pred,
+            profile=profile,
+            window_mix=window_mix,
         )
-        core_long = float(np.clip(float(profile["core_long"]) + window_mix["core_adjust"], -self.config.max_short, self.config.max_long))
-        positions_full = blend_positions_with_core(
-            active_positions=positions_full,
-            overlay_weights=overlay_weights,
-            core_long=core_long,
-            max_long=self.config.max_long,
-            max_short=self.config.max_short,
-            smooth_alpha=float(window_mix["smooth_alpha"]),
+        positions_regime_only = self._finalize_positions(
+            frame=frame,
+            active_positions=active_positions_regime_only,
+            calibrated_pred=calibrated_pred,
+            profile=profile,
+            window_mix=window_mix,
         )
-        positions_full = apply_short_safety_filter(
-            close=frame["Close"],
-            positions=positions_full,
-            predicted_returns=calibrated_pred,
-            max_short=self.config.max_short,
-            interval=self.config.data_interval,
+        positions_ml_only = self._finalize_positions(
+            frame=frame,
+            active_positions=active_positions_ml_only,
+            calibrated_pred=calibrated_pred,
+            profile=profile,
+            window_mix=window_mix,
         )
 
         # Evaluate only in requested date range while using full history for feature warmup.
         close = close_full[eval_mask]
         forward_returns = forward_returns_full[eval_mask]
         positions = positions_full[eval_mask]
+        positions_regime_eval = positions_regime_only[eval_mask]
+        positions_ml_eval = positions_ml_only[eval_mask]
         frame_eval = frame.loc[eval_mask].copy()
 
         effective_min_change = float(max(0.0, self.config.min_position_change))
@@ -338,6 +466,28 @@ class UnifiedBacktester:
             flat_at_day_end=bool(profile["flat_at_day_end"]),
             day_end_flatten_fraction=float(profile.get("day_end_flatten_fraction", 1.0)),
         )
+        regime_results = backtester.backtest(
+            dates=frame_eval.index.to_numpy(),
+            prices=close,
+            target_positions=positions_regime_eval,
+            max_long=self.config.max_long,
+            max_short=self.config.max_short,
+            apply_position_lag=True,
+            annualization_factor=float(profile["annualization_factor"]),
+            flat_at_day_end=bool(profile["flat_at_day_end"]),
+            day_end_flatten_fraction=float(profile.get("day_end_flatten_fraction", 1.0)),
+        )
+        ml_results = backtester.backtest(
+            dates=frame_eval.index.to_numpy(),
+            prices=close,
+            target_positions=positions_ml_eval,
+            max_long=self.config.max_long,
+            max_short=self.config.max_short,
+            apply_position_lag=True,
+            annualization_factor=float(profile["annualization_factor"]),
+            flat_at_day_end=bool(profile["flat_at_day_end"]),
+            day_end_flatten_fraction=float(profile.get("day_end_flatten_fraction", 1.0)),
+        )
 
         valid_dir = ~np.isnan(forward_returns)
         pred_eval = calibrated_pred[eval_mask]
@@ -357,6 +507,12 @@ class UnifiedBacktester:
             "strategy_return": float(results.metrics.get("cum_return", 0.0)),
             "buy_hold_return": float(results.metrics.get("buy_hold_cum_return", 0.0)),
             "alpha": float(results.metrics.get("alpha", 0.0)),
+            "regime_only_return": float(regime_results.metrics.get("cum_return", 0.0)),
+            "regime_only_alpha": float(regime_results.metrics.get("alpha", 0.0)),
+            "ml_only_return": float(ml_results.metrics.get("cum_return", 0.0)),
+            "ml_only_alpha": float(ml_results.metrics.get("alpha", 0.0)),
+            "ml_incremental_return_vs_regime": float(results.metrics.get("cum_return", 0.0) - regime_results.metrics.get("cum_return", 0.0)),
+            "ml_incremental_alpha_vs_regime": float(results.metrics.get("alpha", 0.0) - regime_results.metrics.get("alpha", 0.0)),
             "strategy_return_pct": float(results.metrics.get("cum_return", 0.0) * 100.0),
             "buy_hold_return_pct": float(results.metrics.get("buy_hold_cum_return", 0.0) * 100.0),
             "excess_return_pct": float(results.metrics.get("alpha", 0.0) * 100.0),
@@ -367,6 +523,7 @@ class UnifiedBacktester:
             "win_rate": float(results.metrics.get("win_rate", 0.0)),
             "direction_accuracy": direction_accuracy,
             "prediction_std": float(np.std(pred_eval)),
+            "prediction_std_raw": float(np.std(calibrated_pred_raw[eval_mask])),
             "pred_positive_pct": float((pred_eval > 0).mean()),
             "turnover": float(results.metrics.get("turnover", 0.0)),
             "total_transaction_costs": float(results.metrics.get("total_transaction_costs", 0.0)),
@@ -374,9 +531,21 @@ class UnifiedBacktester:
             "cost_adjusted_sharpe": float(results.metrics.get("sharpe", 0.0)),
             "vol_target_annual": float(self.config.vol_target_annual),
             "model_quality_gate_passed": bool(use_model_positions),
+            "model_quality_score": float(quality.score),
+            "model_quality_reasons": list(quality.reasons),
+            "holdout_metric_source": quality.selected_source,
+            "holdout_pred_target_std_ratio": float(quality.metrics.get("pred_target_std_ratio", 0.0)),
             "execution_mode": "signed_inventory" if self.config.max_short > 0 else "long_only_inventory",
             "ml_overlay_weight": ml_weight if use_model_positions else fallback_ml_weight,
+            "ml_weight_override": self.config.ml_weight_override,
+            "fallback_ml_weight_override": self.config.fallback_ml_weight_override,
+            "core_long_override": self.config.core_long_override,
+            "overlay_min_override": self.config.overlay_min_override,
+            "overlay_max_override": self.config.overlay_max_override,
+            "smooth_alpha_override": self.config.smooth_alpha_override,
             "direction_confidence_mean": float(np.mean(np.abs(direction_conf))),
+            "direction_prob_mean": float(np.nanmean(preds["direction_prob"])),
+            "direction_head_enabled": bool(bundle.metadata.get("direction_head", {}).get("enabled", False)),
             "is_intraday": bool(profile["is_intraday"]),
             "annualization_factor": float(profile["annualization_factor"]),
             "flat_at_day_end": bool(profile["flat_at_day_end"]),
@@ -393,21 +562,38 @@ class UnifiedBacktester:
             "engineered": None,
         }
 
-        self._save_outputs(frame_eval, preds_eval, positions, forward_returns, results, summary)
+        self._save_outputs(
+            frame_eval,
+            preds_eval,
+            {
+                "full": positions,
+                "regime_only": positions_regime_eval,
+                "ml_only": positions_ml_eval,
+            },
+            forward_returns,
+            {
+                "full": results,
+                "regime_only": regime_results,
+                "ml_only": ml_results,
+            },
+            summary,
+        )
         return summary
 
     def _save_outputs(
         self,
         frame: pd.DataFrame,
         preds: Dict[str, np.ndarray],
-        positions: np.ndarray,
+        positions: Dict[str, np.ndarray],
         forward_returns: np.ndarray,
-        results,
+        results: Dict[str, object],
         summary: Dict,
     ) -> None:
         ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         out_dir = Path("backtest_results") / f"{self.symbol}_{ts}"
         out_dir.mkdir(parents=True, exist_ok=True)
+        results_full = results["full"]
+        positions_full = np.asarray(positions["full"], dtype=float)
 
         daily = pd.DataFrame(
             {
@@ -417,25 +603,31 @@ class UnifiedBacktester:
                 "pred_lgb": preds["pred_lgb"],
                 "pred_ens": preds["pred_ens"],
                 "pred_std": preds["pred_std"],
-                "position": positions,
-                "effective_position": results.effective_positions,
+                "position": positions_full,
+                "position_regime_only": np.asarray(positions["regime_only"], dtype=float),
+                "position_ml_only": np.asarray(positions["ml_only"], dtype=float),
+                "effective_position": results_full.effective_positions,
                 "asset_return": frame["Close"].pct_change().fillna(0.0).to_numpy(dtype=float),
                 "forward_return": forward_returns,
-                "strategy_daily_return": results.daily_returns,
-                "strategy_equity": results.equity_curve,
-                "buy_hold_equity": results.buy_hold_equity,
+                "strategy_daily_return": results_full.daily_returns,
+                "strategy_equity": results_full.equity_curve,
+                "buy_hold_equity": results_full.buy_hold_equity,
+                "regime_only_equity": results["regime_only"].equity_curve,
+                "ml_only_equity": results["ml_only"].equity_curve,
             }
         )
         daily.to_csv(out_dir / "daily_results.csv", index=False)
 
-        trade_df = pd.DataFrame(results.trade_log)
+        trade_df = pd.DataFrame(results_full.trade_log)
         trade_df.to_csv(out_dir / "trade_log.csv", index=False)
 
         equity = pd.DataFrame(
             {
                 "date": frame.index,
-                "strategy_equity": results.equity_curve,
-                "buy_hold_equity": results.buy_hold_equity,
+                "strategy_equity": results_full.equity_curve,
+                "regime_only_equity": results["regime_only"].equity_curve,
+                "ml_only_equity": results["ml_only"].equity_curve,
+                "buy_hold_equity": results_full.buy_hold_equity,
             }
         )
         equity.to_csv(out_dir / "equity_comparison.csv", index=False)
@@ -443,11 +635,19 @@ class UnifiedBacktester:
         with (out_dir / "summary.json").open("w", encoding="utf-8") as fh:
             json.dump(summary, fh, indent=2)
 
-        if hasattr(results, "metrics"):
+        if hasattr(results_full, "metrics"):
             with (out_dir / "metrics.json").open("w", encoding="utf-8") as fh:
-                json.dump(results.metrics, fh, indent=2)
+                json.dump(
+                    {
+                        "full": results_full.metrics,
+                        "regime_only": results["regime_only"].metrics,
+                        "ml_only": results["ml_only"].metrics,
+                    },
+                    fh,
+                    indent=2,
+                )
 
-        diagnostics = self._build_diagnostics(frame, results, summary)
+        diagnostics = self._build_diagnostics(frame, results_full, summary)
         with (out_dir / "diagnostics.json").open("w", encoding="utf-8") as fh:
             json.dump(diagnostics, fh, indent=2)
 
@@ -566,20 +766,25 @@ class UnifiedBacktester:
         }
 
     @staticmethod
-    def _save_plots(out_dir: Path, frame: pd.DataFrame, results, summary: Dict, diagnostics: Dict) -> None:
+    def _save_plots(out_dir: Path, frame: pd.DataFrame, results: Dict[str, object], summary: Dict, diagnostics: Dict) -> None:
         try:
             import matplotlib.pyplot as plt
         except Exception:
             return
 
+        results_full = results["full"]
         dates = pd.to_datetime(frame.index)
-        equity = np.asarray(results.equity_curve, dtype=float)
-        buy_hold = np.asarray(results.buy_hold_equity, dtype=float)
+        equity = np.asarray(results_full.equity_curve, dtype=float)
+        regime_equity = np.asarray(results["regime_only"].equity_curve, dtype=float)
+        ml_equity = np.asarray(results["ml_only"].equity_curve, dtype=float)
+        buy_hold = np.asarray(results_full.buy_hold_equity, dtype=float)
         close = frame["Close"].to_numpy(dtype=float)
-        positions = np.asarray(results.effective_positions, dtype=float)
+        positions = np.asarray(results_full.effective_positions, dtype=float)
 
         fig, axes = plt.subplots(2, 1, figsize=(14, 9), sharex=True)
         axes[0].plot(dates, equity, label="Strategy", color="#facc15", linewidth=2.0)
+        axes[0].plot(dates, regime_equity, label="Regime Only", color="#34d399", linewidth=1.4, linestyle="-.")
+        axes[0].plot(dates, ml_equity, label="ML Only", color="#f472b6", linewidth=1.4, linestyle=":")
         axes[0].plot(dates, buy_hold, label="Buy & Hold", color="#60a5fa", linewidth=1.8, linestyle="--")
         axes[0].set_ylabel("Equity")
         axes[0].set_title(
@@ -599,7 +804,7 @@ class UnifiedBacktester:
         pos_ax.axhline(0.0, color="#64748b", linewidth=0.8, alpha=0.6)
         pos_ax.grid(False)
 
-        trade_df = pd.DataFrame(results.trade_log)
+        trade_df = pd.DataFrame(results_full.trade_log)
         if not trade_df.empty and "date" in trade_df and "action" in trade_df:
             trade_df["date"] = pd.to_datetime(trade_df["date"])
             buy_like = trade_df["action"].astype(str).str.upper().isin(["BUY", "COVER", "COVER_BUY"])
@@ -643,7 +848,7 @@ class UnifiedBacktester:
             axes[1].grid(alpha=0.25)
             axes[1].legend(loc="lower left")
 
-            daily_ret = np.asarray(results.daily_returns, dtype=float)
+            daily_ret = np.asarray(results_full.daily_returns, dtype=float)
             axes[2].hist(daily_ret[np.isfinite(daily_ret)], bins=50, color="#60a5fa", alpha=0.8)
             axes[2].set_ylabel("Count")
             axes[2].set_xlabel("Return")

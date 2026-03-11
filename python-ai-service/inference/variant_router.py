@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Optional
 
 import pandas as pd
 
-from inference.variant_quality import score_variant_quality
+from inference.variant_quality import score_variant_quality, select_holdout_candidate
 from utils.timeframe import is_intraday_interval
 
 
@@ -88,17 +88,15 @@ def _daily_candidates(symbol: str) -> List[VariantCandidate]:
 
 def _score_candidate(meta: Dict[str, Any], *, segment: str, intraday: bool) -> float:
     quality = score_variant_quality(meta, intraday=intraday)
-    hold = meta.get("holdout", {}) if isinstance(meta, dict) else {}
-    ens = hold.get("ensemble", {}) if isinstance(hold, dict) else {}
-    cal = hold.get("ensemble_calibrated", {}) if isinstance(hold, dict) else {}
+    _, selected_metrics = select_holdout_candidate(meta, intraday=intraday)
 
-    dir_acc = max(_safe_float(ens.get("dir_acc"), 0.5), _safe_float(cal.get("dir_acc"), 0.5))
-    pred_std = max(_safe_float(ens.get("pred_std"), 0.0), _safe_float(cal.get("pred_std"), 0.0))
-    net_return = max(_safe_float(ens.get("net_return"), -0.5), _safe_float(cal.get("net_return"), -0.5))
-    net_sharpe = max(_safe_float(ens.get("net_sharpe"), -3.0), _safe_float(cal.get("net_sharpe"), -3.0))
-    pos_pct = _safe_float(cal.get("positive_pct"), _safe_float(ens.get("positive_pct"), 0.5))
+    dir_acc = _safe_float(selected_metrics.get("dir_acc"), 0.5)
+    pred_std = _safe_float(selected_metrics.get("pred_std"), 0.0)
+    net_return = _safe_float(selected_metrics.get("net_return"), -0.5)
+    net_sharpe = _safe_float(selected_metrics.get("net_sharpe"), -3.0)
+    pos_pct = _safe_float(selected_metrics.get("positive_pct"), 0.5)
     bias_penalty = abs(pos_pct - 0.5)
-    wfe = _safe_float(meta.get("wfe"), 0.0)
+    wfe = _safe_float(selected_metrics.get("wfe"), _safe_float(meta.get("wfe"), 0.0))
 
     horizon = max(1.0, _safe_float(meta.get("target_horizon_days"), 1.0))
     horizon_scale = 6.0 if intraday else 5.0
