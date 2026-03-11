@@ -93,26 +93,39 @@ def _cost_adjusted_trade_metrics(
     }
 
 
+def _dailyize_return_like(values: np.ndarray, target_horizon_days: int) -> np.ndarray:
+    arr = np.asarray(values, dtype=float).reshape(-1)
+    horizon = max(1, int(target_horizon_days))
+    if horizon == 1:
+        return arr
+    return np.expm1(arr / horizon)
+
+
 def evaluate_predictions(
     y_true: np.ndarray,
     y_pred: np.ndarray,
     *,
     annualization_factor: float = 252.0,
     cost_per_turn: float = 0.0008,
+    target_horizon_days: int = 1,
 ) -> Dict[str, float]:
     y_true = np.asarray(y_true).reshape(-1)
     y_pred = np.asarray(y_pred).reshape(-1)
 
-    rmse = float(np.sqrt(mean_squared_error(y_true, y_pred)))
-    mae = float(mean_absolute_error(y_true, y_pred))
+    y_true_eval = _dailyize_return_like(y_true, target_horizon_days)
+    y_pred_eval = _dailyize_return_like(y_pred, target_horizon_days)
+
+    rmse = float(np.sqrt(mean_squared_error(y_true_eval, y_pred_eval)))
+    mae = float(mean_absolute_error(y_true_eval, y_pred_eval))
     dir_acc = float(np.mean(np.sign(y_true) == np.sign(y_pred)))
-    pred_std = float(np.std(y_pred))
-    positive_pct = float((y_pred > 0).mean())
-    pnl = np.sign(y_pred) * y_true
+    pred_std = float(np.std(y_pred_eval))
+    target_std = float(np.std(y_true_eval))
+    positive_pct = float((y_pred_eval > 0).mean())
+    pnl = np.sign(y_pred_eval) * y_true_eval
     sharpe = _sharpe(pnl)
     cost_metrics = _cost_adjusted_trade_metrics(
-        y_true,
-        y_pred,
+        y_true_eval,
+        y_pred_eval,
         annualization_factor=annualization_factor,
         cost_per_turn=cost_per_turn,
     )
@@ -122,9 +135,11 @@ def evaluate_predictions(
         "mae": mae,
         "dir_acc": dir_acc,
         "pred_std": pred_std,
+        "target_std": target_std,
+        "pred_target_std_ratio": float(pred_std / max(target_std, 1e-9)),
         "positive_pct": positive_pct,
         "sharpe": sharpe,
-        "ic": _safe_corr(y_true, y_pred),
+        "ic": _safe_corr(y_true_eval, y_pred_eval),
         **cost_metrics,
     }
 
@@ -215,10 +230,14 @@ def run_walk_forward_validation(
         agg["net_sharpe_mean"] = float(oof_metrics.get("net_sharpe", 0.0))
         agg["net_return_mean"] = float(oof_metrics.get("net_return", 0.0))
         agg["turnover_mean"] = float(oof_metrics.get("turnover", 0.0))
+        agg["ic_mean"] = float(oof_metrics.get("ic", 0.0))
+        agg["pred_target_std_ratio_mean"] = float(oof_metrics.get("pred_target_std_ratio", 0.0))
     else:
         agg["net_sharpe_mean"] = 0.0
         agg["net_return_mean"] = 0.0
         agg["turnover_mean"] = 0.0
+        agg["ic_mean"] = 0.0
+        agg["pred_target_std_ratio_mean"] = 0.0
 
     return {
         "folds": fold_df.to_dict(orient="records"),

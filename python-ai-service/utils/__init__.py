@@ -1,19 +1,35 @@
+"""Shared utilities.
+
+Keep TensorFlow-dependent imports optional so GBM-only tooling can run in a
+lighter environment.
 """
-Utilities Package
 
-Contains custom losses, model I/O helpers, and other shared utilities.
-"""
+__all__ = []
 
-from utils.losses import directional_mse, focal_loss, get_custom_objects, register_custom_objects
-from utils.model_io import load_model_safe, load_model_artifacts, save_model_with_metadata, get_model_info
+try:
+    from utils.model_io import get_model_info, load_model_artifacts, load_model_safe, save_model_with_metadata
 
-__all__ = [
-    'directional_mse',
-    'focal_loss',
-    'get_custom_objects',
-    'register_custom_objects',
-    'load_model_safe',
-    'load_model_artifacts',
-    'save_model_with_metadata',
-    'get_model_info'
-]
+    __all__.extend(
+        [
+            "load_model_safe",
+            "load_model_artifacts",
+            "save_model_with_metadata",
+            "get_model_info",
+        ]
+    )
+except Exception:
+    pass
+
+try:
+    from utils.losses import directional_mse, focal_loss, get_custom_objects, register_custom_objects
+
+    __all__.extend(
+        [
+            "directional_mse",
+            "focal_loss",
+            "get_custom_objects",
+            "register_custom_objects",
+        ]
+    )
+except Exception:
+    pass

@@ -6,6 +6,7 @@ import argparse
 import json
 import logging
 import pickle
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -17,9 +18,16 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import RobustScaler
 
 from data.cache_manager import DataCacheManager
+from data.feature_engineer import (
+    available_feature_profiles,
+    feature_family,
+    resolve_feature_columns,
+    summarize_feature_families,
+)
 from data.data_splitter import PurgedTimeSeriesSplit, create_train_val_test_split
 from data.data_validator import DataValidator
 from inference.signal_policy import apply_direction_calibration, calibrate_execution_policy
+from inference.variant_quality import score_variant_quality, select_holdout_candidate
 from utils.timeframe import annualization_factor_for_interval, is_intraday_interval
 from validation.walk_forward import evaluate_predictions, run_walk_forward_validation
 
@@ -91,7 +99,12 @@ def _probe_lgb_gpu() -> bool:
         return False
 
 
-def compute_regression_sample_weights(y: np.ndarray, max_weight: float = 2.0) -> np.ndarray:
+def compute_regression_sample_weights(
+    y: np.ndarray,
+    max_weight: float = 2.0,
+    magnitude_power: float = 0.0,
+    tail_floor_quantile: float = 0.60,
+) -> np.ndarray:
     y = np.asarray(y).reshape(-1)
     pos = np.sum(y > 0)
     neg = np.sum(y < 0)
@@ -103,7 +116,40 @@ def compute_regression_sample_weights(y: np.ndarray, max_weight: float = 2.0) ->
         else:
             weights[y > 0] = min(neg / pos, max_weight)
 
+    magnitude_power = float(max(0.0, magnitude_power))
+    if magnitude_power > 0.0:
+        abs_y = np.abs(y)
+        tail_floor = float(np.nanquantile(abs_y, np.clip(tail_floor_quantile, 0.0, 0.99))) if len(abs_y) else 0.0
+        scale = max(float(np.nanmedian(abs_y)), 1e-9)
+        emphasis = np.power(1.0 + (abs_y / scale), magnitude_power)
+        if tail_floor > 0.0:
+            emphasis = np.where(abs_y >= tail_floor, emphasis * 1.35, emphasis)
+        weights *= np.clip(emphasis, 1.0, max_weight * 1.5)
+
     return weights / np.mean(weights)
+
+
+def _coerce_shap_values(values: object) -> np.ndarray:
+    arr = np.asarray(values)
+    if arr.ndim > 2:
+        arr = np.squeeze(arr)
+
+    if arr.dtype.kind not in {"O", "U", "S"}:
+        return np.asarray(arr, dtype=float)
+
+    def _parse_scalar(value: object) -> float:
+        if isinstance(value, (float, int, np.floating, np.integer)):
+            return float(value)
+        text = str(value).strip()
+        if not text:
+            return 0.0
+        matches = re.findall(r"[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?", text)
+        if not matches:
+            return 0.0
+        return float(matches[0])
+
+    parsed = np.vectorize(_parse_scalar, otypes=[float])(arr)
+    return np.asarray(parsed, dtype=float)
 
 
 def _ensure_json_serializable(data: Dict) -> Dict:
@@ -133,6 +179,8 @@ class GBMTrainer:
         seed: int = 42,
         allow_cpu_fallback: bool = False,
         target_horizon: int = 1,
+        feature_profile: str = "full",
+        feature_selection_mode: str = "shap_diverse",
         use_lgb: bool = True,
         data_period: str = "max",
         data_interval: str = "1d",
@@ -151,11 +199,14 @@ class GBMTrainer:
         self.seed = seed
         self.allow_cpu_fallback = allow_cpu_fallback
         self.target_horizon = max(1, int(target_horizon))
+        self.feature_profile = str(feature_profile or "full").strip().lower()
+        self.feature_selection_mode = str(feature_selection_mode or "shap_diverse").strip().lower()
         self.data_period = str(data_period)
         self.data_interval = str(data_interval)
         self.is_intraday = is_intraday_interval(self.data_interval)
         self.annualization_factor = float(annualization_factor_for_interval(self.data_interval))
         self.cost_per_turn = 0.0002 if self.is_intraday else 0.0008
+        self.sample_weight_power = 0.35 if self.is_intraday else 0.70
         self.use_lgb = bool(use_lgb)
         if self.use_lgb and not HAS_LGB:
             raise ImportError("lightgbm is required when use_lgb=True")
@@ -196,6 +247,13 @@ class GBMTrainer:
         target_col = f"target_{self.target_horizon}d"
         if target_col not in prepared_df.columns:
             raise ValueError(f"{target_col} missing from prepared data")
+
+        feature_cols = resolve_feature_columns(self.feature_profile, include_sentiment=self.include_sentiment)
+        missing_feature_cols = [c for c in feature_cols if c not in prepared_df.columns]
+        if missing_feature_cols:
+            raise ValueError(
+                f"Feature profile '{self.feature_profile}' resolved missing columns: {missing_feature_cols[:10]}"
+            )
 
         # Mild clipping improves robustness around crash outliers.
         clip_val = float(0.15 * np.sqrt(self.target_horizon))
@@ -251,6 +309,10 @@ class GBMTrainer:
         net_sharpe = float(metrics.get("net_sharpe", 0.0))
         net_return = float(metrics.get("net_return", 0.0))
         turnover = float(metrics.get("turnover", 0.0))
+        ic = float(metrics.get("ic", 0.0))
+        pred_target_std_ratio = float(metrics.get("pred_target_std_ratio", 0.0))
+        collapse_penalty = max(0.0, 0.0012 - pred_std) / 0.0012
+        dispersion_gap = max(0.0, 0.18 - pred_target_std_ratio) / 0.18
 
         if self.is_intraday:
             # Intraday objective is explicitly cost-aware to reduce churn.
@@ -258,17 +320,35 @@ class GBMTrainer:
                 1.8 * net_sharpe
                 + 3.4 * net_return
                 + 3.0 * (dir_acc - 0.5)
+                + 2.0 * ic
                 + 16.0 * max(pred_std - 0.0012, 0.0)
                 - 2.6 * abs(positive_pct - 0.5)
                 - 1.8 * turnover
+                - 3.5 * collapse_penalty
+                - 2.0 * dispersion_gap
             )
 
-        # Keep daily objective closer to historical behavior (best long-horizon fit).
+        # Daily objective should still optimize tradeable, cost-aware behavior rather
+        # than raw sign statistics. Keep some directional/dispersion pressure, but
+        # prioritize positive net return and stable risk-adjusted PnL.
         return (
-            sharpe
-            + 8.0 * (dir_acc - 0.5)
-            + 40.0 * max(pred_std - 0.003, 0.0)
-            - 4.0 * abs(positive_pct - 0.5)
+            1.4 * net_sharpe
+            + 2.8 * net_return
+            + 0.4 * sharpe
+            + 3.5 * (dir_acc - 0.5)
+            + 2.4 * ic
+            + 18.0 * max(pred_std - 0.0015, 0.0)
+            - 2.0 * abs(positive_pct - 0.5)
+            - 0.8 * turnover
+            - 4.0 * collapse_penalty
+            - 2.5 * dispersion_gap
+        )
+
+    def _sample_weights(self, y: np.ndarray) -> np.ndarray:
+        return compute_regression_sample_weights(
+            y,
+            magnitude_power=self.sample_weight_power,
+            tail_floor_quantile=0.62 if self.is_intraday else 0.68,
         )
 
     def _splitter_for_tuning(self, n_samples: int) -> PurgedTimeSeriesSplit:
@@ -309,15 +389,25 @@ class GBMTrainer:
     def _objective_xgb(self, trial: optuna.Trial, X: np.ndarray, y: np.ndarray) -> float:
         splitter = self._splitter_for_tuning(len(X))
 
+        if self.is_intraday:
+            n_estimators_low, n_estimators_high = 300, 1200
+            lr_low, lr_high = 0.01, 0.20
+            max_depth_low, max_depth_high = 3, 7
+        else:
+            n_estimators_low, n_estimators_high = 200, 900
+            lr_low, lr_high = 0.012, 0.14
+            max_depth_low, max_depth_high = 3, 6
+
         params = self._xgb_base_params() | {
-            "n_estimators": trial.suggest_int("n_estimators", 250, 1800),
-            "learning_rate": trial.suggest_float("learning_rate", 0.01, 0.25, log=True),
-            "max_depth": trial.suggest_int("max_depth", 3, 8),
-            "subsample": trial.suggest_float("subsample", 0.6, 1.0),
-            "colsample_bytree": trial.suggest_float("colsample_bytree", 0.5, 1.0),
-            "min_child_weight": trial.suggest_float("min_child_weight", 1.0, 12.0),
+            "n_estimators": trial.suggest_int("n_estimators", n_estimators_low, n_estimators_high),
+            "learning_rate": trial.suggest_float("learning_rate", lr_low, lr_high, log=True),
+            "max_depth": trial.suggest_int("max_depth", max_depth_low, max_depth_high),
+            "subsample": trial.suggest_float("subsample", 0.65, 0.95),
+            "colsample_bytree": trial.suggest_float("colsample_bytree", 0.60, 0.95),
+            "min_child_weight": trial.suggest_float("min_child_weight", 2.0, 16.0),
+            "gamma": trial.suggest_float("gamma", 1e-4, 3.0, log=True),
             "reg_alpha": trial.suggest_float("reg_alpha", 1e-4, 1.0, log=True),
-            "reg_lambda": trial.suggest_float("reg_lambda", 1e-4, 1.0, log=True),
+            "reg_lambda": trial.suggest_float("reg_lambda", 1e-3, 10.0, log=True),
         }
 
         fold_scores = []
@@ -329,7 +419,7 @@ class GBMTrainer:
             X_train_s = scaler.fit_transform(X_train)
             X_test_s = scaler.transform(X_test)
 
-            weights = compute_regression_sample_weights(y_train)
+            weights = self._sample_weights(y_train)
             model = xgb.XGBRegressor(**params)
             try:
                 model.fit(X_train_s, y_train, sample_weight=weights, verbose=False)
@@ -346,6 +436,7 @@ class GBMTrainer:
                 pred,
                 annualization_factor=self.annualization_factor,
                 cost_per_turn=self.cost_per_turn,
+                target_horizon_days=self.target_horizon,
             )
             score = self._objective_score(metrics)
             fold_scores.append(score)
@@ -376,7 +467,7 @@ class GBMTrainer:
             X_train_s = scaler.fit_transform(X_train)
             X_test_s = scaler.transform(X_test)
 
-            weights = compute_regression_sample_weights(y_train)
+            weights = self._sample_weights(y_train)
             model = lgb.LGBMRegressor(**params)
             try:
                 model.fit(X_train_s, y_train, sample_weight=weights)
@@ -391,6 +482,7 @@ class GBMTrainer:
                 pred,
                 annualization_factor=self.annualization_factor,
                 cost_per_turn=self.cost_per_turn,
+                target_horizon_days=self.target_horizon,
             )
             score = self._objective_score(metrics)
             fold_scores.append(score)
@@ -426,7 +518,7 @@ class GBMTrainer:
     ) -> Tuple[List[str], Dict[str, float]]:
         scaler = RobustScaler()
         Xs = scaler.fit_transform(X_train)
-        weights = compute_regression_sample_weights(y_train)
+        weights = self._sample_weights(y_train)
 
         model = xgb.XGBRegressor(**(xgb_params | {"n_estimators": min(700, int(xgb_params.get("n_estimators", 700)))}))
         try:
@@ -437,37 +529,114 @@ class GBMTrainer:
 
         importance: Dict[str, float]
 
-        if HAS_SHAP:
-            try:
-                sample_n = min(2500, len(Xs))
-                sample_idx = np.linspace(0, len(Xs) - 1, sample_n, dtype=int)
-                X_sample = Xs[sample_idx]
-                explainer = shap.TreeExplainer(model)
-                shap_values = explainer.shap_values(X_sample)
-                if isinstance(shap_values, list):
-                    shap_values = shap_values[0]
-                scores = np.mean(np.abs(shap_values), axis=0)
-                importance = {feature_columns[i]: float(scores[i]) for i in range(len(feature_columns))}
-            except Exception as exc:
-                logger.warning("SHAP failed (%s); using model feature_importances_ fallback", exc)
+        try:
+            sample_n = min(2500, len(Xs))
+            sample_idx = np.linspace(0, len(Xs) - 1, sample_n, dtype=int)
+            X_sample = Xs[sample_idx]
+            booster = model.get_booster()
+            shap_values = booster.predict(xgb.DMatrix(X_sample), pred_contribs=True)
+            shap_values = np.asarray(shap_values, dtype=float)
+            if shap_values.ndim == 2 and shap_values.shape[1] == len(feature_columns) + 1:
+                shap_values = shap_values[:, :-1]
+            scores = np.mean(np.abs(shap_values), axis=0).reshape(-1)
+            importance = {feature_columns[i]: float(scores[i]) for i in range(len(feature_columns))}
+        except Exception as native_exc:
+            if HAS_SHAP:
+                try:
+                    sample_n = min(2500, len(Xs))
+                    sample_idx = np.linspace(0, len(Xs) - 1, sample_n, dtype=int)
+                    X_sample = Xs[sample_idx]
+                    explainer = shap.TreeExplainer(model)
+                    shap_values = explainer.shap_values(X_sample)
+                    if isinstance(shap_values, list):
+                        shap_values = shap_values[0]
+                    shap_values = _coerce_shap_values(shap_values)
+                    scores = np.mean(np.abs(shap_values), axis=0)
+                    scores = _coerce_shap_values(scores).reshape(-1)
+                    importance = {feature_columns[i]: float(scores[i]) for i in range(len(feature_columns))}
+                except Exception as shap_exc:
+                    logger.warning(
+                        "Native pred_contribs failed (%s); SHAP failed (%s); using model feature_importances_ fallback",
+                        native_exc,
+                        shap_exc,
+                    )
+                    raw = model.feature_importances_
+                    importance = {feature_columns[i]: float(raw[i]) for i in range(len(feature_columns))}
+            else:
+                logger.warning("Native pred_contribs failed (%s); using model feature_importances_ fallback", native_exc)
                 raw = model.feature_importances_
                 importance = {feature_columns[i]: float(raw[i]) for i in range(len(feature_columns))}
-        else:
-            raw = model.feature_importances_
-            importance = {feature_columns[i]: float(raw[i]) for i in range(len(feature_columns))}
 
         ranked = sorted(importance.items(), key=lambda kv: kv[1], reverse=True)
         keep_n = min(self.max_features, len(ranked))
         keep_n = max(30, keep_n)
-        selected = [name for name, _ in ranked[:keep_n]]
+        if self.feature_selection_mode == "shap_ranked":
+            selected = [name for name, _ in ranked[:keep_n]]
+        else:
+            selected = self._select_diverse_features(ranked=ranked, keep_n=keep_n)
 
         logger.info("Feature selection | selected=%d/%d", len(selected), len(feature_columns))
         return selected, dict(ranked)
 
+    def _select_diverse_features(self, ranked: List[tuple[str, float]], keep_n: int) -> List[str]:
+        family_minimums = {
+            "returns": 2,
+            "volatility": 4,
+            "momentum": 4,
+            "trend": 4,
+            "volume": 3,
+            "regime": 2,
+            "pattern": 2,
+            "microstructure": 1,
+            "cross_asset": 1,
+        }
+        if self.is_intraday:
+            family_minimums["calendar"] = 2
+            family_minimums["microstructure"] = 2
+
+        family_cap = max(3, int(np.ceil(keep_n * (0.34 if self.is_intraday else 0.30))))
+        selected: List[str] = []
+        selected_set = set()
+        family_counts: Dict[str, int] = {}
+
+        def maybe_add(feature_name: str) -> bool:
+            family_name = feature_family(feature_name)
+            if feature_name in selected_set or len(selected) >= keep_n:
+                return False
+            if family_counts.get(family_name, 0) >= family_cap:
+                return False
+            selected.append(feature_name)
+            selected_set.add(feature_name)
+            family_counts[family_name] = family_counts.get(family_name, 0) + 1
+            return True
+
+        for family_name, minimum in family_minimums.items():
+            family_ranked = [name for name, _score in ranked if feature_family(name) == family_name]
+            for feature_name in family_ranked[:minimum]:
+                if len(selected) >= keep_n:
+                    break
+                maybe_add(feature_name)
+
+        for feature_name, _score in ranked:
+            if len(selected) >= keep_n:
+                break
+            maybe_add(feature_name)
+
+        if len(selected) < keep_n:
+            for feature_name, _score in ranked:
+                if feature_name in selected_set:
+                    continue
+                selected.append(feature_name)
+                selected_set.add(feature_name)
+                if len(selected) >= keep_n:
+                    break
+
+        return selected
+
     def _fit_xgb(self, X: np.ndarray, y: np.ndarray, params: Dict) -> Tuple[object, RobustScaler]:
         scaler = RobustScaler()
         Xs = scaler.fit_transform(X)
-        weights = compute_regression_sample_weights(y)
+        weights = self._sample_weights(y)
 
         model = xgb.XGBRegressor(**params)
         try:
@@ -482,7 +651,7 @@ class GBMTrainer:
     def _fit_lgb(self, X: np.ndarray, y: np.ndarray, params: Dict) -> Tuple[object, RobustScaler]:
         scaler = RobustScaler()
         Xs = scaler.fit_transform(X)
-        weights = compute_regression_sample_weights(y)
+        weights = self._sample_weights(y)
 
         model = lgb.LGBMRegressor(**params)
         try:
@@ -491,6 +660,74 @@ class GBMTrainer:
             model = lgb.LGBMRegressor(**(params | {"device_type": "cpu"}))
             model.fit(Xs, y, sample_weight=weights)
         return model, scaler
+
+    def _fit_direction_head(self, X: np.ndarray, y: np.ndarray, base_params: Dict) -> Tuple[Optional[object], Optional[RobustScaler], Dict]:
+        y_bin = (np.asarray(y, dtype=float).reshape(-1) > 0.0).astype(int)
+        if len(np.unique(y_bin)) < 2:
+            return None, None, {"enabled": False, "reason": "single_class"}
+
+        scaler = RobustScaler()
+        Xs = scaler.fit_transform(X)
+        pos = max(1, int(np.sum(y_bin == 1)))
+        neg = max(1, int(np.sum(y_bin == 0)))
+
+        params = {
+            "objective": "binary:logistic",
+            "tree_method": "hist",
+            "device": "cuda" if self.xgb_gpu_enabled else "cpu",
+            "eval_metric": "logloss",
+            "n_jobs": -1,
+            "random_state": self.seed,
+            "n_estimators": min(700, max(180, int(base_params.get("n_estimators", 350)))),
+            "learning_rate": float(np.clip(base_params.get("learning_rate", 0.05), 0.015, 0.18)),
+            "max_depth": int(np.clip(base_params.get("max_depth", 4), 3, 6)),
+            "subsample": float(np.clip(base_params.get("subsample", 0.8), 0.60, 0.95)),
+            "colsample_bytree": float(np.clip(base_params.get("colsample_bytree", 0.8), 0.55, 0.95)),
+            "min_child_weight": float(np.clip(base_params.get("min_child_weight", 6.0), 1.0, 14.0)),
+            "gamma": float(max(1e-4, base_params.get("gamma", 1e-4))),
+            "reg_alpha": float(max(1e-4, base_params.get("reg_alpha", 1e-4))),
+            "reg_lambda": float(max(1e-4, base_params.get("reg_lambda", 1e-3))),
+            "scale_pos_weight": float(neg / pos),
+        }
+
+        model = xgb.XGBClassifier(**params)
+        try:
+            model.fit(Xs, y_bin, verbose=False)
+        except xgb.core.XGBoostError:
+            if not self.allow_cpu_fallback:
+                raise
+            model = xgb.XGBClassifier(**(params | {"device": "cpu"}))
+            model.fit(Xs, y_bin, verbose=False)
+
+        train_prob = np.asarray(model.predict_proba(Xs)[:, 1], dtype=float)
+        train_pred = (train_prob >= 0.5).astype(int)
+        meta = {
+            "enabled": True,
+            "train_dir_acc": float(np.mean(train_pred == y_bin)),
+            "train_positive_rate": float(np.mean(train_prob)),
+            "class_balance": float(np.mean(y_bin)),
+        }
+        return model, scaler, meta
+
+    @staticmethod
+    def _apply_direction_head(base_pred: np.ndarray, direction_prob: Optional[np.ndarray]) -> np.ndarray:
+        pred = np.asarray(base_pred, dtype=float).reshape(-1)
+        if direction_prob is None:
+            return pred
+
+        prob = np.clip(np.asarray(direction_prob, dtype=float).reshape(-1), 1e-6, 1.0 - 1e-6)
+        if len(prob) != len(pred):
+            return pred
+
+        score = (2.0 * prob) - 1.0
+        confidence = np.abs(score)
+        alignment = np.sign(pred) * np.sign(score)
+        out = pred * (0.18 + 0.85 * confidence)
+
+        disagree = alignment < 0.0
+        if np.any(disagree):
+            out[disagree] = pred[disagree] * np.clip(1.0 - 1.55 * confidence[disagree], 0.0, 0.55)
+        return out
 
     def _walk_forward_metrics(self, X: np.ndarray, y: np.ndarray, params: Dict, model_type: str) -> Dict:
         splitter = self._splitter_for_tuning(len(X))
@@ -523,6 +760,7 @@ class GBMTrainer:
             eval_kwargs={
                 "annualization_factor": self.annualization_factor,
                 "cost_per_turn": self.cost_per_turn,
+                "target_horizon_days": self.target_horizon,
             },
         )
 
@@ -536,19 +774,23 @@ class GBMTrainer:
             0.8 * float(xgb_agg.get("sharpe_mean", 0.0))
             + 1.2 * float(xgb_agg.get("net_sharpe_mean", 0.0))
             + 8.0 * (float(xgb_agg.get("dir_acc_mean", 0.5)) - 0.5)
+            + 2.0 * float(xgb_agg.get("ic_mean", 0.0))
             + 30.0 * max(float(xgb_agg.get("pred_std_mean", 0.0)) - 0.003, 0.0)
             - 3.0 * abs(float(xgb_agg.get("positive_pct_mean", 0.5)) - 0.5)
             + 3.0 * float(xgb_agg.get("net_return_mean", 0.0))
             - 0.8 * float(xgb_agg.get("turnover_mean", 0.0))
+            + 1.5 * min(float(xgb_agg.get("pred_target_std_ratio_mean", 0.0)), 0.40)
         )
         lgb_score = (
             0.8 * float(lgb_agg.get("sharpe_mean", 0.0))
             + 1.2 * float(lgb_agg.get("net_sharpe_mean", 0.0))
             + 8.0 * (float(lgb_agg.get("dir_acc_mean", 0.5)) - 0.5)
+            + 2.0 * float(lgb_agg.get("ic_mean", 0.0))
             + 30.0 * max(float(lgb_agg.get("pred_std_mean", 0.0)) - 0.003, 0.0)
             - 3.0 * abs(float(lgb_agg.get("positive_pct_mean", 0.5)) - 0.5)
             + 3.0 * float(lgb_agg.get("net_return_mean", 0.0))
             - 0.8 * float(lgb_agg.get("turnover_mean", 0.0))
+            + 1.5 * min(float(lgb_agg.get("pred_target_std_ratio_mean", 0.0)), 0.40)
         )
 
         x = max(0.0, xgb_score)
@@ -709,6 +951,11 @@ class GBMTrainer:
         lgb_scaler = None
         if self.use_lgb and lgb_params is not None:
             lgb_model, lgb_scaler = self._fit_lgb(X_train_sel, bundle.y_train, lgb_params)
+        direction_model, direction_scaler, direction_head_meta = self._fit_direction_head(
+            X_train_sel,
+            bundle.y_train,
+            xgb_params,
+        )
 
         xgb_holdout_pred = xgb_model.predict(xgb_scaler.transform(X_holdout_sel))
         if lgb_model is not None and lgb_scaler is not None:
@@ -720,6 +967,14 @@ class GBMTrainer:
             lgb_holdout_pred = None
             ensemble_holdout_pred = xgb_holdout_pred
 
+        direction_holdout_prob = None
+        if direction_model is not None and direction_scaler is not None:
+            direction_holdout_prob = np.asarray(
+                direction_model.predict_proba(direction_scaler.transform(X_holdout_sel))[:, 1],
+                dtype=float,
+            )
+        ensemble_holdout_directional = self._apply_direction_head(ensemble_holdout_pred, direction_holdout_prob)
+
         ensemble_holdout_calibrated, holdout_conf = apply_direction_calibration(
             ensemble_holdout_pred,
             direction_calibrator,
@@ -730,6 +985,7 @@ class GBMTrainer:
             xgb_holdout_pred,
             annualization_factor=self.annualization_factor,
             cost_per_turn=self.cost_per_turn,
+            target_horizon_days=self.target_horizon,
         )
         lgb_holdout = (
             evaluate_predictions(
@@ -737,6 +993,7 @@ class GBMTrainer:
                 lgb_holdout_pred,
                 annualization_factor=self.annualization_factor,
                 cost_per_turn=self.cost_per_turn,
+                target_horizon_days=self.target_horizon,
             )
             if lgb_holdout_pred is not None
             else None
@@ -746,29 +1003,48 @@ class GBMTrainer:
             ensemble_holdout_pred,
             annualization_factor=self.annualization_factor,
             cost_per_turn=self.cost_per_turn,
+            target_horizon_days=self.target_horizon,
+        )
+        ens_holdout_directional = evaluate_predictions(
+            bundle.y_holdout,
+            ensemble_holdout_directional,
+            annualization_factor=self.annualization_factor,
+            cost_per_turn=self.cost_per_turn,
+            target_horizon_days=self.target_horizon,
         )
         ens_holdout_cal = evaluate_predictions(
             bundle.y_holdout,
             ensemble_holdout_calibrated,
             annualization_factor=self.annualization_factor,
             cost_per_turn=self.cost_per_turn,
+            target_horizon_days=self.target_horizon,
         )
         ens_holdout_cal["confidence_mean"] = float(np.mean(np.abs(holdout_conf)))
+        if direction_holdout_prob is not None:
+            y_holdout_bin = (bundle.y_holdout > 0.0).astype(int)
+            dir_pred = (direction_holdout_prob >= 0.5).astype(int)
+            direction_head_meta |= {
+                "holdout_dir_acc": float(np.mean(dir_pred == y_holdout_bin)),
+                "holdout_brier": float(np.mean((direction_holdout_prob - y_holdout_bin) ** 2)),
+                "holdout_positive_rate": float(np.mean(direction_holdout_prob)),
+            }
 
         val_dir = float(wf_xgb["aggregate"]["dir_acc_mean"])
         if wf_lgb is not None:
             val_dir = max(val_dir, float(wf_lgb["aggregate"]["dir_acc_mean"]))
-        test_dir = max(ens_holdout["dir_acc"], ens_holdout_cal["dir_acc"])
+        test_dir = max(ens_holdout["dir_acc"], ens_holdout_cal["dir_acc"], ens_holdout_directional["dir_acc"])
         if val_dir > 0.5:
-            wfe = max(0.0, ((test_dir - 0.5) / (val_dir - 0.5)) * 100.0)
+            legacy_wfe = max(0.0, ((test_dir - 0.5) / (val_dir - 0.5)) * 100.0)
         else:
-            wfe = 0.0
+            legacy_wfe = 0.0
 
         model_artifacts = {
             "xgb_model_path": str(self.save_dir / "xgb_model.joblib"),
             "lgb_model_path": str(self.save_dir / "lgb_model.joblib") if lgb_model is not None else None,
+            "direction_model_path": str(self.save_dir / "direction_model.joblib") if direction_model is not None else None,
             "xgb_scaler_path": str(self.save_dir / "xgb_scaler.joblib"),
             "lgb_scaler_path": str(self.save_dir / "lgb_scaler.joblib") if lgb_scaler is not None else None,
+            "direction_scaler_path": str(self.save_dir / "direction_scaler.joblib") if direction_scaler is not None else None,
         }
 
         # Persist artifacts
@@ -783,6 +1059,13 @@ class GBMTrainer:
                 self.save_dir / "lgb_scaler.joblib",
                 self.save_dir / "lgb_reg.joblib",
             ]:
+                if stale.exists():
+                    stale.unlink(missing_ok=True)
+        if direction_model is not None and direction_scaler is not None:
+            joblib.dump(direction_model, self.save_dir / "direction_model.joblib")
+            joblib.dump(direction_scaler, self.save_dir / "direction_scaler.joblib")
+        else:
+            for stale in [self.save_dir / "direction_model.joblib", self.save_dir / "direction_scaler.joblib"]:
                 if stale.exists():
                     stale.unlink(missing_ok=True)
 
@@ -816,6 +1099,8 @@ class GBMTrainer:
                 "cost_per_turn": self.cost_per_turn,
             },
             "target_horizon_days": self.target_horizon,
+            "feature_profile": self.feature_profile,
+            "feature_selection_mode": self.feature_selection_mode,
             "target_distribution": {
                 "train_positive_pct": float((bundle.y_train > 0).mean()),
                 "train_mean": float(np.mean(bundle.y_train)),
@@ -826,10 +1111,12 @@ class GBMTrainer:
             },
             "ensemble_weights": ensemble_weights,
             "direction_calibrator": direction_calibrator,
+            "direction_head": direction_head_meta,
             "execution_calibration": execution_calibration,
             "n_features_original": len(bundle.feature_columns),
             "n_features_selected": len(selected_cols),
             "selected_columns": selected_cols,
+            "selected_feature_families": summarize_feature_families(selected_cols),
             "walk_forward": {
                 "xgb": wf_xgb,
                 "lgb": wf_lgb,
@@ -838,16 +1125,47 @@ class GBMTrainer:
                 "xgb": xgb_holdout,
                 "lgb": lgb_holdout,
                 "ensemble": ens_holdout,
+                "ensemble_directional": ens_holdout_directional,
                 "ensemble_calibrated": ens_holdout_cal,
             },
-            "wfe": float(wfe),
-            "quality_gate": {
-                "pred_std_gt_0_005": max(ens_holdout["pred_std"], ens_holdout_cal["pred_std"]) > 0.005,
-                "positive_pct_in_range": 0.30 <= ens_holdout_cal["positive_pct"] <= 0.70,
-                "wfe_gt_40": wfe > 40.0,
-                "dir_acc_gt_51": max(ens_holdout["dir_acc"], ens_holdout_cal["dir_acc"]) > 0.51,
-            },
+            "wfe": float(legacy_wfe),
             "artifacts": model_artifacts,
+        }
+
+        selected_source, selected_metrics = select_holdout_candidate(metadata, intraday=self.is_intraday)
+        quality = score_variant_quality(metadata, intraday=self.is_intraday)
+        effective_wfe = float(selected_metrics.get("wfe", legacy_wfe))
+        metadata["effective_holdout_source"] = selected_source
+        metadata["wfe_legacy_directional"] = float(legacy_wfe)
+        metadata["wfe"] = effective_wfe
+        metadata["wfe_details"] = {
+            "primary": "cost_adjusted" if float(selected_metrics.get("wfe_cost", 0.0)) > 0.0 else "directional",
+            "effective": effective_wfe,
+            "cost_adjusted": float(selected_metrics.get("wfe_cost", 0.0)),
+            "directional": float(selected_metrics.get("wfe_directional", legacy_wfe)),
+        }
+        metadata["quality_gate"] = {
+            "selected_source": selected_source,
+            "passed": bool(quality.passed),
+            "score": float(quality.score),
+            "reasons": list(quality.reasons),
+            "effective_metrics": quality.metrics,
+            "pred_std_gt_0_005": float(selected_metrics.get("pred_std", 0.0)) > 0.005,
+            "positive_pct_in_range": 0.30 <= float(selected_metrics.get("positive_pct", 0.5)) <= 0.70,
+            "wfe_gt_40": effective_wfe > 40.0,
+            "dir_acc_gt_51": float(selected_metrics.get("dir_acc", 0.5)) > 0.51,
+        }
+        metadata["dispersion_diagnostics"] = {
+            "sample_weight_power": float(self.sample_weight_power),
+            "train_target_std": float(np.std(bundle.y_train)),
+            "holdout_target_std": float(np.std(bundle.y_holdout)),
+            "holdout_pred_target_std_ratio": float(selected_metrics.get("pred_target_std_ratio", 0.0)),
+            "walk_forward_pred_target_std_ratio": float(
+                max(
+                    wf_xgb.get("aggregate", {}).get("pred_target_std_ratio_mean", 0.0),
+                    wf_lgb.get("aggregate", {}).get("pred_target_std_ratio_mean", 0.0) if wf_lgb else 0.0,
+                )
+            ),
         }
 
         with (self.save_dir / "training_metadata.json").open("w", encoding="utf-8") as fh:
@@ -861,7 +1179,7 @@ class GBMTrainer:
             ens_holdout_cal["sharpe"],
             ens_holdout["pred_std"],
             ens_holdout_cal["pred_std"],
-            wfe,
+            effective_wfe,
         )
 
         return metadata
@@ -879,6 +1197,19 @@ def main() -> None:
     parser.add_argument("--max-features", type=int, default=45, help="Max SHAP-selected features")
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
     parser.add_argument("--target-horizon", type=int, default=1, help="Forward target horizon in trading days")
+    parser.add_argument(
+        "--feature-profile",
+        type=str,
+        default="full",
+        help=f"Feature profile ({', '.join(available_feature_profiles())})",
+    )
+    parser.add_argument(
+        "--feature-selection-mode",
+        type=str,
+        default="shap_diverse",
+        choices=["shap_diverse", "shap_ranked"],
+        help="Feature selection policy applied after SHAP ranking",
+    )
     parser.add_argument("--no-lgb", action="store_true", help="Disable LightGBM and train GPU XGBoost only")
     parser.add_argument("--data-period", type=str, default="max", help="yfinance period (e.g. max, 5y, 730d)")
     parser.add_argument("--data-interval", type=str, default="1d", help="yfinance interval (e.g. 1d, 1h, 30m)")
@@ -902,6 +1233,8 @@ def main() -> None:
         seed=args.seed,
         allow_cpu_fallback=args.allow_cpu_fallback,
         target_horizon=args.target_horizon,
+        feature_profile=args.feature_profile,
+        feature_selection_mode=args.feature_selection_mode,
         use_lgb=not args.no_lgb,
         data_period=args.data_period,
         data_interval=args.data_interval,

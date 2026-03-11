@@ -9,6 +9,17 @@ export interface ModelMeta {
   ensembleSize: number;
   lastTrainingJobId?: string;
   notes?: string;
+  modelVariant?: string;
+  dataInterval?: string;
+  dataPeriod?: string;
+  qualityGatePassed?: boolean;
+  qualityScore?: number;
+  qualityReasons?: string[];
+  holdoutMetricSource?: string;
+  holdoutPredTargetStdRatio?: number;
+  featureProfile?: string;
+  featureSelectionMode?: string;
+  targetHorizonDays?: number;
 }
 
 export type FusionMode =
@@ -126,6 +137,8 @@ export interface PredictionResult {
     dates: string[];
     prices: number[];
     returns: number[];
+    lowerBand?: number[];
+    upperBand?: number[];
     positions: number[];
     actions?: Array<{
       date: string;
@@ -142,6 +155,13 @@ export interface PredictionResult {
     horizon: number;
     tradeShareFloor?: number;
     modelQualityGatePassed?: boolean;
+    modelQualityScore?: number;
+    modelQualityReasons?: string[];
+    holdoutMetricSource?: string;
+    holdoutPredTargetStdRatio?: number;
+    featureProfile?: string;
+    featureSelectionMode?: string;
+    targetHorizonDays?: number;
     executionMode?: string;
     maxLong?: number;
     maxShort?: number;

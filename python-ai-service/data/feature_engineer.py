@@ -8,7 +8,8 @@ low operational risk.
 from __future__ import annotations
 
 import logging
-from typing import List, Tuple
+from collections import Counter
+from typing import Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
@@ -29,6 +30,10 @@ TECHNICAL_FEATURE_COLUMNS: List[str] = [
     "atr_pct_14",
     "garman_klass_10",
     "parkinson_10",
+    "downside_vol_20d",
+    "upside_vol_20d",
+    "ret_skew_20",
+    "ret_kurt_20",
     # Momentum (11)
     "rsi_7",
     "rsi_14",
@@ -52,6 +57,9 @@ TECHNICAL_FEATURE_COLUMNS: List[str] = [
     "macd_hist",
     "adx_14",
     "trend_strength",
+    "efficiency_ratio_10",
+    "drawdown_20",
+    "recovery_20",
     # Bands (6)
     "bb_upper_dist",
     "bb_lower_dist",
@@ -76,6 +84,8 @@ TECHNICAL_FEATURE_COLUMNS: List[str] = [
     "volume_velocity_5",
     "momentum_10_20",
     "price_accel_10",
+    "breakout_20",
+    "breakout_60",
     # Pattern (6)
     "higher_high",
     "lower_low",
@@ -100,6 +110,7 @@ TECHNICAL_FEATURE_COLUMNS: List[str] = [
     "vix_proxy_change",
     "rv_iv_spread",
     "rv_iv_spread_zscore",
+    "volume_zscore_20",
     # Calendar/session (9)
     "hour_sin",
     "hour_cos",
@@ -115,6 +126,251 @@ TECHNICAL_FEATURE_COLUMNS: List[str] = [
 SENTIMENT_FEATURE_COLUMNS: List[str] = []
 
 EXPECTED_FEATURE_COUNT = len(TECHNICAL_FEATURE_COLUMNS)
+
+FEATURE_FAMILY_MAP: Dict[str, str] = {
+    "ret_1d": "returns",
+    "log_ret_1d": "returns",
+    "vol_5d": "volatility",
+    "vol_10d": "volatility",
+    "vol_20d": "volatility",
+    "vol_ratio_5_20": "volatility",
+    "atr_14": "volatility",
+    "atr_pct_14": "volatility",
+    "garman_klass_10": "volatility",
+    "parkinson_10": "volatility",
+    "downside_vol_20d": "volatility",
+    "upside_vol_20d": "volatility",
+    "ret_skew_20": "returns",
+    "ret_kurt_20": "returns",
+    "rsi_7": "momentum",
+    "rsi_14": "momentum",
+    "rsi_21": "momentum",
+    "stoch_k_14": "momentum",
+    "stoch_d_3": "momentum",
+    "williams_r_14": "momentum",
+    "cci_20": "momentum",
+    "roc_5": "momentum",
+    "roc_10": "momentum",
+    "roc_20": "momentum",
+    "tsi_25_13": "momentum",
+    "sma_10_dist": "trend",
+    "sma_20_dist": "trend",
+    "sma_50_dist": "trend",
+    "ema_12_dist": "trend",
+    "ema_26_dist": "trend",
+    "macd": "trend",
+    "macd_signal": "trend",
+    "macd_hist": "trend",
+    "adx_14": "trend",
+    "trend_strength": "trend",
+    "efficiency_ratio_10": "trend",
+    "drawdown_20": "trend",
+    "recovery_20": "trend",
+    "bb_upper_dist": "bands",
+    "bb_lower_dist": "bands",
+    "bb_width": "bands",
+    "bb_pct_b": "bands",
+    "kc_upper_dist": "bands",
+    "kc_lower_dist": "bands",
+    "vol_sma_20_ratio": "volume",
+    "obv": "volume",
+    "obv_slope_5": "volume",
+    "vwap_dist": "volume",
+    "mfi_14": "volume",
+    "vpt": "volume",
+    "ad_line": "volume",
+    "velocity_5": "dynamics",
+    "velocity_10": "dynamics",
+    "velocity_20": "dynamics",
+    "accel_5": "dynamics",
+    "rsi_velocity_5": "dynamics",
+    "volume_velocity_5": "dynamics",
+    "momentum_10_20": "dynamics",
+    "price_accel_10": "dynamics",
+    "breakout_20": "pattern",
+    "breakout_60": "pattern",
+    "higher_high": "pattern",
+    "lower_low": "pattern",
+    "gap_up": "pattern",
+    "gap_down": "pattern",
+    "body_size": "pattern",
+    "inside_bar": "pattern",
+    "regime_low_vol": "regime",
+    "regime_mid_vol": "regime",
+    "regime_high_vol": "regime",
+    "trend_dir": "regime",
+    "mean_reversion_z": "regime",
+    "trend_persistence": "regime",
+    "hl_range": "microstructure",
+    "close_location": "microstructure",
+    "intraday_vol": "microstructure",
+    "overnight_ret": "microstructure",
+    "vix_proxy_level": "cross_asset",
+    "vix_proxy_change": "cross_asset",
+    "rv_iv_spread": "cross_asset",
+    "rv_iv_spread_zscore": "cross_asset",
+    "volume_zscore_20": "volume",
+    "hour_sin": "calendar",
+    "hour_cos": "calendar",
+    "minute_sin": "calendar",
+    "minute_cos": "calendar",
+    "day_of_week_sin": "calendar",
+    "day_of_week_cos": "calendar",
+    "session_open": "calendar",
+    "session_midday": "calendar",
+    "session_close": "calendar",
+}
+
+FEATURE_FAMILIES: dict[str, List[str]] = {
+    "returns_volatility": [
+        "ret_1d",
+        "log_ret_1d",
+        "vol_5d",
+        "vol_10d",
+        "vol_20d",
+        "vol_ratio_5_20",
+        "atr_14",
+        "atr_pct_14",
+        "garman_klass_10",
+        "parkinson_10",
+        "downside_vol_20d",
+        "upside_vol_20d",
+        "ret_skew_20",
+        "ret_kurt_20",
+    ],
+    "momentum": [
+        "rsi_7",
+        "rsi_14",
+        "rsi_21",
+        "stoch_k_14",
+        "stoch_d_3",
+        "williams_r_14",
+        "cci_20",
+        "roc_5",
+        "roc_10",
+        "roc_20",
+        "tsi_25_13",
+    ],
+    "trend": [
+        "sma_10_dist",
+        "sma_20_dist",
+        "sma_50_dist",
+        "ema_12_dist",
+        "ema_26_dist",
+        "macd",
+        "macd_signal",
+        "macd_hist",
+        "adx_14",
+        "trend_strength",
+        "efficiency_ratio_10",
+        "drawdown_20",
+        "recovery_20",
+    ],
+    "bands": [
+        "bb_upper_dist",
+        "bb_lower_dist",
+        "bb_width",
+        "bb_pct_b",
+        "kc_upper_dist",
+        "kc_lower_dist",
+    ],
+    "volume": [
+        "vol_sma_20_ratio",
+        "obv",
+        "obv_slope_5",
+        "vwap_dist",
+        "mfi_14",
+        "vpt",
+        "ad_line",
+        "volume_zscore_20",
+    ],
+    "dynamics": [
+        "velocity_5",
+        "velocity_10",
+        "velocity_20",
+        "accel_5",
+        "rsi_velocity_5",
+        "volume_velocity_5",
+        "momentum_10_20",
+        "price_accel_10",
+        "breakout_20",
+        "breakout_60",
+    ],
+    "pattern": [
+        "higher_high",
+        "lower_low",
+        "gap_up",
+        "gap_down",
+        "body_size",
+        "inside_bar",
+    ],
+    "regime": [
+        "regime_low_vol",
+        "regime_mid_vol",
+        "regime_high_vol",
+        "trend_dir",
+        "mean_reversion_z",
+        "trend_persistence",
+    ],
+    "microstructure": [
+        "hl_range",
+        "close_location",
+        "intraday_vol",
+        "overnight_ret",
+    ],
+    "cross_asset": [
+        "vix_proxy_level",
+        "vix_proxy_change",
+        "rv_iv_spread",
+        "rv_iv_spread_zscore",
+    ],
+    "calendar": [
+        "hour_sin",
+        "hour_cos",
+        "minute_sin",
+        "minute_cos",
+        "day_of_week_sin",
+        "day_of_week_cos",
+        "session_open",
+        "session_midday",
+        "session_close",
+    ],
+}
+
+FEATURE_PROFILES: dict[str, tuple[str, ...]] = {
+    "full": tuple(FEATURE_FAMILIES.keys()),
+    "compact": (
+        "returns_volatility",
+        "momentum",
+        "trend",
+        "volume",
+        "regime",
+        "cross_asset",
+    ),
+    "trend": (
+        "returns_volatility",
+        "trend",
+        "volume",
+        "dynamics",
+        "regime",
+        "cross_asset",
+    ),
+    "mean_reversion": (
+        "returns_volatility",
+        "momentum",
+        "bands",
+        "volume",
+        "regime",
+        "cross_asset",
+    ),
+    "price_volume": (
+        "returns_volatility",
+        "momentum",
+        "trend",
+        "volume",
+        "dynamics",
+    ),
+}
 
 
 def _safe_div(a: pd.Series, b: pd.Series, eps: float = 1e-9) -> pd.Series:
@@ -221,6 +477,40 @@ def get_feature_columns(include_sentiment: bool = True) -> List[str]:
     return cols
 
 
+def feature_family(feature_name: str) -> str:
+    return FEATURE_FAMILY_MAP.get(feature_name, "other")
+
+
+def summarize_feature_families(feature_names: List[str]) -> Dict[str, int]:
+    counts = Counter(feature_family(name) for name in feature_names)
+    return dict(sorted(counts.items(), key=lambda item: (-item[1], item[0])))
+
+
+def available_feature_profiles() -> List[str]:
+    return sorted(FEATURE_PROFILES.keys())
+
+
+def resolve_feature_columns(profile: str = "full", include_sentiment: bool = False) -> List[str]:
+    requested = str(profile or "full").strip().lower()
+    family_names = FEATURE_PROFILES.get(requested)
+    if family_names is None:
+        raise ValueError(
+            f"Unknown feature profile '{profile}'. Available profiles: {', '.join(available_feature_profiles())}"
+        )
+
+    cols: List[str] = []
+    for family in family_names:
+        cols.extend(FEATURE_FAMILIES[family])
+
+    if include_sentiment and SENTIMENT_FEATURE_COLUMNS:
+        cols.extend(SENTIMENT_FEATURE_COLUMNS)
+
+    ordered = [c for c in TECHNICAL_FEATURE_COLUMNS if c in set(cols)]
+    if include_sentiment and SENTIMENT_FEATURE_COLUMNS:
+        ordered.extend([c for c in SENTIMENT_FEATURE_COLUMNS if c not in ordered])
+    return ordered
+
+
 def _assert_required_columns(df: pd.DataFrame) -> None:
     missing = [c for c in BASE_COLUMNS if c not in df.columns]
     if missing:
@@ -293,6 +583,20 @@ def engineer_features(
 
     vol_20 = ret_1d.rolling(20, min_periods=20).std()
     vol_60 = ret_1d.rolling(60, min_periods=60).std()
+    downside_vol_20 = ret_1d.clip(upper=0.0).rolling(20, min_periods=20).std()
+    upside_vol_20 = ret_1d.clip(lower=0.0).rolling(20, min_periods=20).std()
+    ret_skew_20 = ret_1d.rolling(20, min_periods=20).skew()
+    ret_kurt_20 = ret_1d.rolling(20, min_periods=20).kurt()
+    volume_mean_20 = volume.rolling(20, min_periods=20).mean()
+    volume_std_20 = volume.rolling(20, min_periods=20).std()
+    rolling_high_20 = high.rolling(20, min_periods=20).max()
+    rolling_low_20 = low.rolling(20, min_periods=20).min()
+    rolling_high_60 = high.rolling(60, min_periods=60).max()
+    rolling_low_60 = low.rolling(60, min_periods=60).min()
+    close_change_10 = close.diff(10).abs()
+    path_length_10 = close.diff().abs().rolling(10, min_periods=10).sum()
+    rolling_drawdown_20 = _safe_div(close, close.rolling(20, min_periods=20).max()) - 1.0
+    rolling_recovery_20 = _safe_div(close - close.rolling(20, min_periods=20).min(), close.rolling(20, min_periods=20).min())
 
     vol_q_low = vol_20.rolling(252, min_periods=80).quantile(0.33)
     vol_q_high = vol_20.rolling(252, min_periods=80).quantile(0.67)
@@ -321,6 +625,10 @@ def engineer_features(
     feat["atr_pct_14"] = _safe_div(atr_14, close)
     feat["garman_klass_10"] = gk_daily.rolling(10, min_periods=10).mean()
     feat["parkinson_10"] = parkinson_daily.rolling(10, min_periods=10).mean()
+    feat["downside_vol_20d"] = downside_vol_20
+    feat["upside_vol_20d"] = upside_vol_20
+    feat["ret_skew_20"] = ret_skew_20
+    feat["ret_kurt_20"] = ret_kurt_20
 
     feat["rsi_7"] = _rsi(close, 7)
     feat["rsi_14"] = _rsi(close, 14)
@@ -344,6 +652,9 @@ def engineer_features(
     feat["macd_hist"] = macd_hist
     feat["adx_14"] = _adx(high, low, close, 14)
     feat["trend_strength"] = _safe_div((ema_12 - ema_26).abs(), close)
+    feat["efficiency_ratio_10"] = _safe_div(close_change_10, path_length_10)
+    feat["drawdown_20"] = rolling_drawdown_20
+    feat["recovery_20"] = rolling_recovery_20
 
     feat["bb_upper_dist"] = _safe_div(close - bb_upper, bb_upper)
     feat["bb_lower_dist"] = _safe_div(close - bb_lower, bb_lower)
@@ -368,6 +679,8 @@ def engineer_features(
     feat["volume_velocity_5"] = volume.pct_change(5)
     feat["momentum_10_20"] = feat["velocity_10"] - feat["velocity_20"]
     feat["price_accel_10"] = _safe_div(close.diff(10).diff(10), close.shift(20))
+    feat["breakout_20"] = _safe_div(close - rolling_low_20, rolling_high_20 - rolling_low_20)
+    feat["breakout_60"] = _safe_div(close - rolling_low_60, rolling_high_60 - rolling_low_60)
 
     feat["higher_high"] = (high > high.shift(1)).astype(float)
     feat["lower_low"] = (low < low.shift(1)).astype(float)
@@ -392,6 +705,7 @@ def engineer_features(
     feat["vix_proxy_change"] = feat["vix_proxy_level"].pct_change(5)
     feat["rv_iv_spread"] = rv_iv_spread
     feat["rv_iv_spread_zscore"] = rv_iv_spread_zscore
+    feat["volume_zscore_20"] = _safe_div(volume - volume_mean_20, volume_std_20)
 
     # Intraday calendar/session context. For daily bars these collapse to stable values.
     ts_index = pd.to_datetime(work.index)

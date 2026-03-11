@@ -106,6 +106,52 @@ function MetricCard({
   );
 }
 
+function StatusPill({
+  label,
+  tone = "neutral",
+}: {
+  label: string;
+  tone?: "neutral" | "good" | "bad" | "warn";
+}) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]",
+        tone === "good" && "border-emerald-500/40 bg-emerald-500/10 text-emerald-200",
+        tone === "bad" && "border-rose-500/40 bg-rose-500/10 text-rose-200",
+        tone === "warn" && "border-amber-500/40 bg-amber-500/10 text-amber-200",
+        tone === "neutral" && "border-zinc-700 bg-zinc-900/80 text-zinc-300"
+      )}
+    >
+      {label}
+    </span>
+  );
+}
+
+function SectionNav() {
+  const items = [
+    { href: "#controls", label: "Controls" },
+    { href: "#chart", label: "Signal Deck" },
+    { href: "#equity", label: "Equity" },
+    { href: "#diagnostics", label: "Diagnostics" },
+    { href: "#trades", label: "Trades" },
+  ];
+
+  return (
+    <nav className="sticky top-4 z-20 flex flex-wrap gap-2 rounded-2xl border border-zinc-800/80 bg-zinc-950/85 p-2 backdrop-blur">
+      {items.map((item) => (
+        <a
+          key={item.href}
+          href={item.href}
+          className="rounded-full border border-zinc-800 bg-black/30 px-3 py-1.5 text-xs font-medium text-zinc-300 transition hover:border-cyan-400 hover:text-white"
+        >
+          {item.label}
+        </a>
+      ))}
+    </nav>
+  );
+}
+
 function ForwardSimulationPanel({ backtest }: { backtest: BacktestResult | null }) {
   const sim = backtest?.forwardSimulation;
   if (!sim) {
@@ -282,6 +328,7 @@ export default function AiPage() {
   const [fusionSettings, setFusionSettings] = useState<FusionSettings>(DEFAULT_FUSION);
   const [backtestParams, setBacktestParams] = useState<BacktestParams>(DEFAULT_BACKTEST);
   const [selectedModelId, setSelectedModelId] = useState<string>("");
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [prediction, setPrediction] = useState<PredictionResult | null>(null);
   const [backtest, setBacktest] = useState<BacktestResult | null>(null);
 
@@ -313,6 +360,24 @@ export default function AiPage() {
   const selectedModel = useMemo(() => {
     return modelsQuery.data?.find((m) => m.id === selectedModelId);
   }, [modelsQuery.data, selectedModelId]);
+
+  const activeQualityGate = prediction?.metadata?.modelQualityGatePassed ?? selectedModel?.qualityGatePassed ?? false;
+  const activeQualityScore = prediction?.metadata?.modelQualityScore ?? selectedModel?.qualityScore ?? null;
+  const activeQualityReasons = prediction?.metadata?.modelQualityReasons ?? selectedModel?.qualityReasons ?? [];
+  const activeHoldoutSource = prediction?.metadata?.holdoutMetricSource ?? selectedModel?.holdoutMetricSource;
+  const activeDispersionRatio = prediction?.metadata?.holdoutPredTargetStdRatio ?? selectedModel?.holdoutPredTargetStdRatio ?? null;
+  const activeFeatureProfile = prediction?.metadata?.featureProfile ?? selectedModel?.featureProfile ?? null;
+  const activeSelectionMode = prediction?.metadata?.featureSelectionMode ?? selectedModel?.featureSelectionMode ?? null;
+  const activeTargetHorizon = prediction?.metadata?.targetHorizonDays ?? selectedModel?.targetHorizonDays ?? null;
+  const activeVariant = prediction?.metadata?.modelVariant ?? selectedModel?.modelVariant ?? predictionParams.modelVariant ?? "auto";
+  const backendHealthy = modelsQuery.isSuccess && (modelsQuery.data?.length ?? 0) > 0;
+  const activeHealthTone: "good" | "warn" | "bad" =
+    activeQualityGate ? "good" : activeQualityReasons.length ? "warn" : "bad";
+  const activeHealthLabel = activeQualityGate
+    ? "ML Gate Active"
+    : activeQualityReasons.length
+      ? "Regime Fallback"
+      : "Awaiting Model";
 
   const candles: CandlestickPoint[] = useMemo(() => {
     if (!prediction) return [];
@@ -358,6 +423,20 @@ export default function AiPage() {
       (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
     ) as ChartMarker[];
   }, [prediction?.tradeMarkers, backtest?.annotations, backtest?.forwardSimulation?.markers]);
+
+  const forecastBandSummary = useMemo(() => {
+    const forecast = prediction?.forecast;
+    if (!forecast?.prices?.length) return null;
+    const lastIdx = forecast.prices.length - 1;
+    const base = forecast.prices[lastIdx] ?? 0;
+    const lower = forecast.lowerBand?.[lastIdx];
+    const upper = forecast.upperBand?.[lastIdx];
+    return {
+      base,
+      lower: lower ?? base,
+      upper: upper ?? base,
+    };
+  }, [prediction?.forecast]);
 
   const applyPreset = (preset: "daily" | "intraday") => {
     if (preset === "intraday") {
@@ -462,16 +541,81 @@ export default function AiPage() {
       <div className="pointer-events-none absolute right-0 top-24 h-96 w-96 rounded-full bg-amber-500/10 blur-3xl" />
 
       <section className="mb-6 rounded-3xl border border-zinc-700/70 bg-[radial-gradient(1200px_350px_at_20%_0%,rgba(34,211,238,0.12),transparent_60%),radial-gradient(900px_320px_at_90%_0%,rgba(250,204,21,0.08),transparent_60%),linear-gradient(180deg,rgba(24,24,27,0.95),rgba(9,9,11,0.95))] p-6 shadow-[0_18px_70px_rgba(0,0,0,0.55)]">
-        <p className="text-xs uppercase tracking-[0.24em] text-amber-400">Ralph Loop Command Deck</p>
-        <h1 className="mt-2 font-mono text-3xl font-semibold text-zinc-100">AI Strategy Cockpit</h1>
-        <p className="mt-2 max-w-4xl text-sm text-zinc-300">
-          Full control over model variant, interval, execution constraints, and risk diagnostics. Train, backtest, forward-simulate, and inspect
-          alpha decay or execution drag from one surface.
-        </p>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-[0.24em] text-amber-400">Ralph Loop Command Deck</p>
+            <h1 className="mt-2 font-mono text-3xl font-semibold text-zinc-100">AI Strategy Cockpit</h1>
+            <p className="mt-2 max-w-4xl text-sm text-zinc-300">
+              Run the full loop from model health to forecast, backtest, and execution diagnostics without digging through scripts.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <StatusPill label={activeHealthLabel} tone={activeHealthTone} />
+            <StatusPill label={intraday ? "Intraday Profile" : "Daily Profile"} tone="neutral" />
+            <StatusPill label={backendHealthy ? "Backend Live" : "Backend Needs Attention"} tone={backendHealthy ? "good" : "bad"} />
+          </div>
+        </div>
+        <div className="mt-5 grid gap-3 md:grid-cols-6">
+          <MetricCard label="Selected Symbol" value={prediction?.symbol ?? predictionParams.symbol} />
+          <MetricCard label="Active Variant" value={activeVariant} />
+          <MetricCard label="Quality Score" value={activeQualityScore === null ? "-" : activeQualityScore.toFixed(2)} tone={activeQualityGate ? "good" : "bad"} />
+          <MetricCard label="Holdout Source" value={activeHoldoutSource ?? "-"} />
+          <MetricCard label="Dispersion Ratio" value={activeDispersionRatio === null ? "-" : activeDispersionRatio.toFixed(2)} tone={activeDispersionRatio !== null && activeDispersionRatio < 0.18 ? "bad" : "neutral"} />
+          <MetricCard label="Feature Profile" value={activeFeatureProfile ?? "-"} />
+        </div>
       </section>
 
+      <SectionNav />
+
       <div className="grid gap-6 xl:grid-cols-[390px,1fr]">
-        <aside className="space-y-4 rounded-2xl border border-zinc-800 bg-zinc-950/75 p-4">
+        <aside id="controls" className="space-y-4 rounded-2xl border border-zinc-800 bg-zinc-950/75 p-4">
+          <div className="rounded-2xl border border-zinc-800 bg-[linear-gradient(180deg,rgba(20,20,24,0.96),rgba(10,10,12,0.96))] p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Mission State</p>
+                <p className="mt-1 text-lg font-semibold text-zinc-100">
+                  {prediction?.symbol ?? predictionParams.symbol} {selectedModel ? `• ${selectedModel.modelVariant ?? selectedModel.id}` : ""}
+                </p>
+              </div>
+              <StatusPill label={activeHealthLabel} tone={activeHealthTone} />
+            </div>
+            <p className="mt-3 text-sm text-zinc-300">
+              {activeQualityReasons.length
+                ? `Fallback is in effect because ${activeQualityReasons.join(", ")}.`
+                : "Current configuration is cleared for the ML overlay path."}
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.14em] text-zinc-400">
+              <span>{`Profile ${activeFeatureProfile ?? "-"}`}</span>
+              <span>{`Selection ${activeSelectionMode ?? "-"}`}</span>
+              <span>{`Target ${activeTargetHorizon ?? 1}d`}</span>
+            </div>
+            <div className="mt-4 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setShowAdvanced(false)}
+                className={cn(
+                  "rounded-full border px-3 py-1.5 text-xs font-semibold transition",
+                  !showAdvanced ? "border-cyan-400 bg-cyan-500/10 text-cyan-100" : "border-zinc-700 bg-zinc-900 text-zinc-300"
+                )}
+              >
+                Focus Mode
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowAdvanced(true)}
+                className={cn(
+                  "rounded-full border px-3 py-1.5 text-xs font-semibold transition",
+                  showAdvanced ? "border-amber-400 bg-amber-500/10 text-amber-100" : "border-zinc-700 bg-zinc-900 text-zinc-300"
+                )}
+              >
+                Advanced Controls
+              </button>
+            </div>
+            {modelsQuery.isError ? (
+              <p className="mt-3 text-xs text-rose-300">Model registry could not load. Verify the Python API is running and reachable.</p>
+            ) : null}
+          </div>
+
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
@@ -530,7 +674,7 @@ export default function AiPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className={cn("grid gap-3", showAdvanced ? "grid-cols-3" : "grid-cols-2")}>
               <div>
                 <label className="text-xs text-zinc-400">Data Interval</label>
                 <select
@@ -569,6 +713,7 @@ export default function AiPage() {
                 </select>
                 <p className="mt-1 text-[10px] text-zinc-500">Historical lookback</p>
               </div>
+              {showAdvanced ? (
               <div>
                 <label className="text-xs text-zinc-400">Model Variant</label>
                 <input
@@ -579,12 +724,14 @@ export default function AiPage() {
                 />
                 <p className="mt-1 text-[10px] text-zinc-500">auto, gbm, intraday_1h_v5</p>
               </div>
+              ) : null}
             </div>
           </div>
 
           <div className="space-y-3 rounded-xl border border-zinc-800 bg-zinc-900/60 p-3">
             <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Model + Fusion</p>
-            
+
+            {showAdvanced ? (
             <div>
               <label className="text-xs text-zinc-400">Select Model</label>
               <select
@@ -594,11 +741,16 @@ export default function AiPage() {
               >
                 <option value="">Latest by Symbol (auto)</option>
                 {(modelsQuery.data ?? []).map((m: ModelMeta) => (
-                  <option key={m.id} value={m.id}>{`${m.symbol} - ${new Date(m.createdAt).toLocaleDateString()}`}</option>
+                  <option key={m.id} value={m.id}>{`${m.symbol} - ${m.modelVariant ?? m.id}`}</option>
                 ))}
               </select>
               <p className="mt-1 text-[10px] text-zinc-500">Leave empty for latest trained model</p>
             </div>
+            ) : (
+              <div className="rounded-lg border border-zinc-800 bg-black/20 px-3 py-3 text-xs text-zinc-300">
+                Auto-routing will choose the strongest available variant for the selected symbol and timeframe.
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -691,6 +843,7 @@ export default function AiPage() {
                 />
                 <p className="mt-1 text-[10px] text-zinc-500">Price impact per trade. 0.2 bps = 0.002%. Simulates market impact</p>
               </div>
+              {showAdvanced ? (
               <div>
                 <label className="text-xs text-zinc-400">Min Position Change</label>
                 <input
@@ -703,8 +856,10 @@ export default function AiPage() {
                 />
                 <p className="mt-1 text-[10px] text-zinc-500">Min position change to execute trade. Higher = fewer trades, less overtrading</p>
               </div>
+              ) : null}
             </div>
             
+            {showAdvanced ? (
             <div>
               <label className="text-xs text-zinc-400">Annualization Factor (optional)</label>
               <input
@@ -720,6 +875,7 @@ export default function AiPage() {
               />
               <p className="mt-1 text-[10px] text-zinc-500">For daily: 252. For hourly: ~6500. Auto-calculated if empty. Used for Sharpe ratio</p>
             </div>
+            ) : null}
             
             <div className="grid grid-cols-2 gap-3 pt-2 text-sm text-zinc-300">
               <label className="flex items-start gap-2">
@@ -772,20 +928,54 @@ export default function AiPage() {
         </aside>
 
         <main className="space-y-6">
-          <section className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4">
+          {!prediction ? (
+            <section className="rounded-3xl border border-zinc-800 bg-[linear-gradient(180deg,rgba(18,18,22,0.95),rgba(8,8,10,0.95))] p-8">
+              <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Start Here</p>
+              <h2 className="mt-2 text-2xl font-semibold text-zinc-100">Pick a symbol, choose a preset, then run prediction.</h2>
+              <div className="mt-6 grid gap-3 md:grid-cols-3">
+                <div className="rounded-2xl border border-zinc-800 bg-black/25 p-4">
+                  <p className="text-sm font-semibold text-zinc-100">1. Select the profile</p>
+                  <p className="mt-2 text-sm text-zinc-400">Use the daily or intraday preset first. It sets interval, period, leverage, and trading assumptions together.</p>
+                </div>
+                <div className="rounded-2xl border border-zinc-800 bg-black/25 p-4">
+                  <p className="text-sm font-semibold text-zinc-100">2. Check model health</p>
+                  <p className="mt-2 text-sm text-zinc-400">The left rail shows whether the selected setup can use the ML overlay or is falling back to the regime core.</p>
+                </div>
+                <div className="rounded-2xl border border-zinc-800 bg-black/25 p-4">
+                  <p className="text-sm font-semibold text-zinc-100">3. Run the loop</p>
+                  <p className="mt-2 text-sm text-zinc-400">Prediction builds the signal deck. Backtest then fills equity, diagnostics, and the execution ledger.</p>
+                </div>
+              </div>
+            </section>
+          ) : null}
+
+          <section id="chart" className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4">
             <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
               <div>
                 <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Loaded</p>
                 <p className="font-mono text-lg text-zinc-100">
-                  {prediction?.symbol ?? predictionParams.symbol} {selectedModel ? `• ${selectedModel.id}` : ""}
+                  {prediction?.symbol ?? predictionParams.symbol} {selectedModel ? `• ${selectedModel.modelVariant ?? selectedModel.id}` : ""}
                 </p>
               </div>
-              <div className="text-sm text-zinc-300">Quality gate: {String(prediction?.metadata?.modelQualityGatePassed ?? false)}</div>
-              <div className="text-xs text-zinc-400">
-                Interval: {prediction?.metadata?.dataInterval ?? predictionParams.dataInterval ?? "1d"} | Variant:{" "}
-                {prediction?.metadata?.modelVariant ?? predictionParams.modelVariant ?? "auto"}
+              <div className="flex flex-wrap gap-2">
+                <StatusPill label={activeQualityGate ? "ML Overlay Enabled" : "Regime Core Active"} tone={activeQualityGate ? "good" : "warn"} />
+                <StatusPill label={`Source ${activeHoldoutSource ?? "-"}`} tone="neutral" />
               </div>
             </div>
+
+            <div className="mb-4 grid gap-3 rounded-2xl border border-zinc-800 bg-black/20 p-3 md:grid-cols-4">
+              <MetricCard label="Interval" value={prediction?.metadata?.dataInterval ?? predictionParams.dataInterval ?? "1d"} />
+              <MetricCard label="Variant" value={prediction?.metadata?.modelVariant ?? predictionParams.modelVariant ?? "auto"} />
+              <MetricCard label="Gate Score" value={activeQualityScore === null ? "-" : activeQualityScore.toFixed(2)} tone={activeQualityGate ? "good" : "bad"} />
+              <MetricCard label="Why" value={activeQualityReasons[0] ?? "healthy"} tone={activeQualityReasons.length ? "bad" : "good"} />
+            </div>
+            {forecastBandSummary ? (
+              <div className="mb-4 grid gap-3 rounded-2xl border border-zinc-800 bg-black/20 p-3 md:grid-cols-3">
+                <MetricCard label="Forecast Mid" value={formatCurrency(forecastBandSummary.base)} />
+                <MetricCard label="Forecast Floor" value={formatCurrency(forecastBandSummary.lower)} tone="bad" />
+                <MetricCard label="Forecast Ceiling" value={formatCurrency(forecastBandSummary.upper)} tone="good" />
+              </div>
+            ) : null}
 
             <InteractiveCandlestick
               historicalSeries={candles}
@@ -818,7 +1008,7 @@ export default function AiPage() {
             <MetricCard label="Borrow Fee" value={metrics ? formatCurrency(metrics.borrowFee ?? 0) : "-"} tone={metrics && (metrics.borrowFee ?? 0) > 0 ? "bad" : "neutral"} />
           </section>
 
-          <section className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4">
+          <section id="equity" className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Portfolio vs Stock</p>
               <p className="text-xs text-zinc-400">
@@ -828,11 +1018,13 @@ export default function AiPage() {
             <EquityLineChart backtest={backtest ?? undefined} tradeMarkers={backtest?.annotations} />
           </section>
 
-          <DiagnosticsPanel diagnostics={backtest?.diagnostics} intraday={intraday} />
+          <div id="diagnostics">
+            <DiagnosticsPanel diagnostics={backtest?.diagnostics} intraday={intraday} />
+          </div>
 
           <ForwardSimulationPanel backtest={backtest} />
 
-          <section className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4">
+          <section id="trades" className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4">
             <p className="mb-3 text-xs uppercase tracking-[0.18em] text-zinc-500">Trade Log</p>
             {!backtest?.tradeLog?.length ? (
               <p className="text-sm text-zinc-400">Run backtest to populate trade details.</p>

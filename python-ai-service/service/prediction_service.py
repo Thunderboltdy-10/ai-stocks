@@ -14,7 +14,7 @@ from data.feature_engineer import engineer_features
 from data.target_engineering import prevent_lookahead_bias
 from evaluation.execution_backtester import LongOnlyExecutionBacktester
 from inference.intraday_signal import intraday_hybrid_positions
-from inference.load_gbm_models import GBMModelBundle, load_gbm_models, predict_with_gbm
+from inference.load_gbm_models import GBMModelBundle, blend_with_direction_head, load_gbm_models, predict_with_gbm
 from inference.position_sizing import PositionSizer, PositionSizingConfig
 from inference.regime_ensemble import (
     adaptive_overlay_weight,
@@ -26,12 +26,21 @@ from inference.regime_ensemble import (
 )
 from inference.signal_policy import apply_direction_calibration, positions_from_policy
 from inference.variant_router import resolve_model_variant
+from inference.variant_quality import score_variant_quality
 from utils.timeframe import execution_profile, interval_to_minutes, is_intraday_interval
 
 
 def _to_daily_arithmetic_return(pred_log_return: np.ndarray, target_horizon_days: int) -> np.ndarray:
     horizon = max(1, int(target_horizon_days))
     return np.expm1(np.asarray(pred_log_return, dtype=float) / horizon)
+
+
+def _to_model_target_return(daily_return: np.ndarray, target_horizon_days: int) -> np.ndarray:
+    horizon = max(1, int(target_horizon_days))
+    arr = np.asarray(daily_return, dtype=float)
+    if horizon == 1:
+        return arr
+    return np.log1p(np.clip(arr, -0.95, None)) * horizon
 
 
 def _business_days_after(date_str: str, n: int) -> List[str]:
@@ -144,24 +153,54 @@ def _predict_series(bundle: GBMModelBundle, frame: pd.DataFrame) -> Dict[str, np
     X = engineered[bundle.feature_columns].to_numpy(dtype=np.float32)
     pred_parts = predict_with_gbm(bundle, X, return_components=True)
     target_horizon = int(bundle.metadata.get("target_horizon_days", 1))
-    pred_parts = {k: _to_daily_arithmetic_return(v, target_horizon) for k, v in pred_parts.items()}
+    raw_parts = {
+        k: np.asarray(v, dtype=float)
+        for k, v in pred_parts.items()
+        if k in {"xgb", "lgb"}
+    }
+    direction_prob = np.asarray(pred_parts.get("direction_prob", np.full(len(X), np.nan)), dtype=float)
+    daily_parts = {
+        k: _to_daily_arithmetic_return(v, target_horizon)
+        for k, v in raw_parts.items()
+    }
 
-    if "xgb" in pred_parts and "lgb" in pred_parts:
+    if "xgb" in raw_parts and "lgb" in raw_parts:
         weights = bundle.metadata.get("ensemble_weights", {"xgb": 0.5, "lgb": 0.5})
         wx = float(weights.get("xgb", 0.5))
         wl = float(weights.get("lgb", 0.5))
         total = max(wx + wl, 1e-9)
-        pred_ens = (wx * pred_parts["xgb"] + wl * pred_parts["lgb"]) / total
-        pred_std = np.std(np.vstack([pred_parts["xgb"], pred_parts["lgb"]]), axis=0) + 1e-4
+        pred_raw = (wx * raw_parts["xgb"] + wl * raw_parts["lgb"]) / total
+        pred_std_raw = np.std(np.vstack([raw_parts["xgb"], raw_parts["lgb"]]), axis=0) + 1e-4
+        pred_std = np.std(np.vstack([daily_parts["xgb"], daily_parts["lgb"]]), axis=0) + 1e-4
     else:
-        pred_ens = list(pred_parts.values())[0]
-        pred_std = pd.Series(pred_ens).rolling(20, min_periods=5).std().fillna(np.nanstd(pred_ens) + 1e-4).to_numpy()
+        pred_raw = next(iter(raw_parts.values()))
+        pred_std_raw = (
+            pd.Series(pred_raw)
+            .rolling(20, min_periods=5)
+            .std()
+            .fillna(np.nanstd(pred_raw) + 1e-4)
+            .to_numpy()
+        )
+        daily_single = _to_daily_arithmetic_return(pred_raw, target_horizon)
+        pred_std = (
+            pd.Series(daily_single)
+            .rolling(20, min_periods=5)
+            .std()
+            .fillna(np.nanstd(daily_single) + 1e-4)
+            .to_numpy()
+        )
+
+    pred_ens_raw = blend_with_direction_head(pred_raw, pred_parts.get("direction_prob"), bundle.metadata)
+    pred_ens = _to_daily_arithmetic_return(pred_ens_raw, target_horizon)
 
     return {
-        "pred_xgb": pred_parts.get("xgb", np.full(len(frame), np.nan)),
-        "pred_lgb": pred_parts.get("lgb", np.full(len(frame), np.nan)),
+        "pred_xgb": daily_parts.get("xgb", np.full(len(frame), np.nan)),
+        "pred_lgb": daily_parts.get("lgb", np.full(len(frame), np.nan)),
         "pred_ens": pred_ens,
+        "pred_ens_raw": pred_ens_raw,
         "pred_std": pred_std,
+        "pred_std_raw": pred_std_raw,
+        "direction_prob": direction_prob,
     }
 
 
@@ -169,6 +208,7 @@ def _sizing_win_rate(bundle: GBMModelBundle) -> float:
     hold = bundle.metadata.get("holdout", {})
     holdout_dir = max(
         float(hold.get("ensemble", {}).get("dir_acc", 0.53)),
+        float(hold.get("ensemble_directional", {}).get("dir_acc", 0.53)),
         float(hold.get("ensemble_calibrated", {}).get("dir_acc", 0.53)),
     )
     train_pos = float(bundle.metadata.get("target_distribution", {}).get("train_positive_pct", holdout_dir))
@@ -202,21 +242,21 @@ def _regime_positions(
 
 
 def _adaptive_ml_weights(bundle: GBMModelBundle) -> tuple[float, float]:
-    hold = bundle.metadata.get("holdout", {})
-    ens = hold.get("ensemble", {})
-    cal = hold.get("ensemble_calibrated", {})
-    dir_acc = max(float(ens.get("dir_acc", 0.0)), float(cal.get("dir_acc", 0.0)))
-    pred_std = max(float(ens.get("pred_std", 0.0)), float(cal.get("pred_std", 0.0)))
-    sharpe = max(float(ens.get("sharpe", 0.0)), float(cal.get("sharpe", 0.0)))
-    wfe = float(bundle.metadata.get("wfe", 0.0))
     intraday = is_intraday_interval(str(bundle.metadata.get("data_interval", "1d")))
+    quality = score_variant_quality(bundle.metadata, intraday=intraday)
+    metrics = quality.metrics
+    dir_acc = float(metrics.get("dir_acc", 0.0))
+    pred_std = float(metrics.get("pred_std", 0.0))
+    net_sharpe = float(metrics.get("net_sharpe", 0.0))
+    net_return = float(metrics.get("net_return", 0.0))
+    wfe = float(metrics.get("wfe", 0.0))
 
-    if model_quality_gate_strict(bundle.metadata):
+    if quality.passed:
         return (0.24, 0.08) if intraday else (0.24, 0.08)
-    if intraday and dir_acc >= 0.50 and pred_std >= 0.0015 and (wfe >= 5.0 or sharpe >= 0.0):
+    if intraday and dir_acc >= 0.50 and pred_std >= 0.0012 and (wfe >= 5.0 or net_sharpe >= 0.05 or net_return >= 0.04):
         return 0.16, 0.08
-    if (not intraday) and dir_acc >= 0.50 and pred_std >= 0.003 and wfe >= 15.0:
-        return 0.16, 0.08
+    if (not intraday) and dir_acc >= 0.50 and pred_std >= 0.0015 and (net_sharpe >= 0.10 or net_return >= 0.06):
+        return 0.14, 0.06
     return (0.06, 0.04) if intraday else (0.08, 0.04)
 
 
@@ -433,10 +473,12 @@ def generate_prediction(payload: Dict) -> Dict:
 
     raw = fetch_stock_data(symbol=symbol, period=data_period, interval=data_interval)
     preds = _predict_series(bundle, raw)
-    calibrated_pred, direction_conf = apply_direction_calibration(
-        preds["pred_ens"],
+    target_horizon = int(bundle.metadata.get("target_horizon_days", 1))
+    calibrated_pred_raw, direction_conf = apply_direction_calibration(
+        preds["pred_ens_raw"],
         bundle.metadata.get("direction_calibrator"),
     )
+    calibrated_pred = _to_daily_arithmetic_return(calibrated_pred_raw, target_horizon)
     execution_policy = bundle.metadata.get("execution_calibration", {})
     recommended_min_change = (
         float(max(0.0, execution_policy.get("min_position_change", 0.0)))
@@ -448,6 +490,7 @@ def generate_prediction(payload: Dict) -> Dict:
 
     ml_gate = _model_quality_gate(bundle)
     ml_weight, fallback_ml_weight = _adaptive_ml_weights(bundle)
+    quality = score_variant_quality(bundle.metadata, intraday=intraday)
 
     sizer = PositionSizer(
         PositionSizingConfig(
@@ -460,7 +503,7 @@ def generate_prediction(payload: Dict) -> Dict:
     if isinstance(execution_policy, dict) and bool(execution_policy.get("enabled", False)):
         ml_positions = positions_from_policy(
             calibrated_pred,
-            preds["pred_std"],
+            preds["pred_std_raw"],
             execution_policy,
             max_long=max_long,
             max_short=max_short,
@@ -468,8 +511,8 @@ def generate_prediction(payload: Dict) -> Dict:
     elif intraday:
         ml_positions = intraday_hybrid_positions(
             close=raw["Close"],
-            predicted_returns=calibrated_pred,
-            prediction_stds=preds["pred_std"],
+            predicted_returns=calibrated_pred_raw,
+            prediction_stds=preds["pred_std_raw"],
             max_long=max_long,
             max_short=max_short,
             cost_buffer=0.0002,
@@ -477,7 +520,7 @@ def generate_prediction(payload: Dict) -> Dict:
     else:
         ml_positions = sizer.size_batch(
             predicted_returns=calibrated_pred,
-            prediction_stds=preds["pred_std"],
+            prediction_stds=preds["pred_std_raw"],
             win_rate=_sizing_win_rate(bundle),
             avg_win=0.012,
             avg_loss=0.010,
@@ -537,25 +580,40 @@ def generate_prediction(payload: Dict) -> Dict:
     predicted_prices = close * (1.0 + pred_ret)
     trade_markers = _build_trade_markers(dates, close, pos, scope="prediction", segment="history")
 
-    # Forward projection: mean-reverting return path + dynamic position recompute.
+    # Forward projection: regime-aware mean reversion with uncertainty bands based
+    # on recent realized/prediction disagreement. This stays deterministic but is
+    # less arbitrary than a single fixed drift line.
     rolling_mean = pd.Series(pred_ret).ewm(span=20, adjust=False).mean().to_numpy(dtype=float)
     drift = float(rolling_mean[-1]) if len(rolling_mean) else 0.0
-    vol = float(np.nanstd(pred_ret[-60:])) if len(pred_ret) else 0.005
-    vol = max(vol, 0.0025)
+    pred_vol = float(np.nanstd(pred_ret[-60:])) if len(pred_ret) else 0.005
+    realized_residual = actual_returns[-len(pred_ret):] - pred_ret if len(pred_ret) else np.asarray([], dtype=float)
+    residual_vol = float(np.nanstd(realized_residual[-60:])) if len(realized_residual) else 0.0
+    vol = max(pred_vol, residual_vol * 0.85, 0.0025)
+    mean_recent = float(np.nanmean(pred_ret[-20:])) if len(pred_ret) else 0.0
+    trend_bias = float(np.nanmean(pos[-20:])) if len(pos) else 0.0
 
     future_returns = np.zeros(horizon, dtype=float)
+    lower_returns = np.zeros(horizon, dtype=float)
+    upper_returns = np.zeros(horizon, dtype=float)
     prev_ret = float(pred_ret[-1]) if len(pred_ret) else 0.0
     for step in range(horizon):
-        mean_reversion = -0.20 * (prev_ret - drift)
-        drift_push = 0.35 * drift
-        momentum = 0.45 * prev_ret
-        simulated_ret = momentum + drift_push + mean_reversion
+        mean_reversion = -0.28 * (prev_ret - drift)
+        drift_push = 0.30 * drift
+        momentum = 0.38 * prev_ret
+        regime_push = 0.08 * trend_bias * vol
+        anchor = 0.14 * mean_recent
+        simulated_ret = momentum + drift_push + mean_reversion + regime_push + anchor
         simulated_ret = float(np.clip(simulated_ret, -0.04, 0.04))
         future_returns[step] = simulated_ret
+        band = float(min(0.05, vol * (0.85 + 0.12 * step)))
+        lower_returns[step] = float(np.clip(simulated_ret - band, -0.05, 0.05))
+        upper_returns[step] = float(np.clip(simulated_ret + band, -0.05, 0.05))
         prev_ret = simulated_ret
 
     latest_price = float(close[-1])
     future_prices = latest_price * np.cumprod(1.0 + future_returns)
+    lower_band = latest_price * np.cumprod(1.0 + lower_returns)
+    upper_band = latest_price * np.cumprod(1.0 + upper_returns)
     future_dates = _future_dates_after(dates[-1], horizon, data_interval)
 
     # Recompute dynamic future positions from synthetic path.
@@ -568,10 +626,18 @@ def generate_prediction(payload: Dict) -> Dict:
     )[-horizon:]
 
     future_std = np.full(horizon, max(vol, float(np.nanmean(preds["pred_std"][-20:])) if len(preds["pred_std"]) else vol))
+    future_returns_raw = _to_model_target_return(future_returns, target_horizon)
+    future_std_raw = np.full(
+        horizon,
+        max(
+            float(np.nanmean(preds["pred_std_raw"][-20:])) if len(preds["pred_std_raw"]) else 0.0,
+            1e-4,
+        ),
+    )
     if isinstance(execution_policy, dict) and bool(execution_policy.get("enabled", False)):
         ml_future = positions_from_policy(
-            future_returns,
-            future_std,
+            future_returns_raw,
+            future_std_raw,
             execution_policy,
             max_long=max_long,
             max_short=max_short,
@@ -579,16 +645,16 @@ def generate_prediction(payload: Dict) -> Dict:
     elif intraday:
         ml_future = intraday_hybrid_positions(
             close=pd.Series(synthetic_close[-horizon:], index=pd.RangeIndex(horizon)),
-            predicted_returns=future_returns,
-            prediction_stds=future_std,
+            predicted_returns=future_returns_raw,
+            prediction_stds=future_std_raw,
             max_long=max_long,
             max_short=max_short,
             cost_buffer=0.0002,
         )
     else:
         ml_future = sizer.size_batch(
-            predicted_returns=future_returns,
-            prediction_stds=future_std,
+            predicted_returns=future_returns_raw,
+            prediction_stds=future_std_raw,
             win_rate=_sizing_win_rate(bundle),
             avg_win=0.012,
             avg_loss=0.010,
@@ -682,6 +748,8 @@ def generate_prediction(payload: Dict) -> Dict:
             "dates": future_dates,
             "prices": [float(x) for x in future_prices],
             "returns": [float(x) for x in future_returns],
+            "lowerBand": [float(x) for x in lower_band],
+            "upperBand": [float(x) for x in upper_band],
             "positions": [float(x) for x in future_positions],
             "actions": future_actions,
         },
@@ -692,6 +760,15 @@ def generate_prediction(payload: Dict) -> Dict:
             "sellThreshold": sell_thr,
             "horizon": horizon,
             "modelQualityGatePassed": ml_gate,
+            "modelQualityScore": float(quality.score),
+            "modelQualityReasons": list(quality.reasons),
+            "holdoutMetricSource": quality.selected_source,
+            "holdoutPredTargetStdRatio": float(quality.metrics.get("pred_target_std_ratio", 0.0)),
+            "featureProfile": str(bundle.metadata.get("feature_profile", "")),
+            "featureSelectionMode": str(bundle.metadata.get("feature_selection_mode", "")),
+            "targetHorizonDays": int(bundle.metadata.get("target_horizon_days", 1)),
+            "directionHeadEnabled": bool(bundle.metadata.get("direction_head", {}).get("enabled", False)),
+            "directionProbMean": float(np.nanmean(preds["direction_prob"])),
             "executionMode": "signed_inventory",
             "maxLong": max_long,
             "maxShort": max_short,

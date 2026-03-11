@@ -21,8 +21,10 @@ class GBMModelBundle:
     feature_columns: List[str]
     xgb_model: Any
     lgb_model: Any
+    direction_model: Any
     xgb_scaler: Any
     lgb_scaler: Any
+    direction_scaler: Any
     metadata: Dict[str, Any]
 
     def has_xgb(self) -> bool:
@@ -30,6 +32,9 @@ class GBMModelBundle:
 
     def has_lgb(self) -> bool:
         return self.lgb_model is not None and self.lgb_scaler is not None
+
+    def has_direction_model(self) -> bool:
+        return self.direction_model is not None and self.direction_scaler is not None
 
 
 def _legacy_path(model_dir: Path, new_name: str, legacy_name: str) -> Path:
@@ -51,8 +56,10 @@ def load_gbm_models(symbol: str, model_dir: Optional[Path] = None) -> Tuple[Opti
     feature_path = _legacy_path(model_dir, "feature_columns.pkl", "feature_columns.pkl")
     xgb_model_path = _legacy_path(model_dir, "xgb_model.joblib", "xgb_reg.joblib")
     lgb_model_path = _legacy_path(model_dir, "lgb_model.joblib", "lgb_reg.joblib")
+    direction_model_path = _legacy_path(model_dir, "direction_model.joblib", "direction_model.joblib")
     xgb_scaler_path = _legacy_path(model_dir, "xgb_scaler.joblib", "xgb_scaler.joblib")
     lgb_scaler_path = _legacy_path(model_dir, "lgb_scaler.joblib", "lgb_scaler.joblib")
+    direction_scaler_path = _legacy_path(model_dir, "direction_scaler.joblib", "direction_scaler.joblib")
     train_meta_path = _legacy_path(model_dir, "training_metadata.json", "training_metadata.json")
 
     if not feature_path.exists():
@@ -62,7 +69,7 @@ def load_gbm_models(symbol: str, model_dir: Optional[Path] = None) -> Tuple[Opti
     with feature_path.open("rb") as fh:
         feature_columns = pickle.load(fh)
 
-    xgb_model = xgb_scaler = lgb_model = lgb_scaler = None
+    xgb_model = xgb_scaler = lgb_model = lgb_scaler = direction_model = direction_scaler = None
 
     try:
         if xgb_model_path.exists() and xgb_scaler_path.exists():
@@ -78,6 +85,13 @@ def load_gbm_models(symbol: str, model_dir: Optional[Path] = None) -> Tuple[Opti
     except Exception as exc:
         metadata["errors"].append(f"LGB load failed: {exc}")
 
+    try:
+        if direction_model_path.exists() and direction_scaler_path.exists():
+            direction_model = joblib.load(direction_model_path)
+            direction_scaler = joblib.load(direction_scaler_path)
+    except Exception as exc:
+        metadata["errors"].append(f"Direction head load failed: {exc}")
+
     train_meta: Dict[str, Any] = {}
     if train_meta_path.exists():
         try:
@@ -91,8 +105,10 @@ def load_gbm_models(symbol: str, model_dir: Optional[Path] = None) -> Tuple[Opti
         feature_columns=feature_columns,
         xgb_model=xgb_model,
         lgb_model=lgb_model,
+        direction_model=direction_model,
         xgb_scaler=xgb_scaler,
         lgb_scaler=lgb_scaler,
+        direction_scaler=direction_scaler,
         metadata=train_meta,
     )
 
@@ -133,6 +149,11 @@ def predict_with_gbm(
         X_lgb = bundle.lgb_scaler.transform(X)
         outputs["lgb"] = np.asarray(bundle.lgb_model.predict(X_lgb), dtype=float)
 
+    if bundle.has_direction_model():
+        X_dir = bundle.direction_scaler.transform(X)
+        probs = bundle.direction_model.predict_proba(X_dir)
+        outputs["direction_prob"] = np.asarray(probs[:, 1], dtype=float)
+
     if return_components:
         return outputs
 
@@ -153,6 +174,39 @@ def predict_with_gbm(
         return list(outputs.values())[0]
 
     return list(outputs.values())[0]
+
+
+def blend_with_direction_head(
+    pred: np.ndarray,
+    direction_prob: Optional[np.ndarray],
+    metadata: Optional[Dict[str, Any]] = None,
+) -> np.ndarray:
+    base = np.asarray(pred, dtype=float).reshape(-1)
+    if direction_prob is None:
+        return base
+
+    cfg = (metadata or {}).get("direction_head", {}) if isinstance(metadata, dict) else {}
+    if not bool(cfg.get("enabled", False)):
+        return base
+
+    prob = np.clip(np.asarray(direction_prob, dtype=float).reshape(-1), 1e-6, 1.0 - 1e-6)
+    if len(prob) != len(base):
+        return base
+
+    score = (2.0 * prob) - 1.0
+    confidence = np.abs(score)
+    alignment = np.sign(base) * np.sign(score)
+
+    alignment_floor = float(cfg.get("alignment_floor", 0.18))
+    confidence_boost = float(cfg.get("confidence_boost", 0.85))
+    disagreement_penalty = float(cfg.get("disagreement_penalty", 1.55))
+
+    scaled = base * (alignment_floor + confidence_boost * confidence)
+    disagree_mask = alignment < 0.0
+    if np.any(disagree_mask):
+        disagree_scale = np.clip(1.0 - disagreement_penalty * confidence[disagree_mask], 0.0, 0.55)
+        scaled[disagree_mask] = base[disagree_mask] * disagree_scale
+    return scaled
 
 
 def predict_with_ensemble(
