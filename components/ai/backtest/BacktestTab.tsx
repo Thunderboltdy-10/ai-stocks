@@ -31,6 +31,7 @@ import { BacktestSummaryChart } from "@/components/charts/BacktestSummaryChart";
 
 const DEFAULT_BACKTEST: BacktestParams = {
   backtestWindow: 60,
+  forwardWindow: 20,
   initialCapital: 10_000,
   maxLong: 1,
   maxShort: 0.5,

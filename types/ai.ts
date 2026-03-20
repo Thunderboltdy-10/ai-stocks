@@ -33,6 +33,7 @@ export type FusionMode =
 
 export type ModelType = "gbm" | "lstm" | "ensemble" | "lstm_transformer" | "stacking";
 export type LossFunction = "huber" | "mae" | "balanced" | "quantile";
+export type TrainingWorkflow = "single" | "daily_research" | "intraday_research" | "full_research";
 
 export interface TrainingParams {
   symbol: string;
@@ -45,8 +46,28 @@ export interface TrainingParams {
   baseSeed: number;
   overwriteExisting?: boolean;
   modelType?: ModelType;
+  workflow?: TrainingWorkflow;
   dropout?: number;
   learningRate?: number;
+  nTrials?: number;
+  maxFeatures?: number;
+  targetHorizons?: number[];
+  featureProfiles?: string[];
+  featureSelectionModes?: string[];
+  symbolSet?: string;
+  dailySymbols?: string;
+  intradaySymbols?: string;
+  dailySymbolSet?: string;
+  intradaySymbolSet?: string;
+  dailyPeriod?: string;
+  intradayPeriod?: string;
+  dailyInterval?: string;
+  intradayInterval?: string;
+  dataPeriod?: string;
+  dataInterval?: string;
+  useLgb?: boolean;
+  overwrite?: boolean;
+  allowCpuFallback?: boolean;
 }
 
 export interface TrainingJob {
@@ -60,6 +81,9 @@ export interface TrainingJob {
   completedAt?: string;
   error?: string;
   metrics?: TrainingMetrics;
+  modelType?: string;
+  workflow?: string;
+  currentStep?: string;
 }
 
 export interface TrainingMetrics {
@@ -85,11 +109,31 @@ export interface TrainingJobResponse {
 }
 
 export interface JobEvent {
-  timestamp: string;
-  message: string;
+  timestamp?: string;
+  message?: string;
   progress?: number;
   status?: "running" | "completed" | "failed";
   step?: string;
+  type?: "started" | "stage" | "log" | "completed" | "failed" | "cancelled" | "heartbeat";
+  command?: string;
+  error?: string;
+  summary_path?: string;
+  daily_gate_passed?: boolean;
+  intraday_gate_passed?: boolean;
+}
+
+export interface ResearchRunSummary {
+  id: string;
+  workflow: string;
+  status: string;
+  startedAt: string;
+  completedAt?: string;
+  dailyGatePassed?: boolean;
+  intradayGatePassed?: boolean;
+  daily?: Record<string, unknown>;
+  intraday?: Record<string, unknown>;
+  summaryPath: string;
+  runDir: string;
 }
 
 export interface PredictionParams {
@@ -199,6 +243,7 @@ export interface TradeMarker {
 
 export interface BacktestParams {
   backtestWindow: number;
+  forwardWindow: number;
   initialCapital: number;
   maxLong: number;
   maxShort: number;
@@ -223,6 +268,8 @@ export interface BacktestResult {
   buyHoldEquity?: Array<{ date: string; equity: number }>;
   csv?: string;
   forwardSimulation?: ForwardSimResult;
+  windowStart?: string;
+  windowEnd?: string;
 }
 
 export interface BacktestDiagnostics {
@@ -270,9 +317,15 @@ export interface ForwardSimResult {
   dates: string[];
   prices: number[];
   equityCurve: number[];
+  source?: "historical_holdout";
+  windowStart?: string;
+  windowEnd?: string;
+  cumulativeReturn?: number;
   sharpe: number;
   maxDrawdown: number;
   trades: number;
+  winRate?: number;
+  profitFactor?: number;
   actions?: Array<{
     id: string;
     date: string;
@@ -296,6 +349,71 @@ export interface ForwardSimResult {
   markers?: TradeMarker[];
   totalCosts?: number;
   borrowFee?: number;
+}
+
+export interface BenchmarkModeSummary {
+  mode: "daily" | "intraday";
+  symbolSet: string;
+  settings: Record<string, unknown>;
+  symbolsTested: number;
+  variantsEvaluated: number;
+  windowsEvaluated: number;
+  aggregate: {
+    meanAlpha: number;
+    medianAlpha: number;
+    positiveAlphaRate: number;
+    meanSharpe: number;
+    medianSharpe: number;
+    meanStrategyReturn: number;
+    meanBuyHoldReturn: number;
+    meanMlLiftVsRegime: number;
+    qualityPassRate: number;
+  };
+  leaders: Array<{
+    symbol: string;
+    variant: string;
+    mean_alpha: number;
+    mean_sharpe: number;
+    mean_strategy_return: number;
+    mean_buy_hold_return: number;
+    mean_ml_lift: number;
+    positive_alpha_rate: number;
+    windows: number;
+    quality_score: number;
+    quality_pass_rate: number;
+  }>;
+  laggards: Array<{
+    symbol: string;
+    variant: string;
+    mean_alpha: number;
+    mean_sharpe: number;
+    mean_strategy_return: number;
+    mean_buy_hold_return: number;
+    mean_ml_lift: number;
+    positive_alpha_rate: number;
+    windows: number;
+    quality_score: number;
+    quality_pass_rate: number;
+  }>;
+  qualityLeaders: Array<{
+    symbol: string;
+    variant: string;
+    feature_profile?: string;
+    feature_selection_mode?: string;
+    target_horizon_days?: number;
+    quality_gate_passed?: boolean;
+    quality_score?: number;
+    holdout_net_return?: number;
+    holdout_net_sharpe?: number;
+    wfe?: number;
+  }>;
+}
+
+export interface BenchmarkRun {
+  id: string;
+  createdAt: string;
+  settings: Record<string, unknown>;
+  modes: Partial<Record<"daily" | "intraday", BenchmarkModeSummary>>;
 }
 
 export interface TradeRecord {
@@ -345,6 +463,8 @@ export interface BacktestMetrics {
   rmse?: number;
   transactionCosts?: number;
   borrowFee?: number;
+  profitFactor?: number;
+  turnover?: number;
 }
 
 export interface ScenarioPoint {

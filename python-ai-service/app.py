@@ -12,6 +12,7 @@ import uvicorn
 
 from service.model_registry import ModelRegistry
 from service.prediction_service import generate_prediction, run_backtest
+from service.research_service import get_research_run, list_research_runs
 from service.training_service import get_training_service
 from data.data_fetcher import get_realtime_price
 from data.cache_manager import DataCacheManager
@@ -84,6 +85,7 @@ class PredictionPayload(BaseModel):
 
 class BacktestParamsModel(BaseModel):
     backtestWindow: int = Field(default=60, ge=10)
+    forwardWindow: int = Field(default=20, ge=1)
     initialCapital: float = Field(default=10_000, gt=0.0)
     maxLong: float = Field(default=1.8, gt=0.0)
     maxShort: float = Field(default=0.2, ge=0.0)
@@ -206,6 +208,19 @@ async def forward_sim(payload: ForwardSimPayload):
         raise HTTPException(status_code=500, detail=f"Forward simulation failed: {exc}") from exc
 
 
+@app.get("/api/benchmark/runs")
+async def benchmark_runs(limit: int = 5):
+    return list_research_runs(limit=limit)
+
+
+@app.get("/api/benchmark/runs/{run_id}")
+async def benchmark_run(run_id: str):
+    run = get_research_run(run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail=f"Benchmark run '{run_id}' not found")
+    return run
+
+
 @app.post("/api/models/train")
 async def train_model(_: TrainingJobRequest):
     raise HTTPException(
@@ -216,12 +231,32 @@ async def train_model(_: TrainingJobRequest):
 
 # Training endpoints
 class TrainingStartRequest(BaseModel):
-    symbol: str
+    symbol: str = "AAPL"
     epochs: int = 50
     batchSize: int = 512
     sequenceLength: int = 90
     loss: str = "balanced"
     modelType: str = "gbm"
+    workflow: Literal["single", "daily_research", "intraday_research", "full_research"] = "single"
+    nTrials: int = 8
+    maxFeatures: int = 50
+    targetHorizons: list[int] | None = None
+    featureProfiles: list[str] | None = None
+    featureSelectionModes: list[str] | None = None
+    symbolSet: Optional[str] = None
+    dailySymbols: Optional[str] = None
+    intradaySymbols: Optional[str] = None
+    dailySymbolSet: Optional[str] = None
+    intradaySymbolSet: Optional[str] = None
+    dailyPeriod: Optional[str] = None
+    intradayPeriod: Optional[str] = None
+    dailyInterval: Optional[str] = None
+    intradayInterval: Optional[str] = None
+    dataPeriod: Optional[str] = None
+    dataInterval: Optional[str] = None
+    useLgb: bool = False
+    overwrite: bool = False
+    allowCpuFallback: bool = False
     dropout: float = 0.3
     learningRate: float = 0.001
     featureToggles: dict[str, bool] | None = None

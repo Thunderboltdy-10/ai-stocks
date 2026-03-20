@@ -1,10 +1,12 @@
 import {
   BacktestParams,
   BacktestResult,
+  BenchmarkRun,
   FusionSettings,
   ModelMeta,
   PredictionParams,
   PredictionResult,
+  ResearchRunSummary,
   TrainingJobResponse,
   TrainingParams,
 } from "@/types/ai";
@@ -57,6 +59,9 @@ export function getTrainingJob(jobId: string): Promise<{
   startedAt: string;
   completedAt?: string;
   error?: string;
+  modelType?: string;
+  workflow?: string;
+  currentStep?: string;
 }> {
   return fetchJson(`${API_BASE}/api/training/${jobId}`);
 }
@@ -77,6 +82,9 @@ export function listTrainingJobs(): Promise<Array<{
   status: string;
   progress: number;
   startedAt: string;
+  modelType?: string;
+  workflow?: string;
+  currentStep?: string;
 }>> {
   return fetchJson(`${API_BASE}/api/training`);
 }
@@ -124,6 +132,22 @@ export function requestForwardSimulation(payload: {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
+}
+
+export function listResearchRuns(limit = 5): Promise<ResearchRunSummary[]> {
+  return fetchJson<ResearchRunSummary[]>(`${API_BASE}/api/research/runs?limit=${limit}`, { cache: "no-store" });
+}
+
+export function getResearchRun(runId: string): Promise<Record<string, unknown>> {
+  return fetchJson<Record<string, unknown>>(`${API_BASE}/api/research/runs/${runId}`, { cache: "no-store" });
+}
+
+export function listBenchmarkRuns(limit = 5): Promise<BenchmarkRun[]> {
+  return fetchJson<BenchmarkRun[]>(`${API_BASE}/api/benchmark/runs?limit=${limit}`, { cache: "no-store" });
+}
+
+export function getBenchmarkRun(runId: string): Promise<BenchmarkRun> {
+  return fetchJson<BenchmarkRun>(`${API_BASE}/api/benchmark/runs/${runId}`, { cache: "no-store" });
 }
 
 export async function downloadModelArtifacts(modelId: string): Promise<Blob> {

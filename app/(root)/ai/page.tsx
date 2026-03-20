@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -22,12 +22,26 @@ import {
   BacktestDiagnostics,
   BacktestParams,
   BacktestResult,
+  BenchmarkRun,
   FusionSettings,
+  JobEvent,
   ModelMeta,
   PredictionParams,
   PredictionResult,
+  ResearchRunSummary,
+  TrainingJob,
 } from "@/types/ai";
-import { listModels, runBacktest, runPrediction } from "@/lib/api-client";
+import {
+  cancelTrainingJob,
+  listBenchmarkRuns,
+  listModels,
+  listResearchRuns,
+  runBacktest,
+  runPrediction,
+  startTraining,
+  subscribeToTrainingEvents,
+} from "@/lib/api-client";
+import { BenchmarkLabPanel } from "@/components/ai/BenchmarkLabPanel";
 import InteractiveCandlestick, {
   CandlestickPoint,
   ChartMarker,
@@ -61,6 +75,7 @@ const DEFAULT_FUSION: FusionSettings = {
 
 const DEFAULT_BACKTEST: BacktestParams = {
   backtestWindow: 120,
+  forwardWindow: 20,
   initialCapital: 10_000,
   maxLong: 1.6,
   maxShort: 0.25,
@@ -157,7 +172,7 @@ function ForwardSimulationPanel({ backtest }: { backtest: BacktestResult | null 
   if (!sim) {
     return (
       <div className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-5 text-sm text-zinc-400">
-        Forward simulation appears here after backtest.
+        Realized holdout simulation appears here after backtest.
       </div>
     );
   }
@@ -170,6 +185,12 @@ function ForwardSimulationPanel({ backtest }: { backtest: BacktestResult | null 
 
   return (
     <div className="space-y-4 rounded-2xl border border-zinc-800 bg-zinc-950/70 p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Realized Forward Holdout</p>
+        <p className="text-xs text-zinc-400">
+          {sim.windowStart && sim.windowEnd ? `${sim.windowStart} -> ${sim.windowEnd}` : sim.source ?? "historical_holdout"}
+        </p>
+      </div>
       <div className="grid gap-3 md:grid-cols-5">
         <MetricCard label="Forward Sharpe" value={sim.sharpe.toFixed(2)} tone={sim.sharpe >= 0 ? "good" : "bad"} />
         <MetricCard label="Forward Max DD" value={formatPercent(sim.maxDrawdown)} tone={sim.maxDrawdown < -0.2 ? "bad" : "neutral"} />
@@ -323,6 +344,191 @@ function DiagnosticsPanel({ diagnostics, intraday }: { diagnostics?: BacktestDia
   );
 }
 
+function ResearchWorkflowPanel({
+  currentJob,
+  logs,
+  runs,
+  isStarting,
+  onStartSingle,
+  onStartDaily,
+  onStartIntraday,
+  onStartFull,
+  onCancel,
+}: {
+  currentJob: TrainingJob | null;
+  logs: string[];
+  runs?: ResearchRunSummary[];
+  isStarting: boolean;
+  onStartSingle: () => void;
+  onStartDaily: () => void;
+  onStartIntraday: () => void;
+  onStartFull: () => void;
+  onCancel: () => void;
+}) {
+  const running = currentJob?.status === "queued" || currentJob?.status === "running";
+  const gateMetric = (
+    payload: Record<string, unknown> | undefined,
+    key: "mean_alpha" | "median_alpha"
+  ): number | null => {
+    const metrics = payload?.holdout_metrics;
+    if (!metrics || typeof metrics !== "object") return null;
+    const raw = (metrics as Record<string, unknown>)[key];
+    return typeof raw === "number" && Number.isFinite(raw) ? raw : null;
+  };
+  const gateGap = (payload: Record<string, unknown> | undefined): number | null => {
+    const raw = payload?.generalization_gap;
+    return typeof raw === "number" && Number.isFinite(raw) ? raw : null;
+  };
+
+  return (
+    <section className="rounded-2xl border border-zinc-800 bg-[linear-gradient(180deg,rgba(20,20,24,0.96),rgba(10,10,12,0.96))] p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Research Ops</p>
+          <h2 className="mt-1 text-lg font-semibold text-zinc-100">Train the safe path first</h2>
+          <p className="mt-1 text-sm text-zinc-400">
+            Run diversified daily and intraday sweeps, rebuild auto-routing registries, then enforce holdout gates before trusting the overlay.
+          </p>
+        </div>
+        <StatusPill
+          label={running ? currentJob?.workflow?.replaceAll("_", " ") ?? "running" : "idle"}
+          tone={running ? "warn" : "neutral"}
+        />
+      </div>
+
+      <div className="mt-4 grid gap-3 md:grid-cols-4">
+        <button
+          type="button"
+          onClick={onStartSingle}
+          disabled={isStarting || running}
+          className="rounded-xl border border-zinc-700 bg-black/25 px-4 py-3 text-left text-sm text-zinc-100 transition hover:border-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <p className="font-semibold">Refresh Current Symbol</p>
+          <p className="mt-1 text-xs text-zinc-400">Retrain the active symbol/timeframe with the stricter GBM path.</p>
+        </button>
+        <button
+          type="button"
+          onClick={onStartDaily}
+          disabled={isStarting || running}
+          className="rounded-xl border border-zinc-700 bg-black/25 px-4 py-3 text-left text-sm text-zinc-100 transition hover:border-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <p className="font-semibold">Daily 15-Symbol Gate</p>
+          <p className="mt-1 text-xs text-zinc-400">Train daily variants, rebuild registries, then score core vs holdout alpha.</p>
+        </button>
+        <button
+          type="button"
+          onClick={onStartIntraday}
+          disabled={isStarting || running}
+          className="rounded-xl border border-zinc-700 bg-black/25 px-4 py-3 text-left text-sm text-zinc-100 transition hover:border-amber-400 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <p className="font-semibold">Intraday 10-Symbol Gate</p>
+          <p className="mt-1 text-xs text-zinc-400">Retrain hourly variants across the intraday basket and re-score short-window stability.</p>
+        </button>
+        <button
+          type="button"
+          onClick={onStartFull}
+          disabled={isStarting || running}
+          className="rounded-xl border border-zinc-700 bg-black/25 px-4 py-3 text-left text-sm text-zinc-100 transition hover:border-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <p className="font-semibold">Full Research Sweep</p>
+          <p className="mt-1 text-xs text-zinc-400">Run both workflows end-to-end and persist a single machine-readable summary.</p>
+        </button>
+      </div>
+
+      <div className="mt-4 grid gap-3 lg:grid-cols-[1.2fr,0.8fr]">
+        <div className="rounded-xl border border-zinc-800 bg-black/20 p-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-500">Active Job</p>
+              <p className="mt-1 text-sm text-zinc-100">
+                {currentJob ? `${currentJob.workflow ?? "single"} • ${currentJob.status}` : "No job running"}
+              </p>
+            </div>
+            {running ? (
+              <button
+                type="button"
+                onClick={onCancel}
+                className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-200 transition hover:border-rose-400"
+              >
+                Cancel Job
+              </button>
+            ) : null}
+          </div>
+
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-zinc-800">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-amber-300 to-emerald-400 transition-all"
+              style={{ width: `${Math.round((currentJob?.progress ?? 0) * 100)}%` }}
+            />
+          </div>
+
+          <div className="mt-3 grid gap-3 md:grid-cols-3">
+            <MetricCard label="Progress" value={`${Math.round((currentJob?.progress ?? 0) * 100)}%`} />
+            <MetricCard label="Current Step" value={currentJob?.currentStep ?? "-"} />
+            <MetricCard label="Job ID" value={currentJob?.id ?? "-"} />
+          </div>
+
+          <div className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/80 p-3">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-500">Event Log</p>
+            <div className="mt-2 max-h-44 space-y-1 overflow-auto font-mono text-[11px] text-zinc-300">
+              {logs.length ? logs.map((line, index) => <p key={`${index}-${line}`}>{line}</p>) : <p className="text-zinc-500">No events yet.</p>}
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-zinc-800 bg-black/20 p-3">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-500">Latest Workflow Runs</p>
+          <div className="mt-3 space-y-3">
+            {(runs ?? []).length ? (
+              runs?.map((run) => (
+                <div key={run.id} className="rounded-xl border border-zinc-800 bg-zinc-950/80 p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-zinc-100">{run.workflow.replaceAll("_", " ")}</p>
+                    <StatusPill label={run.status} tone={run.status === "completed" ? "good" : run.status === "failed" ? "bad" : "warn"} />
+                  </div>
+                  <p className="mt-2 text-xs text-zinc-400">{new Date(run.startedAt).toLocaleString()}</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <StatusPill label={`Daily ${run.dailyGatePassed ? "pass" : "review"}`} tone={run.dailyGatePassed ? "good" : "warn"} />
+                    <StatusPill label={`Intraday ${run.intradayGatePassed ? "pass" : "review"}`} tone={run.intradayGatePassed ? "good" : "warn"} />
+                  </div>
+                  <div className="mt-3 grid gap-2 text-[11px] text-zinc-400">
+                    <p>
+                      Daily holdout alpha{" "}
+                      <span className="font-semibold text-zinc-200">
+                        {gateMetric(run.daily, "mean_alpha") === null ? "-" : formatPercent(gateMetric(run.daily, "mean_alpha") ?? 0)}
+                      </span>
+                      {" · "}
+                      gap{" "}
+                      <span className="font-semibold text-zinc-200">
+                        {gateGap(run.daily) === null ? "-" : formatPercent(gateGap(run.daily) ?? 0)}
+                      </span>
+                    </p>
+                    <p>
+                      Intraday holdout alpha{" "}
+                      <span className="font-semibold text-zinc-200">
+                        {gateMetric(run.intraday, "mean_alpha") === null ? "-" : formatPercent(gateMetric(run.intraday, "mean_alpha") ?? 0)}
+                      </span>
+                      {" · "}
+                      gap{" "}
+                      <span className="font-semibold text-zinc-200">
+                        {gateGap(run.intraday) === null ? "-" : formatPercent(gateGap(run.intraday) ?? 0)}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="rounded-xl border border-zinc-800 bg-zinc-950/80 p-3 text-sm text-zinc-400">
+                No research workflow summaries yet.
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function AiPage() {
   const [predictionParams, setPredictionParams] = useState<PredictionParams>(DEFAULT_PREDICTION);
   const [fusionSettings, setFusionSettings] = useState<FusionSettings>(DEFAULT_FUSION);
@@ -331,10 +537,30 @@ export default function AiPage() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [prediction, setPrediction] = useState<PredictionResult | null>(null);
   const [backtest, setBacktest] = useState<BacktestResult | null>(null);
+  const [trainingJob, setTrainingJob] = useState<TrainingJob | null>(null);
+  const [trainingLogs, setTrainingLogs] = useState<string[]>([]);
+  const [startingWorkflow, setStartingWorkflow] = useState(false);
+  const trainingStreamRef = useRef<EventSource | null>(null);
+
+  useEffect(() => {
+    return () => trainingStreamRef.current?.close();
+  }, []);
 
   const modelsQuery = useQuery({
     queryKey: ["models"],
     queryFn: listModels,
+    refetchInterval: 60_000,
+  });
+
+  const researchRunsQuery = useQuery<ResearchRunSummary[]>({
+    queryKey: ["research-runs"],
+    queryFn: () => listResearchRuns(4),
+    refetchInterval: 60_000,
+  });
+
+  const benchmarkRunsQuery = useQuery<BenchmarkRun[]>({
+    queryKey: ["benchmark-runs"],
+    queryFn: () => listBenchmarkRuns(3),
     refetchInterval: 60_000,
   });
 
@@ -356,6 +582,169 @@ export default function AiPage() {
     },
     onError: (err: Error) => toast.error(err.message),
   });
+
+  const appendTrainingLog = (line: string) => {
+    setTrainingLogs((prev) => [...prev, line].slice(-160));
+  };
+
+  const beginTrainingStream = (jobId: string, initialJob: Partial<TrainingJob>) => {
+    trainingStreamRef.current?.close();
+    const stream = subscribeToTrainingEvents(jobId);
+    trainingStreamRef.current = stream;
+    setTrainingJob({
+      id: jobId,
+      symbol: initialJob.symbol ?? predictionParams.symbol,
+      status: "queued",
+      progress: 0,
+      currentEpoch: 0,
+      totalEpochs: 100,
+      startedAt: new Date().toISOString(),
+      workflow: initialJob.workflow,
+      currentStep: "",
+    });
+
+    stream.onmessage = (event) => {
+      let payload: JobEvent | null = null;
+      try {
+        payload = JSON.parse(event.data) as JobEvent;
+      } catch {
+        return;
+      }
+      if (!payload || payload.type === "heartbeat") return;
+
+      if (payload.message) {
+        appendTrainingLog(payload.message);
+      }
+      if (payload.type === "log" && payload.message) {
+        appendTrainingLog(payload.message);
+      }
+      if (payload.type === "stage") {
+        appendTrainingLog(`[${payload.step ?? "stage"}] ${payload.message ?? "running"}`);
+      }
+
+      setTrainingJob((prev) => {
+        if (!prev) return prev;
+        if (payload.type === "completed") {
+          return {
+            ...prev,
+            status: "completed",
+            progress: 1,
+            completedAt: new Date().toISOString(),
+          };
+        }
+        if (payload.type === "failed") {
+          return {
+            ...prev,
+            status: "failed",
+            error: payload.error ?? payload.message,
+            completedAt: new Date().toISOString(),
+          };
+        }
+        return {
+          ...prev,
+          status: prev.status === "queued" ? "running" : prev.status,
+          progress: payload.progress ?? prev.progress,
+          currentStep: payload.step ?? prev.currentStep,
+        };
+      });
+
+      if (payload.type === "completed") {
+        toast.success("Research workflow finished");
+        trainingStreamRef.current?.close();
+        researchRunsQuery.refetch();
+        modelsQuery.refetch();
+      } else if (payload.type === "failed") {
+        toast.error(payload.error ?? "Training failed");
+        trainingStreamRef.current?.close();
+        researchRunsQuery.refetch();
+      }
+    };
+
+    stream.onerror = () => {
+      trainingStreamRef.current?.close();
+    };
+  };
+
+  const startWorkflow = async (workflow: "single" | "daily_research" | "intraday_research" | "full_research") => {
+    setStartingWorkflow(true);
+    setTrainingLogs([]);
+    try {
+      const currentInterval = predictionParams.dataInterval ?? "1d";
+      const currentPeriod = predictionParams.dataPeriod ?? "10y";
+      const singleIntraday = currentInterval !== "1d";
+      const featureProfiles =
+        workflow === "intraday_research"
+          ? ["compact", "trend"]
+          : workflow === "single" && singleIntraday
+            ? ["compact", "trend"]
+            : ["full", "compact", "trend"];
+      const targetHorizons =
+        workflow === "intraday_research"
+          ? [1, 3]
+          : workflow === "single" && singleIntraday
+            ? [1]
+            : [1, 3];
+      const symbolSet =
+        workflow === "intraday_research"
+          ? "intraday10"
+          : workflow === "daily_research"
+            ? "daily15"
+            : singleIntraday
+              ? "intraday10"
+              : "daily15";
+      const response = await startTraining({
+        symbol: predictionParams.symbol,
+        epochs: 50,
+        batchSize: 512,
+        loss: "balanced",
+        sequenceLength: 90,
+        featureToggles: {},
+        ensembleSize: 1,
+        baseSeed: 42,
+        modelType: "gbm",
+        workflow,
+        nTrials: workflow === "single" ? 12 : 8,
+        maxFeatures: 50,
+        targetHorizons,
+        featureProfiles,
+        featureSelectionModes: ["shap_diverse", "shap_ranked"],
+        symbolSet,
+        dailySymbolSet: "daily15",
+        intradaySymbolSet: "intraday10",
+        dataInterval: currentInterval,
+        dataPeriod: currentPeriod,
+        dailyInterval: "1d",
+        intradayInterval: "1h",
+        dailyPeriod: "max",
+        intradayPeriod: "730d",
+        useLgb: false,
+        overwrite: true,
+      });
+      appendTrainingLog(`Job ${response.jobId} created for ${workflow}`);
+      beginTrainingStream(response.jobId, {
+        symbol: predictionParams.symbol,
+        workflow,
+      });
+      toast.success(`Started ${workflow.replaceAll("_", " ")}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to start training");
+    } finally {
+      setStartingWorkflow(false);
+    }
+  };
+
+  const handleCancelTraining = async () => {
+    if (!trainingJob) return;
+    try {
+      await cancelTrainingJob(trainingJob.id);
+      trainingStreamRef.current?.close();
+      setTrainingJob((prev) => (prev ? { ...prev, status: "cancelled", completedAt: new Date().toISOString() } : null));
+      appendTrainingLog("Job cancelled by user");
+      toast.info("Training cancelled");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to cancel training");
+    }
+  };
 
   const selectedModel = useMemo(() => {
     return modelsQuery.data?.find((m) => m.id === selectedModelId);
@@ -453,6 +842,7 @@ export default function AiPage() {
       setBacktestParams((b) => ({
         ...b,
         dataInterval: "1h",
+        forwardWindow: 24,
         maxLong: 1.4,
         maxShort: 0.2,
         commission: 0.5,
@@ -475,6 +865,7 @@ export default function AiPage() {
     setBacktestParams((b) => ({
       ...b,
       dataInterval: "1d",
+      forwardWindow: 20,
       maxLong: 1.6,
       maxShort: 0.25,
       commission: 0.5,
@@ -564,6 +955,24 @@ export default function AiPage() {
           <MetricCard label="Feature Profile" value={activeFeatureProfile ?? "-"} />
         </div>
       </section>
+
+      <div className="mb-6">
+        <ResearchWorkflowPanel
+          currentJob={trainingJob}
+          logs={trainingLogs}
+          runs={researchRunsQuery.data}
+          isStarting={startingWorkflow}
+          onStartSingle={() => startWorkflow("single")}
+          onStartDaily={() => startWorkflow("daily_research")}
+          onStartIntraday={() => startWorkflow("intraday_research")}
+          onStartFull={() => startWorkflow("full_research")}
+          onCancel={handleCancelTraining}
+        />
+      </div>
+
+      <div className="mb-6">
+        <BenchmarkLabPanel runs={benchmarkRunsQuery.data} />
+      </div>
 
       <SectionNav />
 
@@ -784,6 +1193,32 @@ export default function AiPage() {
             <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Execution + Risk Controls</p>
             
             <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-zinc-400">Backtest Window</label>
+                <input
+                  className="mt-1 w-full rounded-lg border border-zinc-700 bg-black/50 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-cyan-400"
+                  type="number"
+                  min={10}
+                  step="5"
+                  value={backtestParams.backtestWindow}
+                  onChange={(e) => setBacktestParams((b) => ({ ...b, backtestWindow: Number(e.target.value) || 120 }))}
+                  placeholder="Backtest Window"
+                />
+                <p className="mt-1 text-[10px] text-zinc-500">Recent realized bars used for the main backtest.</p>
+              </div>
+              <div>
+                <label className="text-xs text-zinc-400">Forward Holdout</label>
+                <input
+                  className="mt-1 w-full rounded-lg border border-zinc-700 bg-black/50 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-cyan-400"
+                  type="number"
+                  min={1}
+                  step="1"
+                  value={backtestParams.forwardWindow}
+                  onChange={(e) => setBacktestParams((b) => ({ ...b, forwardWindow: Number(e.target.value) || 20 }))}
+                  placeholder="Forward Holdout"
+                />
+                <p className="mt-1 text-[10px] text-zinc-500">Reserved recent bars for the realized forward simulation.</p>
+              </div>
               <div>
                 <label className="text-xs text-zinc-400">Initial Capital</label>
                 <input
