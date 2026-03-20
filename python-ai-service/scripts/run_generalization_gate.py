@@ -76,11 +76,17 @@ def _group_metrics(rows: pd.DataFrame) -> Dict[str, float]:
             "mean_strategy_return": 0.0,
             "mean_buy_hold_return": 0.0,
             "mean_sharpe": 0.0,
+            "median_sharpe": 0.0,
+            "mean_ml_lift_vs_regime": 0.0,
+            "median_ml_lift_vs_regime": 0.0,
+            "ml_lift_hit_rate": 0.0,
             "worst_alpha": 0.0,
             "best_alpha": 0.0,
         }
 
     alpha = rows["alpha"].astype(float)
+    sharpe = rows["sharpe_ratio"].astype(float)
+    ml_lift = rows.get("ml_incremental_alpha_vs_regime", pd.Series(0.0, index=rows.index)).astype(float)
     return {
         "n_runs": int(len(rows)),
         "n_symbols": int(rows["symbol"].nunique()),
@@ -89,7 +95,11 @@ def _group_metrics(rows: pd.DataFrame) -> Dict[str, float]:
         "alpha_hit_rate": float((alpha > 0.0).mean()),
         "mean_strategy_return": float(rows["strategy_return"].astype(float).mean()),
         "mean_buy_hold_return": float(rows["buy_hold_return"].astype(float).mean()),
-        "mean_sharpe": float(rows["sharpe_ratio"].astype(float).mean()),
+        "mean_sharpe": float(sharpe.mean()),
+        "median_sharpe": float(sharpe.median()),
+        "mean_ml_lift_vs_regime": float(ml_lift.mean()),
+        "median_ml_lift_vs_regime": float(ml_lift.median()),
+        "ml_lift_hit_rate": float((ml_lift > 0.0).mean()),
         "worst_alpha": float(alpha.min()),
         "best_alpha": float(alpha.max()),
     }
@@ -124,6 +134,9 @@ def main() -> None:
     parser.add_argument("--min-holdout-hit-rate", type=float, default=float("nan"))
     parser.add_argument("--max-generalization-gap", type=float, default=float("nan"))
     parser.add_argument("--min-holdout-worst-alpha", type=float, default=float("nan"))
+    parser.add_argument("--min-holdout-median-alpha", type=float, default=float("nan"))
+    parser.add_argument("--min-holdout-mean-sharpe", type=float, default=float("nan"))
+    parser.add_argument("--min-holdout-ml-lift", type=float, default=float("nan"))
     args = parser.parse_args()
 
     intraday = is_intraday_interval(args.interval)
@@ -156,22 +169,37 @@ def main() -> None:
     min_holdout_mean_alpha = (
         args.min_holdout_mean_alpha
         if pd.notna(args.min_holdout_mean_alpha)
-        else (-0.01 if intraday else 0.00)
+        else (0.001 if intraday else 0.005)
     )
     min_holdout_hit_rate = (
         args.min_holdout_hit_rate
         if pd.notna(args.min_holdout_hit_rate)
-        else (0.40 if intraday else 0.45)
+        else (0.50 if intraday else 0.55)
     )
     max_generalization_gap = (
         args.max_generalization_gap
         if pd.notna(args.max_generalization_gap)
-        else (0.05 if intraday else 0.08)
+        else (0.03 if intraday else 0.05)
     )
     min_holdout_worst_alpha = (
         args.min_holdout_worst_alpha
         if pd.notna(args.min_holdout_worst_alpha)
-        else (-0.20 if intraday else -0.30)
+        else (-0.12 if intraday else -0.18)
+    )
+    min_holdout_median_alpha = (
+        args.min_holdout_median_alpha
+        if pd.notna(args.min_holdout_median_alpha)
+        else (0.0005 if intraday else 0.003)
+    )
+    min_holdout_mean_sharpe = (
+        args.min_holdout_mean_sharpe
+        if pd.notna(args.min_holdout_mean_sharpe)
+        else (0.05 if intraday else 0.20)
+    )
+    min_holdout_ml_lift = (
+        args.min_holdout_ml_lift
+        if pd.notna(args.min_holdout_ml_lift)
+        else (-0.002 if intraday else 0.0)
     )
 
     print(f"[INFO] interval={args.interval} intraday={intraday} model_variant={model_variant}")
@@ -215,7 +243,10 @@ def main() -> None:
     generalization_gap = float(core_metrics["mean_alpha"] - holdout_metrics["mean_alpha"])
     checks = {
         "holdout_mean_alpha_ok": holdout_metrics["mean_alpha"] >= min_holdout_mean_alpha,
+        "holdout_median_alpha_ok": holdout_metrics["median_alpha"] >= min_holdout_median_alpha,
         "holdout_hit_rate_ok": holdout_metrics["alpha_hit_rate"] >= min_holdout_hit_rate,
+        "holdout_mean_sharpe_ok": holdout_metrics["mean_sharpe"] >= min_holdout_mean_sharpe,
+        "holdout_ml_lift_ok": holdout_metrics["mean_ml_lift_vs_regime"] >= min_holdout_ml_lift,
         "generalization_gap_ok": generalization_gap <= max_generalization_gap,
         "holdout_worst_alpha_ok": holdout_metrics["worst_alpha"] >= min_holdout_worst_alpha,
     }
@@ -234,7 +265,10 @@ def main() -> None:
         "generalization_gap": generalization_gap,
         "thresholds": {
             "min_holdout_mean_alpha": float(min_holdout_mean_alpha),
+            "min_holdout_median_alpha": float(min_holdout_median_alpha),
             "min_holdout_hit_rate": float(min_holdout_hit_rate),
+            "min_holdout_mean_sharpe": float(min_holdout_mean_sharpe),
+            "min_holdout_ml_lift": float(min_holdout_ml_lift),
             "max_generalization_gap": float(max_generalization_gap),
             "min_holdout_worst_alpha": float(min_holdout_worst_alpha),
         },
@@ -257,6 +291,9 @@ def main() -> None:
     print(
         f"[SUMMARY] core_mean_alpha={core_metrics['mean_alpha']:.4f} "
         f"holdout_mean_alpha={holdout_metrics['mean_alpha']:.4f} "
+        f"holdout_median_alpha={holdout_metrics['median_alpha']:.4f} "
+        f"holdout_mean_sharpe={holdout_metrics['mean_sharpe']:.4f} "
+        f"holdout_ml_lift={holdout_metrics['mean_ml_lift_vs_regime']:.4f} "
         f"gap={generalization_gap:.4f} gate_passed={gate_passed}"
     )
     print(f"[CHECKS] {checks}")

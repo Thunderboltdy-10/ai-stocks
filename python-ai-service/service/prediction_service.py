@@ -260,6 +260,125 @@ def _adaptive_ml_weights(bundle: GBMModelBundle) -> tuple[float, float]:
     return (0.06, 0.04) if intraday else (0.08, 0.04)
 
 
+def _infer_strategy_state(
+    bundle: GBMModelBundle,
+    frame: pd.DataFrame,
+    *,
+    data_interval: str,
+    max_long: float,
+    max_short: float,
+) -> Dict[str, object]:
+    profile = execution_profile(data_interval)
+    intraday = bool(profile["is_intraday"])
+    preds = _predict_series(bundle, frame)
+    target_horizon = int(bundle.metadata.get("target_horizon_days", 1))
+    calibrated_pred_raw, direction_conf = apply_direction_calibration(
+        preds["pred_ens_raw"],
+        bundle.metadata.get("direction_calibrator"),
+    )
+    calibrated_pred = _to_daily_arithmetic_return(calibrated_pred_raw, target_horizon)
+    execution_policy = bundle.metadata.get("execution_calibration", {})
+    recommended_min_change = (
+        float(max(0.0, execution_policy.get("min_position_change", 0.0)))
+        if isinstance(execution_policy, dict) and bool(execution_policy.get("enabled", False))
+        else 0.0
+    )
+    if intraday:
+        recommended_min_change = max(recommended_min_change, 0.03)
+
+    ml_gate = _model_quality_gate(bundle)
+    ml_weight, fallback_ml_weight = _adaptive_ml_weights(bundle)
+    quality = score_variant_quality(bundle.metadata, intraday=intraday)
+
+    sizer = PositionSizer(
+        PositionSizingConfig(
+            max_long=max_long,
+            max_short=max_short,
+            base_long_bias=float(profile["base_long_bias"]),
+            bearish_risk_off=float(profile["bearish_risk_off"]),
+        )
+    )
+    if isinstance(execution_policy, dict) and bool(execution_policy.get("enabled", False)):
+        ml_positions = positions_from_policy(
+            calibrated_pred,
+            preds["pred_std_raw"],
+            execution_policy,
+            max_long=max_long,
+            max_short=max_short,
+        )
+    elif intraday:
+        ml_positions = intraday_hybrid_positions(
+            close=frame["Close"],
+            predicted_returns=calibrated_pred_raw,
+            prediction_stds=preds["pred_std_raw"],
+            max_long=max_long,
+            max_short=max_short,
+            cost_buffer=0.0002,
+        )
+    else:
+        ml_positions = sizer.size_batch(
+            predicted_returns=calibrated_pred,
+            prediction_stds=preds["pred_std_raw"],
+            win_rate=_sizing_win_rate(bundle),
+            avg_win=0.012,
+            avg_loss=0.010,
+        )
+    ml_positions = np.clip(ml_positions, -max_short, max_long)
+
+    regime_positions = _regime_positions(
+        frame["Close"],
+        profile=profile,
+        max_long=max_long,
+        max_short=max_short,
+    )
+    positions = combine_ml_and_regime(
+        regime_positions=regime_positions,
+        ml_positions=ml_positions,
+        ml_gate_passed=ml_gate,
+        ml_weight=ml_weight,
+        fallback_ml_weight=fallback_ml_weight,
+        max_long=max_long,
+        max_short=max_short,
+    )
+    overlay_weights = adaptive_overlay_weight(
+        close=frame["Close"],
+        predicted_returns=calibrated_pred,
+        lookback=60,
+        min_weight=(float(profile["overlay_min"]) if ml_gate else 0.02),
+        max_weight=(float(profile["overlay_max"]) if ml_gate else 0.35),
+    )
+    positions = blend_positions_with_core(
+        active_positions=positions,
+        overlay_weights=overlay_weights,
+        core_long=float(profile["core_long"]),
+        max_long=max_long,
+        max_short=max_short,
+        smooth_alpha=0.30 if intraday else 0.20,
+    )
+    positions = apply_short_safety_filter(
+        close=frame["Close"],
+        positions=positions,
+        predicted_returns=calibrated_pred,
+        max_short=max_short,
+        interval=data_interval,
+    )
+    return {
+        "profile": profile,
+        "intraday": intraday,
+        "preds": preds,
+        "target_horizon": target_horizon,
+        "calibrated_pred_raw": calibrated_pred_raw,
+        "calibrated_pred": calibrated_pred,
+        "direction_conf": direction_conf,
+        "positions": positions,
+        "quality": quality,
+        "ml_gate": ml_gate,
+        "ml_weight": ml_weight,
+        "fallback_ml_weight": fallback_ml_weight,
+        "recommended_min_change": recommended_min_change,
+    }
+
+
 def _action_from_delta(prev_pos: float, new_pos: float) -> str:
     delta = new_pos - prev_pos
     if abs(delta) < 1e-8:
@@ -430,6 +549,59 @@ def _build_backtest_diagnostics(
     }
 
 
+def _split_history_windows(prediction: Dict, params: Dict) -> Dict[str, Dict[str, np.ndarray] | int]:
+    dates = np.asarray(prediction.get("dates", []), dtype=object)
+    prices = np.asarray(prediction.get("prices", []), dtype=float)
+    positions = np.asarray(prediction.get("fusedPositions", []), dtype=float)
+    pred_returns = np.asarray(prediction.get("predictedReturns", []), dtype=float)
+
+    total = min(len(dates), len(prices), len(positions))
+    if total < 10:
+        raise ValueError("Need at least 10 aligned prediction rows for backtesting")
+
+    dates = dates[-total:]
+    prices = prices[-total:]
+    positions = positions[-total:]
+    pred_returns = pred_returns[-total:] if len(pred_returns) >= total else np.zeros(total, dtype=float)
+
+    requested_backtest = max(10, int(_as_float(params.get("backtestWindow"), 60)))
+    requested_forward = max(1, int(_as_float(params.get("forwardWindow"), 20)))
+    enable_forward = bool(params.get("enableForwardSim", False))
+
+    forward_window = 0
+    if enable_forward and total >= 15:
+        forward_window = min(requested_forward, max(1, total - 10))
+
+    backtest_window = min(requested_backtest, total - forward_window)
+    if backtest_window < 10 and forward_window > 0:
+        forward_window = max(0, total - 10)
+        backtest_window = total - forward_window
+    if backtest_window < 10:
+        raise ValueError("Backtest window too small after applying forward holdout")
+
+    start = total - (backtest_window + forward_window)
+    backtest_end = start + backtest_window
+    forward_end = backtest_end + forward_window
+
+    out = {
+        "totalPoints": total,
+        "backtest": {
+            "dates": dates[start:backtest_end],
+            "prices": prices[start:backtest_end],
+            "positions": positions[start:backtest_end],
+            "pred_returns": pred_returns[start:backtest_end],
+        },
+    }
+    if forward_window > 0:
+        out["forward"] = {
+            "dates": dates[backtest_end:forward_end],
+            "prices": prices[backtest_end:forward_end],
+            "positions": positions[backtest_end:forward_end],
+            "pred_returns": pred_returns[backtest_end:forward_end],
+        }
+    return out
+
+
 def generate_prediction(payload: Dict) -> Dict:
     symbol = str(payload.get("symbol", "AAPL")).upper()
     horizon = int(payload.get("horizon", 5))
@@ -465,105 +637,33 @@ def generate_prediction(payload: Dict) -> Dict:
 
     data_interval = str(payload.get("dataInterval", bundle.metadata.get("data_interval", data_interval)))
     data_period = str(payload.get("dataPeriod", bundle.metadata.get("data_period", data_period)))
-    profile = execution_profile(data_interval)
-    intraday = bool(profile["is_intraday"])
+    raw = fetch_stock_data(symbol=symbol, period=data_period, interval=data_interval)
+    intraday_requested = is_intraday_interval(data_interval)
+    max_long = float(payload.get("maxLong", 1.4 if intraday_requested else 1.6))
+    max_short = float(payload.get("maxShort", 0.2 if intraday_requested else 0.25))
+    strategy = _infer_strategy_state(
+        bundle,
+        raw,
+        data_interval=data_interval,
+        max_long=max_long,
+        max_short=max_short,
+    )
+    profile = strategy["profile"]
+    intraday = bool(strategy["intraday"])
     max_long = float(payload.get("maxLong", 1.4 if intraday else 1.6))
     max_short = float(payload.get("maxShort", 0.2 if intraday else 0.25))
     time_fmt = "%Y-%m-%d %H:%M:%S" if intraday else "%Y-%m-%d"
-
-    raw = fetch_stock_data(symbol=symbol, period=data_period, interval=data_interval)
-    preds = _predict_series(bundle, raw)
-    target_horizon = int(bundle.metadata.get("target_horizon_days", 1))
-    calibrated_pred_raw, direction_conf = apply_direction_calibration(
-        preds["pred_ens_raw"],
-        bundle.metadata.get("direction_calibrator"),
-    )
-    calibrated_pred = _to_daily_arithmetic_return(calibrated_pred_raw, target_horizon)
-    execution_policy = bundle.metadata.get("execution_calibration", {})
-    recommended_min_change = (
-        float(max(0.0, execution_policy.get("min_position_change", 0.0)))
-        if isinstance(execution_policy, dict) and bool(execution_policy.get("enabled", False))
-        else 0.0
-    )
-    if intraday:
-        recommended_min_change = max(recommended_min_change, 0.03)
-
-    ml_gate = _model_quality_gate(bundle)
-    ml_weight, fallback_ml_weight = _adaptive_ml_weights(bundle)
-    quality = score_variant_quality(bundle.metadata, intraday=intraday)
-
-    sizer = PositionSizer(
-        PositionSizingConfig(
-            max_long=max_long,
-            max_short=max_short,
-            base_long_bias=float(profile["base_long_bias"]),
-            bearish_risk_off=float(profile["bearish_risk_off"]),
-        )
-    )
-    if isinstance(execution_policy, dict) and bool(execution_policy.get("enabled", False)):
-        ml_positions = positions_from_policy(
-            calibrated_pred,
-            preds["pred_std_raw"],
-            execution_policy,
-            max_long=max_long,
-            max_short=max_short,
-        )
-    elif intraday:
-        ml_positions = intraday_hybrid_positions(
-            close=raw["Close"],
-            predicted_returns=calibrated_pred_raw,
-            prediction_stds=preds["pred_std_raw"],
-            max_long=max_long,
-            max_short=max_short,
-            cost_buffer=0.0002,
-        )
-    else:
-        ml_positions = sizer.size_batch(
-            predicted_returns=calibrated_pred,
-            prediction_stds=preds["pred_std_raw"],
-            win_rate=_sizing_win_rate(bundle),
-            avg_win=0.012,
-            avg_loss=0.010,
-        )
-    ml_positions = np.clip(ml_positions, -max_short, max_long)
-
-    regime_positions = _regime_positions(
-        raw["Close"],
-        profile=profile,
-        max_long=max_long,
-        max_short=max_short,
-    )
-    positions = combine_ml_and_regime(
-        regime_positions=regime_positions,
-        ml_positions=ml_positions,
-        ml_gate_passed=ml_gate,
-        ml_weight=ml_weight,
-        fallback_ml_weight=fallback_ml_weight,
-        max_long=max_long,
-        max_short=max_short,
-    )
-    overlay_weights = adaptive_overlay_weight(
-        close=raw["Close"],
-        predicted_returns=calibrated_pred,
-        lookback=60,
-        min_weight=(float(profile["overlay_min"]) if ml_gate else 0.02),
-        max_weight=(float(profile["overlay_max"]) if ml_gate else 0.35),
-    )
-    positions = blend_positions_with_core(
-        active_positions=positions,
-        overlay_weights=overlay_weights,
-        core_long=float(profile["core_long"]),
-        max_long=max_long,
-        max_short=max_short,
-        smooth_alpha=0.30 if intraday else 0.20,
-    )
-    positions = apply_short_safety_filter(
-        close=raw["Close"],
-        positions=positions,
-        predicted_returns=calibrated_pred,
-        max_short=max_short,
-        interval=data_interval,
-    )
+    preds = strategy["preds"]
+    target_horizon = int(strategy["target_horizon"])
+    calibrated_pred_raw = np.asarray(strategy["calibrated_pred_raw"], dtype=float)
+    calibrated_pred = np.asarray(strategy["calibrated_pred"], dtype=float)
+    direction_conf = np.asarray(strategy["direction_conf"], dtype=float)
+    positions = np.asarray(strategy["positions"], dtype=float)
+    quality = strategy["quality"]
+    ml_gate = bool(strategy["ml_gate"])
+    ml_weight = float(strategy["ml_weight"])
+    fallback_ml_weight = float(strategy["fallback_ml_weight"])
+    recommended_min_change = float(strategy["recommended_min_change"])
 
     close = raw["Close"].to_numpy(dtype=float)
     dates = [pd.to_datetime(d).strftime(time_fmt) for d in pd.to_datetime(raw.index)]
@@ -791,15 +891,14 @@ def generate_prediction(payload: Dict) -> Dict:
     return _sanitize_for_json(result)
 
 
-def _forward_simulate(prediction: Dict, params: Dict) -> Dict | None:
-    forecast = prediction.get("forecast", {})
-    if not isinstance(forecast, dict):
-        return None
-
-    dates = forecast.get("dates", [])
-    prices = np.asarray(forecast.get("prices", []), dtype=float)
-    positions = np.asarray(forecast.get("positions", []), dtype=float)
-
+def _forward_simulate(
+    *,
+    dates: np.ndarray,
+    prices: np.ndarray,
+    positions: np.ndarray,
+    prediction: Dict,
+    params: Dict,
+) -> Dict | None:
     if len(dates) == 0 or len(prices) == 0 or len(prices) != len(positions):
         return None
 
@@ -832,7 +931,7 @@ def _forward_simulate(prediction: Dict, params: Dict) -> Dict | None:
         target_positions=positions,
         max_long=max_long,
         max_short=max_short,
-        apply_position_lag=False,
+        apply_position_lag=True,
         annualization_factor=annualization,
         flat_at_day_end=flat_at_day_end,
         day_end_flatten_fraction=day_end_flatten_fraction,
@@ -872,9 +971,15 @@ def _forward_simulate(prediction: Dict, params: Dict) -> Dict | None:
         "dates": [str(d) for d in dates],
         "prices": [float(x) for x in prices],
         "equityCurve": [float(x) for x in bt.equity_curve],
+        "cumulativeReturn": float(bt.metrics.get("cum_return", 0.0)),
         "sharpe": float(bt.metrics.get("sharpe", 0.0)),
         "maxDrawdown": float(bt.metrics.get("max_drawdown", 0.0)),
         "trades": int(len(bt.trade_log)),
+        "winRate": float(bt.metrics.get("win_rate", 0.0)),
+        "profitFactor": float(bt.metrics.get("profit_factor", 0.0)),
+        "source": "historical_holdout",
+        "windowStart": _fmt_timestamp(dates[0], intraday),
+        "windowEnd": _fmt_timestamp(dates[-1], intraday),
         "actions": action_rows,
         "markers": markers,
         "totalCosts": float(bt.metrics.get("total_transaction_costs", 0.0)),
@@ -883,9 +988,11 @@ def _forward_simulate(prediction: Dict, params: Dict) -> Dict | None:
 
 
 def run_backtest(prediction: Dict, params: Dict) -> Dict:
-    dates = prediction.get("dates", [])
-    prices = np.asarray(prediction.get("prices", []), dtype=float)
-    target_positions = np.asarray(prediction.get("fusedPositions", []), dtype=float)
+    windows = _split_history_windows(prediction, params)
+    backtest_window = windows["backtest"]
+    dates = [str(d) for d in backtest_window["dates"]]
+    prices = np.asarray(backtest_window["prices"], dtype=float)
+    target_positions = np.asarray(backtest_window["positions"], dtype=float)
 
     if len(prices) == 0 or len(target_positions) == 0 or len(prices) != len(target_positions):
         raise ValueError("Invalid prediction payload for backtest")
@@ -983,7 +1090,7 @@ def run_backtest(prediction: Dict, params: Dict) -> Dict:
             }
         )
 
-    pred_returns = np.asarray(prediction.get("predictedReturns", []), dtype=float)
+    pred_returns = np.asarray(backtest_window.get("pred_returns", []), dtype=float)
     if len(pred_returns) != len(returns):
         pred_returns = np.zeros_like(returns)
 
@@ -1014,6 +1121,8 @@ def run_backtest(prediction: Dict, params: Dict) -> Dict:
         ) if len(returns) else 0.0,
         "transactionCosts": float(bt.metrics.get("total_transaction_costs", 0.0)),
         "borrowFee": float(bt.metrics.get("total_borrow_fee", 0.0)),
+        "profitFactor": float(bt.metrics.get("profit_factor", 0.0)),
+        "turnover": float(bt.metrics.get("turnover", 0.0)),
     }
 
     buy_hold_equity = [
@@ -1028,8 +1137,19 @@ def run_backtest(prediction: Dict, params: Dict) -> Dict:
         )
 
     forward_sim = None
-    if bool(params.get("enableForwardSim", False)):
-        forward_sim = _forward_simulate(prediction, params)
+    if bool(params.get("enableForwardSim", False)) and "forward" in windows:
+        forward_window = windows["forward"]
+        forward_sim = _forward_simulate(
+            dates=np.asarray(forward_window["dates"], dtype=object),
+            prices=np.asarray(forward_window["prices"], dtype=float),
+            positions=np.clip(
+                np.asarray(forward_window["positions"], dtype=float),
+                -max_short,
+                max_long,
+            ),
+            prediction=prediction,
+            params=params,
+        )
 
     diagnostics = _build_backtest_diagnostics(
         dates=[str(d) for d in dates],
@@ -1050,4 +1170,6 @@ def run_backtest(prediction: Dict, params: Dict) -> Dict:
         "buyHoldEquity": buy_hold_equity,
         "csv": "\n".join(csv_rows),
         "forwardSimulation": forward_sim,
+        "windowStart": dates[0] if dates else "",
+        "windowEnd": dates[-1] if dates else "",
     })

@@ -48,6 +48,18 @@ export function BacktestConfigPanel({ params, onChange, disabled }: BacktestConf
             className="bg-gray-950 border-gray-700 text-white"
           />
         </div>
+        <div className="space-y-2">
+          <Label className="text-xs text-gray-500">Forward Holdout (days)</Label>
+          <Input
+            type="number"
+            value={params.forwardWindow}
+            onChange={(e) => onChange({ forwardWindow: Number(e.target.value) })}
+            disabled={disabled}
+            min={1}
+            max={90}
+            className="bg-gray-950 border-gray-700 text-white"
+          />
+        </div>
       </div>
 
       {/* Position Limits */}

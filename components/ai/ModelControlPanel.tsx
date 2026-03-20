@@ -235,6 +235,10 @@ export function ModelControlPanel({
             <Input type="number" value={backtestParams.backtestWindow} min={10} onChange={(event) => onChangeBacktestParams({ backtestWindow: Number(event.target.value) })} />
           </div>
           <div>
+            <Label>Forward Holdout</Label>
+            <Input type="number" value={backtestParams.forwardWindow} min={1} onChange={(event) => onChangeBacktestParams({ forwardWindow: Number(event.target.value) })} />
+          </div>
+          <div>
             <Label>Initial Capital</Label>
             <Input type="number" value={backtestParams.initialCapital} onChange={(event) => onChangeBacktestParams({ initialCapital: Number(event.target.value) })} />
           </div>
